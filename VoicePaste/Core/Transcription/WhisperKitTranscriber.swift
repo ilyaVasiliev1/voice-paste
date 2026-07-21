@@ -15,7 +15,7 @@ import WhisperKit
 /// Plain-value decoding decision for a `TranscriptionLanguage`, kept free of
 /// any WhisperKit types so it can be unit-tested without linking the
 /// WhisperKit package (`L-005`, `AT-095`).
-public struct WhisperDecodingPlan: Equatable, Sendable {
+nonisolated public struct WhisperDecodingPlan: Equatable, Sendable {
     public let languageCode: String?
     public let detectLanguage: Bool
     public let usePrefillPrompt: Bool
@@ -29,7 +29,7 @@ public struct WhisperDecodingPlan: Equatable, Sendable {
     }
 }
 
-public struct WhisperKitTranscriber: Transcribing {
+nonisolated public struct WhisperKitTranscriber: Transcribing {
     /// `L-005`/`AT-095`: the decoding task is always transcription, never
     /// translation; in `.auto` the language is left unset with detection
     /// enabled, while `.ru`/`.en` force their language explicitly.
@@ -60,7 +60,11 @@ public struct WhisperKitTranscriber: Transcribing {
     }
 
 #if canImport(WhisperKit)
-    private let pipe: WhisperKit
+    /// WhisperKit itself is not declared `Sendable`. It is therefore owned by
+    /// one private actor rather than by a main-actor value or an unchecked
+    /// wrapper. This both serialises model access and keeps preprocessing,
+    /// inference and terminal-filler filtering off the UI executor.
+    private let worker: WhisperInferenceWorker
 
     /// - Parameter downloadProgress: forwarded `Progress.fractionCompleted`
     ///   (`0...1`) updates for the first-run 626 MB download (`UI-002`,
@@ -94,6 +98,7 @@ public struct WhisperKitTranscriber: Transcribing {
         // rediscover that nested folder rather than assume it sits directly
         // in `modelDirectory` (mirrors the official WhisperAX example app's
         // `fetchModels()`/`loadModel()` local-vs-download branching).
+        let preparedPipe: WhisperKit
         if let existing = LocalModelDetection.discoverModelFolder(in: modelDirectory) {
             // Already downloaded and verified: load straight from disk, no
             // network involved (`AT-004` — "повторная загрузка не требуется").
@@ -107,7 +112,7 @@ public struct WhisperKitTranscriber: Transcribing {
                 modelFolder: existing.path,
                 download: false
             )
-            pipe = try await WhisperKit(config)
+            preparedPipe = try await WhisperKit(config)
         } else {
             // First run: no local model yet. `WhisperKit(config:)` itself has
             // no download-progress callback — its `download: true` branch
@@ -135,15 +140,48 @@ public struct WhisperKitTranscriber: Transcribing {
                 load: true,
                 download: false
             )
-            pipe = try await WhisperKit(config)
+            preparedPipe = try await WhisperKit(config)
         }
+        worker = WhisperInferenceWorker(pipe: preparedPipe)
     }
 
     public func transcribe(_ request: TranscriptionRequest) async throws -> TranscriptionResult {
+        try await worker.transcribe(request)
+    }
+#else
+    public init(
+        modelDirectory: URL,
+        endpoint: String = ModelCatalog.downloadEndpoint,
+        downloadProgress: (@Sendable (Double) -> Void)? = nil
+    ) async throws {
+        throw TranscribingError.underlying(
+            "WhisperKit package is not resolvable in this build environment (see report tail)."
+        )
+    }
+
+    public func transcribe(_ request: TranscriptionRequest) async throws -> TranscriptionResult {
+        throw TranscribingError.underlying(
+            "WhisperKit package is not resolvable in this build environment (see report tail)."
+        )
+    }
+#endif
+}
+
+#if canImport(WhisperKit)
+/// Serial inference owner. Actor isolation is the boundary that prevents
+/// heavy local recognition from running on the AppKit/SwiftUI main actor.
+private actor WhisperInferenceWorker {
+    private let pipe: WhisperKit
+
+    init(pipe: WhisperKit) {
+        self.pipe = pipe
+    }
+
+    func transcribe(_ request: TranscriptionRequest) async throws -> TranscriptionResult {
         guard !request.samples.isEmpty else { throw TranscribingError.emptyAudio }
         // `L-005`/`AT-095`: task is always transcription; `.auto` enables
         // language auto-detection instead of leaving it off by default.
-        let plan = Self.decodingPlan(for: request.language)
+        let plan = WhisperKitTranscriber.decodingPlan(for: request.language)
         // WhisperKit's no-speech score is unavailable in the current CoreML
         // decoder implementation, so suppress blank starts here and apply a
         // timestamp + signal based terminal-silence guard below.
@@ -178,21 +216,5 @@ public struct WhisperKitTranscriber: Transcribing {
             detectedLanguage: plan.languageCode ?? results.first?.language
         )
     }
-#else
-    public init(
-        modelDirectory: URL,
-        endpoint: String = ModelCatalog.downloadEndpoint,
-        downloadProgress: (@Sendable (Double) -> Void)? = nil
-    ) async throws {
-        throw TranscribingError.underlying(
-            "WhisperKit package is not resolvable in this build environment (see report tail)."
-        )
-    }
-
-    public func transcribe(_ request: TranscriptionRequest) async throws -> TranscriptionResult {
-        throw TranscribingError.underlying(
-            "WhisperKit package is not resolvable in this build environment (see report tail)."
-        )
-    }
-#endif
 }
+#endif

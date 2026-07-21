@@ -167,24 +167,24 @@ final class TextInserterTests: XCTestCase {
         )
     }
 
-    func test_allTargetsUseTheSameSystemPasteRoute() {
+    func test_allEligibleTargetsUseTheSameHIDPasteRoute_withoutAutomation() {
         XCTAssertEqual(
             TextInserter.pasteEventRoute(
                 for: .init(bundleIdentifier: "com.openai.codex", processIdentifier: 1)
             ),
-            .systemEvents
+            .hid
         )
         XCTAssertEqual(
             TextInserter.pasteEventRoute(
                 for: .init(bundleIdentifier: "com.anthropic.claudefordesktop", processIdentifier: 1)
             ),
-            .systemEvents
+            .hid
         )
         XCTAssertEqual(
             TextInserter.pasteEventRoute(
                 for: .init(bundleIdentifier: "com.microsoft.Word", processIdentifier: 1)
             ),
-            .systemEvents
+            .hid
         )
     }
 
@@ -192,14 +192,11 @@ final class TextInserterTests: XCTestCase {
     /// defect fix targeted directly — pin its policy outcome by name rather
     /// than relying only on the generic compatibility-set loop above, so a
     /// future edit that drops it from `knownOpaqueCompatibilityBundleIdentifiers`
-    /// or from the `.systemEvents`/extended-pasteboard-window special cases
-    /// fails a test that names ChatGPT, not just an unrelated sibling bundle
-    /// id (Codex/Claude). Does NOT cover the AppleScript-source escaping fix
-    /// itself (`simulatePasteKeystroke`'s literal source string) or the
-    /// Automation-denied honest-`.copied` path — both require a granted/denied
-    /// Automation TCC prompt against a live System Events call, only
-    /// reachable as `живой smoke` on an installed `.app`.
-    func test_AT098_chatGPT_isOpaqueCompatibilityTarget_usingSystemEventsRouteAndExtendedWindow() {
+    /// or routes it back through per-app Automation fails a test that names
+    /// ChatGPT, not just an unrelated sibling bundle (Codex/Claude). Live
+    /// smoke still proves real appearance in the composer; this unit test
+    /// protects the no-Automation route selection.
+    func test_AT098_chatGPT_isOpaqueCompatibilityTarget_usingHIDRouteAndExtendedWindow() {
         XCTAssertEqual(
             TextInserter.pasteTargetEligibility(
                 bundleIdentifier: "com.openai.chat",
@@ -221,7 +218,7 @@ final class TextInserterTests: XCTestCase {
             TextInserter.pasteEventRoute(
                 for: .init(bundleIdentifier: "com.openai.chat", processIdentifier: 1)
             ),
-            .systemEvents
+            .hid
         )
         XCTAssertTrue(
             TextInserter.usesExtendedPasteboardWindow(

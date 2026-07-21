@@ -53,14 +53,17 @@ nonisolated public enum TranscribingError: Error, Equatable, Sendable {
 /// available in a given build environment. The WhisperKit-backed
 /// implementation lives in `WhisperKitTranscriber.swift`, isolated behind
 /// `#if canImport(WhisperKit)`.
-public protocol Transcribing: Sendable {
+/// Inference is intentionally nonisolated: a local Whisper run may occupy
+/// CPU/Metal for a long time, but it must never inherit the SwiftUI main
+/// actor simply because the caller is an observable application object.
+nonisolated public protocol Transcribing: Sendable {
     func transcribe(_ request: TranscriptionRequest) async throws -> TranscriptionResult
 }
 
 /// Deterministic stand-in used by SwiftUI previews and unit tests
 /// (`_tests.md`: transcriber must be mockable so DB/UI tests never invoke
 /// WhisperKit or touch the microphone).
-public struct MockTranscriber: Transcribing {
+nonisolated public struct MockTranscriber: Transcribing {
     public var result: Result<TranscriptionResult, TranscribingError>
 
     public init(result: Result<TranscriptionResult, TranscribingError> = .success(.init(rawText: "", detectedLanguage: nil))) {

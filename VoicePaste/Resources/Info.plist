@@ -24,7 +24,5 @@
     <false/>
     <key>NSMicrophoneUsageDescription</key>
     <string>VoicePaste uses the microphone only while you explicitly record a dictation.</string>
-    <key>NSAppleEventsUsageDescription</key>
-    <string>VoicePaste uses System Events only to paste your finished dictation into the app that was active when recording began.</string>
 </dict>
 </plist>

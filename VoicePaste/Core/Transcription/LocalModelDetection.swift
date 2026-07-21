@@ -18,7 +18,10 @@ import Foundation
 /// require importing its Hub-facing internals, so this type stays available
 /// even in build environments where the WhisperKit package can't resolve
 /// (see `WhisperKitTranscriber`'s isolation comment).
-enum LocalModelDetection {
+/// Filesystem-only model discovery runs before inference and deliberately
+/// stays outside the UI actor; a large model folder must never make the
+/// application event loop wait for its directory walk.
+nonisolated enum LocalModelDetection {
     private static let requiredComponents = ["MelSpectrogram", "AudioEncoder", "TextDecoder"]
 
     /// Lower bound on the *total* size of a candidate model folder for it to

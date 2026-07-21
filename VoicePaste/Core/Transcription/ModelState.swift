@@ -55,7 +55,9 @@ public enum ModelError: Error, Equatable, Sendable {
 }
 
 /// v1 ships exactly one open WhisperKit model (`INV-004`).
-public enum ModelCatalog {
+/// Immutable catalog data is read by the background model loader and must not
+/// force that loader back onto the SwiftUI main actor.
+nonisolated public enum ModelCatalog {
     public static let modelID = "large-v3-v20240930_626MB"
     /// Advertised download size, used for the `EC-007` free-space check and
     /// for the Settings "Модель" size label.

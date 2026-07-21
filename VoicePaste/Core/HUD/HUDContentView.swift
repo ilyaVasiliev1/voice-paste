@@ -130,19 +130,29 @@ struct HUDContentView: View {
     }
 
     private func error(message: String, action: HUDErrorAction) -> some View {
-        HStack(spacing: 9) {
-            Image(systemName: "exclamationmark.circle.fill")
-                .font(.system(size: 17, weight: .semibold))
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(.red)
-            Text(message).lineLimit(1)
-            switch action {
-            case .none: EmptyView()
-            case .retry:
-                hudButton(symbol: "arrow.clockwise", labelKey: "hud.action.retry", action: stateHolder.actions.onRetry)
-            case .selectMicrophone:
-                hudButton(symbol: "mic.badge.xmark", labelKey: "hud.action.selectMicrophone", action: stateHolder.actions.onSelectMicrophone)
+        HStack(spacing: 8) {
+            // Keep equally sized edge slots. The status therefore stays
+            // optically centred in the same way as every text-only HUD
+            // state, while an actionable error still exposes Retry/Close.
+            // `Color.clear` is deliberate: it reserves the left control
+            // space without introducing a decorative error icon.
+            Group {
+                switch action {
+                case .none:
+                    Color.clear
+                case .retry:
+                    hudButton(symbol: "arrow.clockwise", labelKey: "hud.action.retry", action: stateHolder.actions.onRetry)
+                case .selectMicrophone:
+                    hudButton(symbol: "mic.badge.xmark", labelKey: "hud.action.selectMicrophone", action: stateHolder.actions.onSelectMicrophone)
+                }
             }
+            .frame(width: HUDLayout.controlSize, height: HUDLayout.controlSize)
+            Text(message)
+                .font(.callout.weight(.medium))
+                .foregroundStyle(.red)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity)
             hudButton(symbol: "xmark", labelKey: "hud.action.dismiss", action: stateHolder.actions.onDismiss)
         }
         .padding(HUDLayout.contentInset)
