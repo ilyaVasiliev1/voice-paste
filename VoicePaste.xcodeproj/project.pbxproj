@@ -1,0 +1,856 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		C0000000000000000000011C /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000011B /* App.swift */; };
+		C0000000000000000000011E /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000011D /* AppState.swift */; };
+		C00000000000000000000120 /* AudioCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000011F /* AudioCaptureService.swift */; };
+		C00000000000000000000122 /* DictationStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000121 /* DictationStateMachine.swift */; };
+		C00000000000000000000124 /* HUDContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000123 /* HUDContentView.swift */; };
+		C00000000000000000000126 /* HUDState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000125 /* HUDState.swift */; };
+		C00000000000000000000128 /* HUDWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000127 /* HUDWindowController.swift */; };
+		C0000000000000000000012A /* FailingHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000129 /* FailingHistoryStore.swift */; };
+		C0000000000000000000012C /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000012B /* HotkeyManager.swift */; };
+		C0000000000000000000012E /* HotkeyShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000012D /* HotkeyShortcut.swift */; };
+		C00000000000000000000130 /* AudioDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000012F /* AudioDecoder.swift */; };
+		C00000000000000000000132 /* ImportJob.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000131 /* ImportJob.swift */; };
+		C00000000000000000000134 /* ImportManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000133 /* ImportManager.swift */; };
+		C00000000000000000000136 /* TextInserter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000135 /* TextInserter.swift */; };
+		C00000000000000000000138 /* DiagnosticLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000137 /* DiagnosticLog.swift */; };
+		C0000000000000000000013A /* TextNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000139 /* TextNormalizer.swift */; };
+		C0000000000000000000013C /* ReadinessCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000013B /* ReadinessCoordinator.swift */; };
+		C0000000000000000000013E /* ReadinessState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000013D /* ReadinessState.swift */; };
+		C00000000000000000000140 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000013F /* AppSettings.swift */; };
+		C00000000000000000000142 /* ModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000141 /* ModelManager.swift */; };
+		C00000000000000000000144 /* ModelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000143 /* ModelState.swift */; };
+		C00000000000000000000146 /* Transcribing.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000145 /* Transcribing.swift */; };
+		C00000000000000000000148 /* WhisperKitTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000147 /* WhisperKitTranscriber.swift */; };
+		C0000000000000000000014A /* AppDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000149 /* AppDatabase.swift */; };
+		C0000000000000000000014C /* HistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000014B /* HistoryStore.swift */; };
+		C0000000000000000000014E /* Migrations.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000014D /* Migrations.swift */; };
+		C00000000000000000000150 /* PersistenceRecords.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000014F /* PersistenceRecords.swift */; };
+		C00000000000000000000152 /* HistoryStoring.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000151 /* HistoryStoring.swift */; };
+		C00000000000000000000154 /* Transcript.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000153 /* Transcript.swift */; };
+		C00000000000000000000156 /* TranscriptListItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000155 /* TranscriptListItem.swift */; };
+		C00000000000000000000158 /* VocabularyEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000157 /* VocabularyEntry.swift */; };
+		C0000000000000000000015A /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000159 /* Localizable.strings */; };
+		C0000000000000000000015C /* DetailEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000015B /* DetailEditor.swift */; };
+		C0000000000000000000015E /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000015D /* HistoryView.swift */; };
+		C00000000000000000000160 /* ImportPanelPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000015F /* ImportPanelPresenter.swift */; };
+		C00000000000000000000162 /* MenuBarContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000161 /* MenuBarContentView.swift */; };
+		C00000000000000000000164 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000163 /* OnboardingView.swift */; };
+		C00000000000000000000166 /* HotkeyRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000165 /* HotkeyRecorderView.swift */; };
+		C00000000000000000000168 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000167 /* SettingsView.swift */; };
+		C0000000000000000000016A /* AppTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000169 /* AppTests.swift */; };
+		C0000000000000000000016C /* DictationStateMachineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000016B /* DictationStateMachineTests.swift */; };
+		C0000000000000000000016E /* TextNormalizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000016D /* TextNormalizerTests.swift */; };
+		C00000000000000000000170 /* ModelManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000016F /* ModelManagerTests.swift */; };
+		C00000000000000000000172 /* TextInserterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000171 /* TextInserterTests.swift */; };
+		C00000000000000000000174 /* HistoryStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000173 /* HistoryStoreTests.swift */; };
+		C00000000000000000000176 /* ImportManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000175 /* ImportManagerTests.swift */; };
+		C00000000000000000000178 /* AudioDecoderOggTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000177 /* AudioDecoderOggTests.swift */; };
+		C0000000000000000000017A /* AudioCaptureServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000179 /* AudioCaptureServiceTests.swift */; };
+		C0000000000000000000017B /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000020 /* GRDB */; };
+		C00000000000000000000180 /* LocalModelDetectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000181 /* LocalModelDetectionTests.swift */; };
+		C0000000000000000000024A /* LocalModelDetection.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000024B /* LocalModelDetection.swift */; };
+		C00000000000000000000301 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000300 /* AppDelegate.swift */; };
+		C00000000000000000000303 /* AppRelauncher.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000302 /* AppRelauncher.swift */; };
+		C00000000000000000000501 /* UsageStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000500 /* UsageStats.swift */; };
+		C00000000000000000000503 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000502 /* DashboardView.swift */; };
+		C00000000000000000000611 /* MainWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000610 /* MainWindowView.swift */; };
+		C00000000000000000000701 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000700 /* Assets.xcassets */; };
+		C00000000000000000000703 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000702 /* AppIcon.icon */; };
+		C00000000000000000000801 /* ImportQueueStoring.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000800 /* ImportQueueStoring.swift */; };
+		C00000000000000000000803 /* ImportQueueStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000802 /* ImportQueueStore.swift */; };
+		C00000000000000000000805 /* ImportQueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000804 /* ImportQueueView.swift */; };
+		C00000000000000000000806 /* TrailingHallucinationFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000807 /* TrailingHallucinationFilter.swift */; };
+		C00000000000000000000808 /* TrailingHallucinationFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000809 /* TrailingHallucinationFilterTests.swift */; };
+		C00000000000000000000900 /* ModelDownloadProgressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000901 /* ModelDownloadProgressTests.swift */; };
+		D00000000000000000000030 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000020 /* GRDB */; };
+		D00000000000000000000031 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000021 /* WhisperKit */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A10000000000000000000021 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A10000000000000000000031 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A10000000000000000000041;
+			remoteInfo = VoicePaste;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		A10000000000000000000015 /* VoicePaste.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoicePaste.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000016 /* VoicePasteTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VoicePasteTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C0000000000000000000011B /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
+		C0000000000000000000011D /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		C0000000000000000000011F /* AudioCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioCaptureService.swift; sourceTree = "<group>"; };
+		C00000000000000000000121 /* DictationStateMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationStateMachine.swift; sourceTree = "<group>"; };
+		C00000000000000000000123 /* HUDContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDContentView.swift; sourceTree = "<group>"; };
+		C00000000000000000000125 /* HUDState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDState.swift; sourceTree = "<group>"; };
+		C00000000000000000000127 /* HUDWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDWindowController.swift; sourceTree = "<group>"; };
+		C00000000000000000000129 /* FailingHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FailingHistoryStore.swift; sourceTree = "<group>"; };
+		C0000000000000000000012B /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
+		C0000000000000000000012D /* HotkeyShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyShortcut.swift; sourceTree = "<group>"; };
+		C0000000000000000000012F /* AudioDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDecoder.swift; sourceTree = "<group>"; };
+		C00000000000000000000131 /* ImportJob.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportJob.swift; sourceTree = "<group>"; };
+		C00000000000000000000133 /* ImportManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportManager.swift; sourceTree = "<group>"; };
+		C00000000000000000000135 /* TextInserter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextInserter.swift; sourceTree = "<group>"; };
+		C00000000000000000000137 /* DiagnosticLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticLog.swift; sourceTree = "<group>"; };
+		C00000000000000000000139 /* TextNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextNormalizer.swift; sourceTree = "<group>"; };
+		C0000000000000000000013B /* ReadinessCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadinessCoordinator.swift; sourceTree = "<group>"; };
+		C0000000000000000000013D /* ReadinessState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadinessState.swift; sourceTree = "<group>"; };
+		C0000000000000000000013F /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		C00000000000000000000141 /* ModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManager.swift; sourceTree = "<group>"; };
+		C00000000000000000000143 /* ModelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelState.swift; sourceTree = "<group>"; };
+		C00000000000000000000145 /* Transcribing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transcribing.swift; sourceTree = "<group>"; };
+		C00000000000000000000147 /* WhisperKitTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperKitTranscriber.swift; sourceTree = "<group>"; };
+		C00000000000000000000149 /* AppDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDatabase.swift; sourceTree = "<group>"; };
+		C0000000000000000000014B /* HistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStore.swift; sourceTree = "<group>"; };
+		C0000000000000000000014D /* Migrations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Migrations.swift; sourceTree = "<group>"; };
+		C0000000000000000000014F /* PersistenceRecords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceRecords.swift; sourceTree = "<group>"; };
+		C00000000000000000000151 /* HistoryStoring.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStoring.swift; sourceTree = "<group>"; };
+		C00000000000000000000153 /* Transcript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transcript.swift; sourceTree = "<group>"; };
+		C00000000000000000000155 /* TranscriptListItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptListItem.swift; sourceTree = "<group>"; };
+		C00000000000000000000157 /* VocabularyEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularyEntry.swift; sourceTree = "<group>"; };
+		C00000000000000000000159 /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = Localizable.strings; sourceTree = "<group>"; };
+		C0000000000000000000015B /* DetailEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailEditor.swift; sourceTree = "<group>"; };
+		C0000000000000000000015D /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		C0000000000000000000015F /* ImportPanelPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportPanelPresenter.swift; sourceTree = "<group>"; };
+		C00000000000000000000161 /* MenuBarContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarContentView.swift; sourceTree = "<group>"; };
+		C00000000000000000000163 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		C00000000000000000000165 /* HotkeyRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyRecorderView.swift; sourceTree = "<group>"; };
+		C00000000000000000000167 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		C00000000000000000000169 /* AppTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTests.swift; sourceTree = "<group>"; };
+		C0000000000000000000016B /* DictationStateMachineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationStateMachineTests.swift; sourceTree = "<group>"; };
+		C0000000000000000000016D /* TextNormalizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextNormalizerTests.swift; sourceTree = "<group>"; };
+		C0000000000000000000016F /* ModelManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManagerTests.swift; sourceTree = "<group>"; };
+		C00000000000000000000171 /* TextInserterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextInserterTests.swift; sourceTree = "<group>"; };
+		C00000000000000000000173 /* HistoryStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStoreTests.swift; sourceTree = "<group>"; };
+		C00000000000000000000175 /* ImportManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportManagerTests.swift; sourceTree = "<group>"; };
+		C00000000000000000000177 /* AudioDecoderOggTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDecoderOggTests.swift; sourceTree = "<group>"; };
+		C00000000000000000000179 /* AudioCaptureServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioCaptureServiceTests.swift; sourceTree = "<group>"; };
+		C00000000000000000000181 /* LocalModelDetectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalModelDetectionTests.swift; sourceTree = "<group>"; };
+		C0000000000000000000024B /* LocalModelDetection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalModelDetection.swift; sourceTree = "<group>"; };
+		C00000000000000000000300 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		C00000000000000000000302 /* AppRelauncher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRelauncher.swift; sourceTree = "<group>"; };
+		C00000000000000000000500 /* UsageStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageStats.swift; sourceTree = "<group>"; };
+		C00000000000000000000502 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		C00000000000000000000610 /* MainWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowView.swift; sourceTree = "<group>"; };
+		C00000000000000000000700 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		C00000000000000000000702 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.icon; path = AppIcon.icon; sourceTree = "<group>"; };
+		C00000000000000000000800 /* ImportQueueStoring.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportQueueStoring.swift; sourceTree = "<group>"; };
+		C00000000000000000000802 /* ImportQueueStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportQueueStore.swift; sourceTree = "<group>"; };
+		C00000000000000000000804 /* ImportQueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportQueueView.swift; sourceTree = "<group>"; };
+		C00000000000000000000807 /* TrailingHallucinationFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailingHallucinationFilter.swift; sourceTree = "<group>"; };
+		C00000000000000000000809 /* TrailingHallucinationFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailingHallucinationFilterTests.swift; sourceTree = "<group>"; };
+		C00000000000000000000901 /* ModelDownloadProgressTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloadProgressTests.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A10000000000000000000051 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D00000000000000000000030 /* GRDB in Frameworks */,
+				D00000000000000000000031 /* WhisperKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000000000000000000052 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C0000000000000000000017B /* GRDB in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A10000000000000000000061 = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000101 /* VoicePaste */,
+				C0000000000000000000011A /* VoicePasteTests */,
+				A10000000000000000000064 /* Products */,
+				D00000000000000000000001 /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		A10000000000000000000064 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000015 /* VoicePaste.app */,
+				A10000000000000000000016 /* VoicePasteTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000101 /* VoicePaste */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000102 /* App */,
+				C00000000000000000000103 /* Core */,
+				C00000000000000000000110 /* Data */,
+				C00000000000000000000111 /* Domain */,
+				C00000000000000000000118 /* Resources */,
+				C00000000000000000000112 /* UI */,
+			);
+			path = VoicePaste;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000102 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				C0000000000000000000011B /* App.swift */,
+				C0000000000000000000011D /* AppState.swift */,
+				C00000000000000000000300 /* AppDelegate.swift */,
+				C00000000000000000000302 /* AppRelauncher.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000103 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000104 /* Audio */,
+				C00000000000000000000105 /* Dictation */,
+				C00000000000000000000106 /* HUD */,
+				C00000000000000000000107 /* History */,
+				C00000000000000000000108 /* Hotkey */,
+				C00000000000000000000109 /* Import */,
+				C0000000000000000000010A /* Insertion */,
+				C0000000000000000000010B /* Logging */,
+				C0000000000000000000010C /* Normalizer */,
+				C0000000000000000000010D /* Readiness */,
+				C0000000000000000000010E /* Settings */,
+				C0000000000000000000010F /* Transcription */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000104 /* Audio */ = {
+			isa = PBXGroup;
+			children = (
+				C0000000000000000000011F /* AudioCaptureService.swift */,
+			);
+			path = Audio;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000105 /* Dictation */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000121 /* DictationStateMachine.swift */,
+			);
+			path = Dictation;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000106 /* HUD */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000123 /* HUDContentView.swift */,
+				C00000000000000000000125 /* HUDState.swift */,
+				C00000000000000000000127 /* HUDWindowController.swift */,
+			);
+			path = HUD;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000107 /* History */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000129 /* FailingHistoryStore.swift */,
+			);
+			path = History;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000108 /* Hotkey */ = {
+			isa = PBXGroup;
+			children = (
+				C0000000000000000000012B /* HotkeyManager.swift */,
+				C0000000000000000000012D /* HotkeyShortcut.swift */,
+			);
+			path = Hotkey;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000109 /* Import */ = {
+			isa = PBXGroup;
+			children = (
+				C0000000000000000000012F /* AudioDecoder.swift */,
+				C00000000000000000000131 /* ImportJob.swift */,
+				C00000000000000000000133 /* ImportManager.swift */,
+				C00000000000000000000800 /* ImportQueueStoring.swift */,
+			);
+			path = Import;
+			sourceTree = "<group>";
+		};
+		C0000000000000000000010A /* Insertion */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000135 /* TextInserter.swift */,
+			);
+			path = Insertion;
+			sourceTree = "<group>";
+		};
+		C0000000000000000000010B /* Logging */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000137 /* DiagnosticLog.swift */,
+			);
+			path = Logging;
+			sourceTree = "<group>";
+		};
+		C0000000000000000000010C /* Normalizer */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000139 /* TextNormalizer.swift */,
+			);
+			path = Normalizer;
+			sourceTree = "<group>";
+		};
+		C0000000000000000000010D /* Readiness */ = {
+			isa = PBXGroup;
+			children = (
+				C0000000000000000000013B /* ReadinessCoordinator.swift */,
+				C0000000000000000000013D /* ReadinessState.swift */,
+			);
+			path = Readiness;
+			sourceTree = "<group>";
+		};
+		C0000000000000000000010E /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				C0000000000000000000013F /* AppSettings.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		C0000000000000000000010F /* Transcription */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000141 /* ModelManager.swift */,
+				C00000000000000000000143 /* ModelState.swift */,
+				C00000000000000000000145 /* Transcribing.swift */,
+				C00000000000000000000147 /* WhisperKitTranscriber.swift */,
+				C00000000000000000000807 /* TrailingHallucinationFilter.swift */,
+				C0000000000000000000024B /* LocalModelDetection.swift */,
+			);
+			path = Transcription;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000110 /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000149 /* AppDatabase.swift */,
+				C0000000000000000000014B /* HistoryStore.swift */,
+				C0000000000000000000014D /* Migrations.swift */,
+				C0000000000000000000014F /* PersistenceRecords.swift */,
+				C00000000000000000000802 /* ImportQueueStore.swift */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000111 /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000151 /* HistoryStoring.swift */,
+				C00000000000000000000153 /* Transcript.swift */,
+				C00000000000000000000155 /* TranscriptListItem.swift */,
+				C00000000000000000000157 /* VocabularyEntry.swift */,
+				C00000000000000000000500 /* UsageStats.swift */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000112 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000504 /* Dashboard */,
+				C00000000000000000000113 /* History */,
+				C00000000000000000000114 /* Import */,
+				C00000000000000000000612 /* Main */,
+				C00000000000000000000115 /* MenuBar */,
+				C00000000000000000000116 /* Onboarding */,
+				C00000000000000000000117 /* Settings */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000113 /* History */ = {
+			isa = PBXGroup;
+			children = (
+				C0000000000000000000015B /* DetailEditor.swift */,
+				C0000000000000000000015D /* HistoryView.swift */,
+			);
+			path = History;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000114 /* Import */ = {
+			isa = PBXGroup;
+			children = (
+				C0000000000000000000015F /* ImportPanelPresenter.swift */,
+				C00000000000000000000804 /* ImportQueueView.swift */,
+			);
+			path = Import;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000115 /* MenuBar */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000161 /* MenuBarContentView.swift */,
+			);
+			path = MenuBar;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000116 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000163 /* OnboardingView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000117 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000165 /* HotkeyRecorderView.swift */,
+				C00000000000000000000167 /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000118 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000702 /* AppIcon.icon */,
+				C00000000000000000000700 /* Assets.xcassets */,
+				C00000000000000000000119 /* ru.lproj */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000119 /* ru.lproj */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000159 /* Localizable.strings */,
+			);
+			path = ru.lproj;
+			sourceTree = "<group>";
+		};
+		C0000000000000000000011A /* VoicePasteTests */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000169 /* AppTests.swift */,
+				C0000000000000000000016B /* DictationStateMachineTests.swift */,
+				C0000000000000000000016D /* TextNormalizerTests.swift */,
+				C0000000000000000000016F /* ModelManagerTests.swift */,
+				C00000000000000000000171 /* TextInserterTests.swift */,
+				C00000000000000000000173 /* HistoryStoreTests.swift */,
+				C00000000000000000000175 /* ImportManagerTests.swift */,
+				C00000000000000000000177 /* AudioDecoderOggTests.swift */,
+				C00000000000000000000179 /* AudioCaptureServiceTests.swift */,
+				C00000000000000000000181 /* LocalModelDetectionTests.swift */,
+				C00000000000000000000809 /* TrailingHallucinationFilterTests.swift */,
+				C00000000000000000000901 /* ModelDownloadProgressTests.swift */,
+			);
+			path = VoicePasteTests;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000504 /* Dashboard */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000502 /* DashboardView.swift */,
+			);
+			path = Dashboard;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000612 /* Main */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000610 /* MainWindowView.swift */,
+			);
+			path = Main;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000001 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A10000000000000000000041 /* VoicePaste */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000000000000000000071 /* Build configuration list for PBXNativeTarget "VoicePaste" */;
+			buildPhases = (
+				A10000000000000000000081 /* Sources */,
+				A10000000000000000000051 /* Frameworks */,
+				A10000000000000000000082 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = VoicePaste;
+			packageProductDependencies = (
+				D00000000000000000000020 /* GRDB */,
+				D00000000000000000000021 /* WhisperKit */,
+			);
+			productName = VoicePaste;
+			productReference = A10000000000000000000015 /* VoicePaste.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A10000000000000000000042 /* VoicePasteTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000000000000000000072 /* Build configuration list for PBXNativeTarget "VoicePasteTests" */;
+			buildPhases = (
+				A10000000000000000000083 /* Sources */,
+				A10000000000000000000052 /* Frameworks */,
+				A10000000000000000000084 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A10000000000000000000091 /* PBXTargetDependency */,
+			);
+			name = VoicePasteTests;
+			packageProductDependencies = (
+				D00000000000000000000020 /* GRDB */,
+			);
+			productName = VoicePasteTests;
+			productReference = A10000000000000000000016 /* VoicePasteTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A10000000000000000000031 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 2600;
+				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+					A10000000000000000000041 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					A10000000000000000000042 = {
+						CreatedOnToolsVersion = 26.0;
+						TestTargetID = A10000000000000000000041;
+					};
+				};
+			};
+			buildConfigurationList = A10000000000000000000073 /* Build configuration list for PBXProject "VoicePaste" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = ru;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				ru,
+				en,
+				Base,
+			);
+			mainGroup = A10000000000000000000061;
+			packageReferences = (
+				D00000000000000000000010 /* XCRemoteSwiftPackageReference "GRDB" */,
+				D00000000000000000000011 /* XCRemoteSwiftPackageReference "WhisperKit" */,
+			);
+			productRefGroup = A10000000000000000000064 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A10000000000000000000041 /* VoicePaste */,
+				A10000000000000000000042 /* VoicePasteTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A10000000000000000000082 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C0000000000000000000015A /* Localizable.strings in Resources */,
+				C00000000000000000000703 /* AppIcon.icon in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000000000000000000084 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A10000000000000000000081 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C0000000000000000000011C /* App.swift in Sources */,
+				C0000000000000000000011E /* AppState.swift in Sources */,
+				C00000000000000000000301 /* AppDelegate.swift in Sources */,
+				C00000000000000000000303 /* AppRelauncher.swift in Sources */,
+				C00000000000000000000120 /* AudioCaptureService.swift in Sources */,
+				C00000000000000000000122 /* DictationStateMachine.swift in Sources */,
+				C00000000000000000000124 /* HUDContentView.swift in Sources */,
+				C00000000000000000000126 /* HUDState.swift in Sources */,
+				C00000000000000000000128 /* HUDWindowController.swift in Sources */,
+				C0000000000000000000012A /* FailingHistoryStore.swift in Sources */,
+				C0000000000000000000012C /* HotkeyManager.swift in Sources */,
+				C0000000000000000000012E /* HotkeyShortcut.swift in Sources */,
+				C00000000000000000000130 /* AudioDecoder.swift in Sources */,
+				C00000000000000000000132 /* ImportJob.swift in Sources */,
+				C00000000000000000000134 /* ImportManager.swift in Sources */,
+				C00000000000000000000136 /* TextInserter.swift in Sources */,
+				C00000000000000000000138 /* DiagnosticLog.swift in Sources */,
+				C0000000000000000000013A /* TextNormalizer.swift in Sources */,
+				C0000000000000000000013C /* ReadinessCoordinator.swift in Sources */,
+				C0000000000000000000013E /* ReadinessState.swift in Sources */,
+				C00000000000000000000140 /* AppSettings.swift in Sources */,
+				C00000000000000000000142 /* ModelManager.swift in Sources */,
+				C00000000000000000000144 /* ModelState.swift in Sources */,
+				C00000000000000000000146 /* Transcribing.swift in Sources */,
+				C00000000000000000000148 /* WhisperKitTranscriber.swift in Sources */,
+				C00000000000000000000806 /* TrailingHallucinationFilter.swift in Sources */,
+				C0000000000000000000024A /* LocalModelDetection.swift in Sources */,
+				C0000000000000000000014A /* AppDatabase.swift in Sources */,
+				C0000000000000000000014C /* HistoryStore.swift in Sources */,
+				C0000000000000000000014E /* Migrations.swift in Sources */,
+				C00000000000000000000150 /* PersistenceRecords.swift in Sources */,
+				C00000000000000000000152 /* HistoryStoring.swift in Sources */,
+				C00000000000000000000154 /* Transcript.swift in Sources */,
+				C00000000000000000000156 /* TranscriptListItem.swift in Sources */,
+				C00000000000000000000158 /* VocabularyEntry.swift in Sources */,
+				C0000000000000000000015C /* DetailEditor.swift in Sources */,
+				C0000000000000000000015E /* HistoryView.swift in Sources */,
+				C00000000000000000000160 /* ImportPanelPresenter.swift in Sources */,
+				C00000000000000000000162 /* MenuBarContentView.swift in Sources */,
+				C00000000000000000000164 /* OnboardingView.swift in Sources */,
+				C00000000000000000000166 /* HotkeyRecorderView.swift in Sources */,
+				C00000000000000000000168 /* SettingsView.swift in Sources */,
+				C00000000000000000000501 /* UsageStats.swift in Sources */,
+				C00000000000000000000503 /* DashboardView.swift in Sources */,
+				C00000000000000000000611 /* MainWindowView.swift in Sources */,
+				C00000000000000000000801 /* ImportQueueStoring.swift in Sources */,
+				C00000000000000000000803 /* ImportQueueStore.swift in Sources */,
+				C00000000000000000000805 /* ImportQueueView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000000000000000000083 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C0000000000000000000016A /* AppTests.swift in Sources */,
+				C0000000000000000000016C /* DictationStateMachineTests.swift in Sources */,
+				C0000000000000000000016E /* TextNormalizerTests.swift in Sources */,
+				C00000000000000000000170 /* ModelManagerTests.swift in Sources */,
+				C00000000000000000000172 /* TextInserterTests.swift in Sources */,
+				C00000000000000000000174 /* HistoryStoreTests.swift in Sources */,
+				C00000000000000000000176 /* ImportManagerTests.swift in Sources */,
+				C00000000000000000000178 /* AudioDecoderOggTests.swift in Sources */,
+				C0000000000000000000017A /* AudioCaptureServiceTests.swift in Sources */,
+				C00000000000000000000180 /* LocalModelDetectionTests.swift in Sources */,
+				C00000000000000000000808 /* TrailingHallucinationFilterTests.swift in Sources */,
+				C00000000000000000000900 /* ModelDownloadProgressTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A10000000000000000000091 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A10000000000000000000041 /* VoicePaste */;
+			targetProxy = A10000000000000000000021 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		A10000000000000000000101 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+			};
+			name = Debug;
+		};
+		A10000000000000000000102 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+			};
+			name = Release;
+		};
+		A10000000000000000000103 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = B10FF5C8A4A5F274A508079511F9EA98E96374E2;
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 8;
+				DEVELOPMENT_TEAM = HVVQMFJ3QM;
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_TESTABILITY = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = VoicePaste/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.VoicePaste;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		A10000000000000000000104 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = B10FF5C8A4A5F274A508079511F9EA98E96374E2;
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 8;
+				DEVELOPMENT_TEAM = HVVQMFJ3QM;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = VoicePaste/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.VoicePaste;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		A10000000000000000000105 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.VoicePasteTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/VoicePaste.app/Contents/MacOS/VoicePaste";
+			};
+			name = Debug;
+		};
+		A10000000000000000000106 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.VoicePasteTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/VoicePaste.app/Contents/MacOS/VoicePaste";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A10000000000000000000071 /* Build configuration list for PBXNativeTarget "VoicePaste" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000103 /* Debug */,
+				A10000000000000000000104 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A10000000000000000000072 /* Build configuration list for PBXNativeTarget "VoicePasteTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000105 /* Debug */,
+				A10000000000000000000106 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A10000000000000000000073 /* Build configuration list for PBXProject "VoicePaste" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000101 /* Debug */,
+				A10000000000000000000102 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		D00000000000000000000010 /* XCRemoteSwiftPackageReference "GRDB" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/groue/GRDB.swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 7.0.0;
+			};
+		};
+		D00000000000000000000011 /* XCRemoteSwiftPackageReference "WhisperKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/argmaxinc/WhisperKit";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D00000000000000000000020 /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000010 /* XCRemoteSwiftPackageReference "GRDB" */;
+			productName = GRDB;
+		};
+		D00000000000000000000021 /* WhisperKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000011 /* XCRemoteSwiftPackageReference "WhisperKit" */;
+			productName = WhisperKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = A10000000000000000000031 /* Project object */;
+}

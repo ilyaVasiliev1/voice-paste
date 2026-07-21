@@ -1,0 +1,48 @@
+# macOS
+.DS_Store
+
+# Xcode — пользовательские/build артефакты
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad
+DerivedData/
+build/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/xcode/package.xcworkspace/xcuserdata/
+.swiftpm/configuration/
+
+# Сессионные артефакты (канон рабочей зоны)
+.tmp/
+.playwright-mcp/
+
+# Секреты — никогда не коммитить
+*.p8
+*.p12
+*.env
+*.env.local
+
+# Модель WhisperKit — качается в рантайме (~626 МБ), в репо не место
+*.mlmodelc/
+*.mlpackage/
+Models/
+
+# Прочее локальное
+.mcp.json
+
+# Внутренняя «кухня» метода — в публичный репозиторий НЕ выгружать.
+# Файлы остаются локально, но GitHub видит только собираемый продукт.
+/spec/
+/knowledge/
+/PROJECT_IDEA.md
+/WORKING_CONTRACT.md
+/CLAUDE.md
+/AGENTS.md
+# Приватные тест-ассеты: реальные голосовые (возможен PII) не публикуем.
+/VoicePasteTests/Fixtures/

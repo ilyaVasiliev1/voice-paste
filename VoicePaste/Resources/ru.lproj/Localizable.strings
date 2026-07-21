@@ -1,0 +1,203 @@
+/* Readiness status (API-local-readiness, UI-001/UI-002) */
+"readiness.status.ready" = "Готов к диктовке";
+"readiness.status.needsMicrophone" = "Требуется доступ к микрофону";
+"readiness.status.needsAccessibility" = "Требуется разрешение универсального доступа";
+"readiness.status.needsModel" = "Требуется загрузка модели";
+"readiness.status.downloadingModel" = "Загрузка модели…";
+"readiness.status.error" = "Ошибка готовности";
+
+/* Model status (UI-001, UI-005) */
+"model.status.ready" = "Модель готова";
+"model.status.downloading" = "Модель загружается…";
+"model.status.verifying" = "Проверка модели…";
+"model.status.notPrepared" = "Модель не загружена";
+"model.status.failed" = "Не удалось подготовить модель";
+
+/* Menu bar (UI-001) */
+"menu.startDictation" = "Начать диктовку";
+"menu.stopDictation" = "Остановить диктовку";
+"menu.startDictation.withHotkey" = "Начать диктовку (%@)";
+"menu.stopDictation.withHotkey" = "Остановить диктовку (%@)";
+"menu.transcribeFile" = "Транскрибировать файл…";
+"menu.importToHUD" = "Импортировать в панель";
+"menu.openMain" = "Открыть VoicePaste";
+"menu.statistics" = "Статистика";
+"menu.hideFromDock" = "Скрыть VoicePaste из Dock";
+"menu.showInDock" = "Показывать VoicePaste в Dock";
+"menu.settings" = "Настройки…";
+"menu.about" = "О программе VoicePaste";
+"menu.quit" = "Завершить VoicePaste";
+
+/* Dictation errors (L-002/L-003/EC-003/EC-004/EC-005) */
+"dictation.alreadyProcessing" = "Расшифровка уже идёт";
+"dictation.microphoneError" = "Не удалось получить доступ к микрофону";
+"dictation.emptyAudio" = "Не удалось распознать речь";
+"dictation.transcriptionFailed" = "Не удалось расшифровать запись";
+
+/* HUD (UI-003, DESIGN.md) */
+"hud.recording.hint" = "Нажмите %@, чтобы завершить";
+"hud.processing" = "Расшифровка…";
+"hud.inserted" = "Вставлено";
+"hud.copied" = "Текст скопирован";
+"hud.import.opened" = "Открыто в VoicePaste";
+"hud.cancelled" = "Диктовка отменена";
+"hud.cancelled.short" = "Отмена";
+"hud.action.finish" = "Готово";
+"hud.action.cancel" = "Отменить диктовку";
+"hud.action.dismiss" = "Закрыть";
+"hud.action.selectMicrophone" = "Выбрать микрофон";
+"hud.action.retry" = "Повторить";
+"hud.action.importFile" = "Завершить диктовку и перейти к импорту файла";
+"hud.action.resumeRecording" = "Продолжить запись";
+"hud.action.cancelImport" = "Отменить импорт";
+"hud.recording.accessibilityLabel" = "Идёт запись диктовки";
+
+/* HUD import drop zone (UI-006) */
+"hud.import.title" = "Добавить файл";
+"hud.import.dropHint" = "Перетащите файл сюда";
+"hud.import.dropTargetHint" = "Перетащите аудио или видео сюда";
+"hud.import.chooseHint" = "или нажмите, чтобы выбрать файл";
+"hud.import.finished" = "Готово";
+"hud.import.copy" = "Копировать";
+"hud.import.openInHistory" = "Открыть в VoicePaste";
+
+/* Import (UI-006, EC-009/EC-010) */
+"import.error.title" = "Не удалось расшифровать файл";
+"import.error.unsupportedFormat" = "Формат файла не поддерживается";
+"import.error.decodeFailed" = "Не удалось прочитать аудиодорожку файла";
+"import.error.noAudioTrack" = "В видео нет поддерживаемой аудиодорожки";
+"import.error.emptyAudio" = "В файле не найдено речи";
+"import.error.transcriptionFailed" = "Не удалось расшифровать файл";
+"common.ok" = "ОК";
+
+/* Import surface inside Транскрибация (UI-006/UI-008.1) */
+"import.dropZone.title" = "Перетащите аудио или видео сюда";
+"import.chooseFile" = "Выбрать файл…";
+"import.phase.queued" = "Подготовка…";
+"import.phase.decoding" = "Декодирование…";
+"import.phase.transcribing" = "Распознавание…";
+"import.phase.completed" = "Готово";
+"import.phase.failed" = "Ошибка";
+"import.copy" = "Копировать";
+"import.export" = "Экспорт…";
+"import.startOver" = "Начать заново";
+
+/* Onboarding (UI-002) */
+"onboarding.window.title" = "Настройка VoicePaste";
+"onboarding.back" = "Назад";
+"onboarding.next" = "Далее";
+"onboarding.finish" = "Готово";
+"onboarding.openSystemSettings" = "Открыть настройки системы";
+"onboarding.status.granted" = "Разрешение предоставлено";
+"onboarding.status.pending" = "Разрешение ещё не предоставлено";
+"onboarding.purpose.title" = "Добро пожаловать в VoicePaste";
+"onboarding.purpose.body" = "VoicePaste превращает вашу речь в текст локально, без интернета и учётной записи. Настройка займёт всего пару шагов.";
+"onboarding.microphone.title" = "Доступ к микрофону";
+"onboarding.microphone.body" = "VoicePaste использует микрофон только во время активной диктовки — чтобы распознать вашу речь.";
+"onboarding.microphone.grant" = "Разрешить доступ к микрофону";
+"onboarding.microphone.status.systemSettings" = "Доступ отключён в настройках macOS. Откройте раздел «Микрофон» и включите VoicePaste.";
+"onboarding.accessibility.title" = "Универсальный доступ";
+"onboarding.accessibility.body" = "Это разрешение нужно для глобальной горячей клавиши и для вставки текста в поле, где вы диктуете, без переключения окон.";
+"onboarding.accessibility.grant" = "Разрешить универсальный доступ";
+"onboarding.accessibility.stillPendingHint" = "Если после выдачи доступа статус не обновился — нажмите «Перезапустить».";
+"onboarding.accessibility.relaunch" = "Перезапустить приложение";
+"onboarding.model.title" = "Локальная модель распознавания";
+"onboarding.model.body" = "VoicePaste распознаёт речь полностью на устройстве. Один раз загрузите открытую модель — дальше интернет не понадобится.";
+"onboarding.model.ready" = "Модель готова";
+"onboarding.model.downloading" = "Загрузка модели…";
+"onboarding.model.ofTotal" = "из %@";
+"onboarding.model.calculatingTime" = "Считаем время…";
+"onboarding.model.speed" = "%@/с";
+"onboarding.model.eta" = "осталось ≈ %@";
+"onboarding.model.verifying" = "Проверка модели…";
+"onboarding.model.failed" = "Не удалось подготовить модель";
+"onboarding.model.retry" = "Повторить";
+"onboarding.model.download" = "Загрузить модель";
+
+/* Settings (UI-005) */
+"settings.section.general" = "Основное";
+"settings.section.dictation" = "Диктовка";
+"settings.section.text" = "Текст и орфография";
+"settings.section.model" = "Модель";
+"settings.section.history" = "История";
+"settings.section.vocabulary" = "Словарь";
+"settings.section.permissions" = "Разрешения";
+
+"settings.general.launchAtLogin" = "Запускать при входе в macOS";
+"settings.general.showInDock" = "Показывать VoicePaste в Dock";
+
+"settings.dictation.hotkey" = "Горячая клавиша";
+"settings.dictation.mode" = "Режим диктовки";
+"settings.dictation.mode.toggle" = "Нажать для старта/остановки";
+"settings.dictation.mode.hold" = "Удерживать для записи";
+"settings.dictation.language" = "Язык распознавания";
+"settings.language.auto" = "Автоматически";
+"settings.language.ru" = "Русский";
+"settings.language.en" = "Английский";
+"settings.hotkey.recorderAccessibilityLabel" = "Запись горячей клавиши. Нажмите и введите новую комбинацию.";
+"settings.hotkey.changeHint" = "Нажмите, чтобы изменить";
+"settings.hotkey.recording" = "Нажмите сочетание…";
+"settings.hotkey.needsModifier" = "Нужен модификатор (⌘⌥⌃⇧)";
+
+"settings.text.autoCorrect" = "Включить безопасные исправления";
+"settings.text.autoCorrectExplanation" = "Исправляются только однозначные опечатки. Имена, термины, числа и URL не изменяются.";
+"settings.text.autoInsert" = "Автоматически вставлять текст";
+
+"settings.model.name" = "Название";
+"settings.model.size" = "Размер";
+"settings.model.status" = "Готовность";
+"settings.model.loadOrRetry" = "Загрузить/Повторить";
+"settings.model.unloadAfter" = "Выгружать из памяти при простое (файл модели остаётся на диске)";
+"settings.model.unloadAfter.minutes" = "%d мин";
+"settings.model.unloadAfter.keepWarm" = "Держать в памяти";
+"settings.model.unloadNow" = "Выгрузить сейчас";
+"settings.model.unloadNow.explanation" = "Освободит память; файл на диске сохранится, повторная загрузка — без скачивания.";
+
+"settings.history.enabled" = "Включить хранение истории";
+"settings.history.clear" = "Очистить историю…";
+"settings.history.clearConfirmTitle" = "Очистить всю историю?";
+"settings.history.clearConfirmAction" = "Очистить историю";
+
+"settings.vocabulary.addRule" = "Добавить правило";
+"settings.vocabulary.spokenForm" = "Произнесённая фраза";
+"settings.vocabulary.replacement" = "Замена";
+"settings.vocabulary.add" = "Добавить";
+
+"settings.permissions.microphone" = "Микрофон";
+"settings.permissions.accessibility" = "Универсальный доступ";
+"settings.permissions.openSystemSettings" = "Открыть настройки системы";
+"permissions.status.granted" = "Разрешено";
+"permissions.status.notGranted" = "Не разрешено";
+"settings.permissions.relaunchHint" = "Если после выдачи доступа статус не обновился — нажмите «Перезапустить».";
+"settings.permissions.relaunch" = "Перезапустить приложение";
+
+/* History (UI-004) */
+"history.search.prompt" = "Поиск по тексту или файлу";
+"history.empty.title" = "Здесь появятся ваши расшифровки";
+"history.empty.description" = "Начните диктовку или транскрибируйте файл, чтобы увидеть историю.";
+"history.detail.empty" = "Выберите запись, чтобы увидеть текст";
+"history.source.dictation" = "Диктовка";
+"history.source.file" = "Файл";
+"history.toolbar.copy" = "Копировать";
+"history.toolbar.export" = "Экспорт…";
+"history.toolbar.delete" = "Удалить";
+"history.toolbar.deleteConfirmTitle" = "Удалить эту запись?";
+"history.toolbar.deleteConfirmAction" = "Удалить";
+
+/* Dashboard (UI-007, US-009) */
+"dashboard.chart.title" = "Слова по дням";
+"dashboard.tile.totalWords" = "Всего слов";
+"dashboard.tile.totalTranscripts" = "Всего расшифровок";
+"dashboard.tile.averagePerDay" = "В среднем в день";
+"dashboard.empty.title" = "Здесь появится статистика ваших расшифровок";
+"dashboard.empty.description" = "Продиктуйте текст или транскрибируйте файл, чтобы увидеть статистику.";
+
+/* Main window (UI-008) */
+"main.window.title" = "VoicePaste";
+"main.section.transcribe" = "Транскрибация";
+"main.section.history" = "История";
+"main.section.dashboard" = "Дашборд";
+"main.section.settings" = "Настройки";
+
+/* Транскрибация (UI-008.1) */
+"transcribe.lastResult.title" = "Последняя расшифровка";

@@ -1,0 +1,265 @@
+import AppKit
+import SwiftUI
+
+/// `UI-002`: sequential native onboarding. Every step explains why the
+/// permission is needed, offers a System Settings deep link, and can be
+/// skipped for now — actual readiness (`ReadinessCoordinator`) is computed
+/// independently from live system status, not from wizard progress.
+struct OnboardingView: View {
+    @EnvironmentObject private var appState: AppState
+    @Environment(\.dismissWindow) private var dismissWindow
+    @Environment(\.openWindow) private var openWindow
+    @State private var step: Step = .purpose
+    @State private var accessibilityPollTask: Task<Void, Never>?
+
+    private enum Step: Int, CaseIterable {
+        case purpose, microphone, accessibility, model
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            stepContent
+            Spacer()
+            HStack {
+                if step != .purpose {
+                    Button("onboarding.back") { goBack() }
+                }
+                Spacer()
+                Button(step == .model ? "onboarding.finish" : "onboarding.next") {
+                    goNext()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(24)
+        .frame(width: 480, height: 360)
+        .task { appState.refreshReadiness() }
+        // System Settings does not send VoicePaste a dedicated “privacy
+        // value changed” notification. Re-check when it becomes active
+        // again; the coordinator also polls while this step is visible, so
+        // either return path updates the screen without a relaunch.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            appState.refreshReadiness()
+        }
+        .onChange(of: step) { _, newStep in
+            updateAccessibilityPolling(for: newStep)
+        }
+        .onDisappear {
+            stopAccessibilityPolling()
+        }
+    }
+
+    @ViewBuilder
+    private var stepContent: some View {
+        switch step {
+        case .purpose: purposeStep
+        case .microphone: microphoneStep
+        case .accessibility: accessibilityStep
+        case .model: modelStep
+        }
+    }
+
+    private var purposeStep: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("onboarding.purpose.title").font(.title2.bold())
+            Text("onboarding.purpose.body")
+        }
+    }
+
+    private var microphoneStep: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("onboarding.microphone.title").font(.title2.bold())
+            Text("onboarding.microphone.body")
+            if appState.readiness.microphoneAuthorization != .authorized {
+                Button("onboarding.microphone.grant") {
+                    Task {
+                        let action = await appState.readiness.requestMicrophoneAccess()
+                        if action == .needsSystemSettings {
+                            openSystemSettings(pane: "Privacy_Microphone")
+                        }
+                    }
+                }
+                Button("onboarding.openSystemSettings") { openSystemSettings(pane: "Privacy_Microphone") }
+            }
+            Text(microphoneStatusKey)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var accessibilityStep: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("onboarding.accessibility.title").font(.title2.bold())
+            Text("onboarding.accessibility.body")
+            if !appState.readiness.isAccessibilityTrusted {
+                Button("onboarding.accessibility.grant") {
+                    appState.readiness.requestAccessibilityTrust()
+                }
+                Button("onboarding.openSystemSettings") { openSystemSettings(pane: "Privacy_Accessibility") }
+            }
+            Text(appState.readiness.isAccessibilityTrusted ? "onboarding.status.granted" : "onboarding.status.pending")
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var microphoneStatusKey: LocalizedStringKey {
+        switch appState.readiness.microphoneAuthorization {
+        case .authorized:
+            return "onboarding.status.granted"
+        case .denied, .restricted:
+            return "onboarding.microphone.status.systemSettings"
+        case .notDetermined:
+            return "onboarding.status.pending"
+        @unknown default:
+            return "onboarding.status.pending"
+        }
+    }
+
+    private var modelStep: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("onboarding.model.title").font(.title2.bold())
+            Text("onboarding.model.body")
+            modelStateBody
+        }
+    }
+
+    @ViewBuilder
+    private var modelStateBody: some View {
+        switch appState.modelManager.state {
+        case .ready, .unloaded:
+            // `.unloaded` here means "verified on disk, not resident in
+            // memory" (`L-001`/`AT-004`) — onboarding should treat it as
+            // done, not prompt a needless re-download.
+            Label("onboarding.model.ready", systemImage: "checkmark.circle.fill")
+        case .downloading(let progress):
+            modelDownloadingBody(progress)
+        case .verifying:
+            ProgressView()
+            Text("onboarding.model.verifying")
+        case .failed:
+            Text("onboarding.model.failed").foregroundStyle(.red)
+            Button("onboarding.model.retry") {
+                Task { _ = try? await appState.modelManager.ensureLoaded() }
+            }
+        case .notPrepared:
+            Button("onboarding.model.download") {
+                Task { _ = try? await appState.modelManager.ensureLoaded() }
+            }
+        }
+    }
+
+    /// `AT-086`/`L-010`/`UI-002`: honest download progress — percent and
+    /// "N из 626 МБ" read straight from `ModelDownloadProgress`'s byte
+    /// counters, plus current speed and an ETA that only appears once the
+    /// smoothed speed is a trustworthy signal (until then, "Считаем
+    /// время…", mirroring `AT-062`'s import progress wording).
+    private func modelDownloadingBody(_ progress: ModelDownloadProgress) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ProgressView(value: progress.fraction)
+            HStack {
+                Text(Self.byteCountFormatter.string(fromByteCount: progress.completedBytes)
+                     + " " + String(format: NSLocalizedString("onboarding.model.ofTotal", comment: ""),
+                                     Self.byteCountFormatter.string(fromByteCount: progress.totalBytes)))
+                Spacer()
+                Text(Self.percentFormatter.string(from: NSNumber(value: progress.fraction)) ?? "")
+                    .monospacedDigit()
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            Text(speedAndETAText(progress))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func speedAndETAText(_ progress: ModelDownloadProgress) -> String {
+        guard let speed = progress.speedBytesPerSecond, speed > 0 else {
+            return NSLocalizedString("onboarding.model.calculatingTime", comment: "")
+        }
+        let speedText = String(
+            format: NSLocalizedString("onboarding.model.speed", comment: ""),
+            Self.byteCountFormatter.string(fromByteCount: Int64(speed))
+        )
+        guard let eta = progress.etaSeconds, eta.isFinite, eta >= 0 else {
+            return speedText
+        }
+        let etaText = String(
+            format: NSLocalizedString("onboarding.model.eta", comment: ""),
+            Self.durationText(eta)
+        )
+        return speedText + " · " + etaText
+    }
+
+    private static func durationText(_ seconds: TimeInterval) -> String {
+        let value = Int(seconds.rounded())
+        return value >= 60 ? "\(value / 60) мин" : "\(value) с"
+    }
+
+    private static let byteCountFormatter: ByteCountFormatter = {
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        formatter.allowedUnits = [.useMB, .useGB]
+        return formatter
+    }()
+
+    private static let percentFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .percent
+        formatter.maximumFractionDigits = 0
+        return formatter
+    }()
+
+    private func goNext() {
+        appState.refreshReadiness()
+        if step == .model {
+            finish()
+            return
+        }
+        if let next = Step(rawValue: step.rawValue + 1) {
+            step = next
+        }
+    }
+
+    private func goBack() {
+        if let previous = Step(rawValue: step.rawValue - 1) {
+            step = previous
+        }
+    }
+
+    /// `UI-002`/task 2: the last step's "Готово" must actually close the
+    /// onboarding window — previously `Step(rawValue: 4)` was `nil` and
+    /// `goNext()` silently did nothing. If readiness is now `.ready`, also
+    /// bring up the single main window (`UI-008`) so the user lands
+    /// somewhere useful instead of at an empty menu bar.
+    private func finish() {
+        dismissWindow(id: "onboarding")
+        if appState.readiness.state == .ready {
+            openWindow(id: "main")
+        }
+    }
+
+    private func openSystemSettings(pane: String) {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(pane)") else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    /// While the Accessibility step is visible, refresh the actual TCC
+    /// status every ~1.5 s. This covers both returning to the app and the
+    /// case where System Settings keeps the app inactive while the user
+    /// flips the switch.
+    private func updateAccessibilityPolling(for newStep: Step) {
+        stopAccessibilityPolling()
+        guard newStep == .accessibility else { return }
+        accessibilityPollTask = Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                guard !Task.isCancelled else { return }
+                appState.refreshReadiness()
+            }
+        }
+    }
+
+    private func stopAccessibilityPolling() {
+        accessibilityPollTask?.cancel()
+        accessibilityPollTask = nil
+    }
+}
