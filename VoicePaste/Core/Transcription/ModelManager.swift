@@ -338,6 +338,23 @@ public final class ModelManager: ObservableObject {
         }
     }
 
+    /// Settings "Удалить модель" (`AT-094`, `L-010`): unloads the model from
+    /// memory (if resident), wipes the on-disk `Models` directory, and drops
+    /// back to `.notPrepared` so `ReadinessCoordinator` reports `.needsModel`
+    /// (`INV-015`) until the user explicitly re-downloads. Safe to call from
+    /// any `state` — including when nothing is loaded/downloaded yet — since
+    /// both `unloadTask` cancellation and `removeModelDirectoryContents()`
+    /// are idempotent. Deliberately doesn't touch history/dictionary/settings
+    /// (`L-010`): those live in separate stores this method never reaches.
+    public func deleteModel() {
+        unloadTask?.cancel()
+        unloadTask = nil
+        transcriber = nil
+        removeModelDirectoryContents()
+        state = .notPrepared
+        Task { await DiagnosticLog.shared.log("model.delete") }
+    }
+
     public static func defaultTranscriberFactory(
         modelDirectory: URL,
         endpoint: String,

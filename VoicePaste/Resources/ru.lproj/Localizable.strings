@@ -157,6 +157,9 @@
 "settings.model.unloadAfter.keepWarm" = "Держать в памяти";
 "settings.model.unloadNow" = "Выгрузить сейчас";
 "settings.model.unloadNow.explanation" = "Освободит память; файл на диске сохранится, повторная загрузка — без скачивания.";
+"settings.model.delete" = "Удалить модель";
+"settings.model.deleteConfirmTitle" = "Удалить скачанную модель? Её нужно будет скачать заново (~626 МБ).";
+"settings.model.deleteConfirmAction" = "Удалить модель";
 
 "settings.history.enabled" = "Включить хранение истории";
 "settings.history.clear" = "Очистить историю…";

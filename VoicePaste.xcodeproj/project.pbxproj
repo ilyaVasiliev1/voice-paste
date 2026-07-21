@@ -76,6 +76,7 @@
 		C00000000000000000000906 /* ReadinessCoordinatorMicrophoneAccessActionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000907 /* ReadinessCoordinatorMicrophoneAccessActionTests.swift */; };
 		C00000000000000000000910 /* AppSettingsModelDownloadSourceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000911 /* AppSettingsModelDownloadSourceTests.swift */; };
 		C00000000000000000000912 /* ModelDownloadSourceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000913 /* ModelDownloadSourceTests.swift */; };
+		C00000000000000000000914 /* WhisperDecodingPlanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000915 /* WhisperDecodingPlanTests.swift */; };
 		D00000000000000000000030 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000020 /* GRDB */; };
 		D00000000000000000000031 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000021 /* WhisperKit */; };
 /* End PBXBuildFile section */
@@ -161,6 +162,7 @@
 		C00000000000000000000907 /* ReadinessCoordinatorMicrophoneAccessActionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadinessCoordinatorMicrophoneAccessActionTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000911 /* AppSettingsModelDownloadSourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsModelDownloadSourceTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000913 /* ModelDownloadSourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloadSourceTests.swift; sourceTree = "<group>"; };
+		C00000000000000000000915 /* WhisperDecodingPlanTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperDecodingPlanTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -473,6 +475,7 @@
 				C00000000000000000000907 /* ReadinessCoordinatorMicrophoneAccessActionTests.swift */,
 				C00000000000000000000911 /* AppSettingsModelDownloadSourceTests.swift */,
 				C00000000000000000000913 /* ModelDownloadSourceTests.swift */,
+				C00000000000000000000915 /* WhisperDecodingPlanTests.swift */,
 			);
 			path = VoicePasteTests;
 			sourceTree = "<group>";
@@ -683,6 +686,7 @@
 				C00000000000000000000906 /* ReadinessCoordinatorMicrophoneAccessActionTests.swift in Sources */,
 				C00000000000000000000910 /* AppSettingsModelDownloadSourceTests.swift in Sources */,
 				C00000000000000000000912 /* ModelDownloadSourceTests.swift in Sources */,
+				C00000000000000000000914 /* WhisperDecodingPlanTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -21,6 +21,7 @@ private struct SettingsBody: View {
     @ObservedObject var settings: AppSettings
     @State private var vocabulary: [VocabularyEntry] = []
     @State private var showingClearHistoryConfirmation = false
+    @State private var showingDeleteModelConfirmation = false
     @State private var newVocabularySpokenForm = ""
     @State private var newVocabularyReplacement = ""
     @State private var selectedTab: SettingsTabItem = .general
@@ -144,8 +145,35 @@ private struct SettingsBody: View {
             Text("settings.model.unloadNow.explanation")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            Button(role: .destructive) {
+                showingDeleteModelConfirmation = true
+            } label: {
+                Text("settings.model.delete")
+            }
+            .disabled(!isModelPresentOnDisk)
+            .confirmationDialog(
+                "settings.model.deleteConfirmTitle",
+                isPresented: $showingDeleteModelConfirmation
+            ) {
+                Button("settings.model.deleteConfirmAction", role: .destructive) {
+                    appState.modelManager.deleteModel()
+                    appState.refreshReadiness()
+                }
+            }
         }
         .formStyle(.grouped)
+    }
+
+    /// `AT-094`: the delete button is only actionable once a model actually
+    /// exists to delete — either resident in memory (`.ready`) or verified on
+    /// disk but idle (`.unloaded`). Any other state (`.notPrepared`,
+    /// `.downloading`, `.verifying`, `.failed`) has no `Models` directory
+    /// contents worth confirming a deletion for.
+    private var isModelPresentOnDisk: Bool {
+        switch appState.modelManager.state {
+        case .ready, .unloaded: return true
+        case .notPrepared, .downloading, .verifying, .failed: return false
+        }
     }
 
     private var historySection: some View {

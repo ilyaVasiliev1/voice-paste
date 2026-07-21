@@ -85,6 +85,141 @@ final class ModelManagerTests: XCTestCase {
         XCTAssertTrue(manager.isReady)
     }
 
+    // MARK: - `AT-094`/`L-010`: "Удалить модель" in Settings
+
+    /// From `.ready`: `deleteModel()` must unload from memory and drop the
+    /// manager back to `.notPrepared` (`INV-015`: not-ready surface again)
+    /// rather than to `.unloaded` (which would mean "still verified on
+    /// disk").
+    func test_deleteModel_fromReady_setsNotPrepared() async throws {
+        let manager = makeManager()
+        _ = try await manager.ensureLoaded()
+        XCTAssertEqual(manager.state, .ready)
+
+        manager.deleteModel()
+
+        XCTAssertEqual(manager.state, .notPrepared)
+        XCTAssertFalse(manager.isReady)
+    }
+
+    /// From `.unloaded` (model verified on disk but not resident in memory,
+    /// e.g. right after `unloadNow()`): `deleteModel()` must still wipe the
+    /// on-disk model and land on `.notPrepared`, not silently no-op because
+    /// nothing was "loaded".
+    func test_deleteModel_fromUnloaded_setsNotPrepared() async throws {
+        let directory = try makeTempModelDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try makePlausibleModelFiles(in: directory)
+
+        let manager = ModelManager(
+            modelDirectory: directory,
+            makeTranscriber: { _, _, _ in MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil))) }
+        )
+        XCTAssertEqual(manager.state, .unloaded, "starts detected as an already-verified local model")
+
+        manager.deleteModel()
+
+        XCTAssertEqual(manager.state, .notPrepared)
+    }
+
+    /// `AT-094`: after deletion, `Application Support/VoicePaste/Models`
+    /// (here, the injected temp `modelDirectory`) must be genuinely empty on
+    /// disk, not merely have its in-memory `state` changed. Seeds a stub
+    /// model file first so the emptiness check is meaningful.
+    func test_deleteModel_leavesModelDirectoryEmptyOnDisk() async throws {
+        let directory = try makeTempModelDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try makePlausibleModelFiles(in: directory)
+        XCTAssertFalse(
+            try FileManager.default.contentsOfDirectory(atPath: directory.path).isEmpty,
+            "sanity check: the stub model files must exist before deletion"
+        )
+
+        let manager = ModelManager(
+            modelDirectory: directory,
+            makeTranscriber: { _, _, _ in MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil))) }
+        )
+
+        manager.deleteModel()
+
+        XCTAssertTrue(
+            FileManager.default.fileExists(atPath: directory.path),
+            "the Models directory itself must still exist (recreated empty), not be gone entirely"
+        )
+        let remaining = try FileManager.default.contentsOfDirectory(atPath: directory.path)
+        XCTAssertTrue(remaining.isEmpty, "Models directory must be empty after deletion, found: \(remaining)")
+    }
+
+    /// Safety/idempotency: calling `deleteModel()` when nothing has ever been
+    /// downloaded (`.notPrepared`, empty directory) must not crash and must
+    /// leave the state exactly as it was — mirrors the doc comment's claim
+    /// that this is "safe to call from any state".
+    func test_deleteModel_fromNotPrepared_isIdempotent_noCrash() throws {
+        let directory = try makeTempModelDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let manager = ModelManager(
+            modelDirectory: directory,
+            makeTranscriber: { _, _, _ in MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil))) }
+        )
+        XCTAssertEqual(manager.state, .notPrepared)
+
+        manager.deleteModel()
+        manager.deleteModel() // called twice: must stay idempotent
+
+        XCTAssertEqual(manager.state, .notPrepared)
+        let remaining = try FileManager.default.contentsOfDirectory(atPath: directory.path)
+        XCTAssertTrue(remaining.isEmpty)
+    }
+
+    /// `AT-094`/`L-010`: "история/словарь/настройки не затронуты". Simulates
+    /// the real `Application Support/VoicePaste/` layout — a `Models`
+    /// subdirectory next to sibling files representing history/dictionary/
+    /// settings stores — and asserts `deleteModel()` only reaches inside
+    /// `modelDirectory`, never touching its siblings. This is the behavioral
+    /// proof backing `removeModelDirectoryContents()`'s doc comment claim
+    /// that `modelDirectory` is "exclusively owned by this app for model
+    /// storage" and the only thing `deleteModel()` removes.
+    func test_deleteModel_doesNotTouchSiblingFilesOutsideModelDirectory() async throws {
+        let appSupportRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ModelManagerTests-AppSupport-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: appSupportRoot) }
+
+        let modelsDirectory = appSupportRoot.appendingPathComponent("Models", isDirectory: true)
+        try FileManager.default.createDirectory(at: modelsDirectory, withIntermediateDirectories: true)
+        try makePlausibleModelFiles(in: modelsDirectory)
+
+        // Sibling stores that must never be touched by model deletion.
+        let historyFile = appSupportRoot.appendingPathComponent("history.sqlite")
+        let dictionaryFile = appSupportRoot.appendingPathComponent("dictionary.json")
+        let settingsFile = appSupportRoot.appendingPathComponent("settings.plist")
+        for file in [historyFile, dictionaryFile, settingsFile] {
+            XCTAssertTrue(FileManager.default.createFile(atPath: file.path, contents: Data("kept".utf8)))
+        }
+
+        let manager = ModelManager(
+            modelDirectory: modelsDirectory,
+            makeTranscriber: { _, _, _ in MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil))) }
+        )
+        _ = try await manager.ensureLoaded()
+
+        manager.deleteModel()
+
+        XCTAssertEqual(manager.state, .notPrepared)
+        let remainingInModels = try FileManager.default.contentsOfDirectory(atPath: modelsDirectory.path)
+        XCTAssertTrue(remainingInModels.isEmpty, "Models directory must be wiped")
+        for file in [historyFile, dictionaryFile, settingsFile] {
+            XCTAssertTrue(
+                FileManager.default.fileExists(atPath: file.path),
+                "sibling store \(file.lastPathComponent) must survive model deletion untouched"
+            )
+            XCTAssertEqual(
+                try Data(contentsOf: file), Data("kept".utf8),
+                "sibling store \(file.lastPathComponent) content must be unchanged"
+            )
+        }
+    }
+
     // MARK: - Startup detection of an already-downloaded model (`L-001`, `AT-004`)
 
     /// A fresh `modelDirectory` with no model files must still start

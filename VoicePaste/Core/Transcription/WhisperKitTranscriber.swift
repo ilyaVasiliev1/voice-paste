@@ -11,7 +11,54 @@ import WhisperKit
 /// implementation is unavailable — the rest of the app keeps compiling
 /// against the `Transcribing` protocol and unit tests run against
 /// `MockTranscriber` instead.
+
+/// Plain-value decoding decision for a `TranscriptionLanguage`, kept free of
+/// any WhisperKit types so it can be unit-tested without linking the
+/// WhisperKit package (`L-005`, `AT-095`).
+public struct WhisperDecodingPlan: Equatable, Sendable {
+    public let languageCode: String?
+    public let detectLanguage: Bool
+    public let usePrefillPrompt: Bool
+    public let isTranslate: Bool
+
+    public init(languageCode: String?, detectLanguage: Bool, usePrefillPrompt: Bool, isTranslate: Bool) {
+        self.languageCode = languageCode
+        self.detectLanguage = detectLanguage
+        self.usePrefillPrompt = usePrefillPrompt
+        self.isTranslate = isTranslate
+    }
+}
+
 public struct WhisperKitTranscriber: Transcribing {
+    /// `L-005`/`AT-095`: the decoding task is always transcription, never
+    /// translation; in `.auto` the language is left unset with detection
+    /// enabled, while `.ru`/`.en` force their language explicitly.
+    public static func decodingPlan(for language: TranscriptionLanguage) -> WhisperDecodingPlan {
+        switch language {
+        case .auto:
+            return WhisperDecodingPlan(
+                languageCode: nil,
+                detectLanguage: true,
+                usePrefillPrompt: true,
+                isTranslate: false
+            )
+        case .ru:
+            return WhisperDecodingPlan(
+                languageCode: "ru",
+                detectLanguage: false,
+                usePrefillPrompt: true,
+                isTranslate: false
+            )
+        case .en:
+            return WhisperDecodingPlan(
+                languageCode: "en",
+                detectLanguage: false,
+                usePrefillPrompt: true,
+                isTranslate: false
+            )
+        }
+    }
+
 #if canImport(WhisperKit)
     private let pipe: WhisperKit
 
@@ -94,16 +141,19 @@ public struct WhisperKitTranscriber: Transcribing {
 
     public func transcribe(_ request: TranscriptionRequest) async throws -> TranscriptionResult {
         guard !request.samples.isEmpty else { throw TranscribingError.emptyAudio }
-        let languageCode: String?
-        switch request.language {
-        case .auto: languageCode = nil
-        case .ru: languageCode = "ru"
-        case .en: languageCode = "en"
-        }
+        // `L-005`/`AT-095`: task is always transcription; `.auto` enables
+        // language auto-detection instead of leaving it off by default.
+        let plan = Self.decodingPlan(for: request.language)
         // WhisperKit's no-speech score is unavailable in the current CoreML
         // decoder implementation, so suppress blank starts here and apply a
         // timestamp + signal based terminal-silence guard below.
-        let options = DecodingOptions(language: languageCode, suppressBlank: true)
+        let options = DecodingOptions(
+            task: .transcribe,
+            language: plan.languageCode,
+            usePrefillPrompt: plan.usePrefillPrompt,
+            detectLanguage: plan.detectLanguage,
+            suppressBlank: true
+        )
         let samplesForInference = TrailingHallucinationFilter.trimmingLongTrailingSilence(
             from: request.samples
         )
@@ -125,7 +175,7 @@ public struct WhisperKitTranscriber: Transcribing {
         }
         return TranscriptionResult(
             rawText: text,
-            detectedLanguage: languageCode ?? results.first?.language
+            detectedLanguage: plan.languageCode ?? results.first?.language
         )
     }
 #else
