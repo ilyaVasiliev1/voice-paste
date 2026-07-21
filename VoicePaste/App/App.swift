@@ -12,7 +12,10 @@ struct VoicePasteApp: App {
     init() {
         let settings = AppSettings()
         let modelDirectory = Self.makeModelDirectory()
-        let modelManager = ModelManager(modelDirectory: modelDirectory)
+        let modelManager = ModelManager(
+            modelDirectory: modelDirectory,
+            downloadEndpointProvider: { settings.modelDownloadEndpoint }
+        )
         let store: any HistoryStoring
         let queueStore: any ImportQueueStoring
         if let pool = try? AppDatabase.makePool() {

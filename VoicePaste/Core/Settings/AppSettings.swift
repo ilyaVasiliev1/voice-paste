@@ -14,6 +14,7 @@ public final class AppSettings: ObservableObject {
         static let languageMode = "languageMode"
         static let launchAtLogin = "launchAtLogin"
         static let showInDock = "showInDock"
+        static let modelDownloadSource = "modelDownloadSource"
     }
 
     private let defaults: UserDefaults
@@ -42,9 +43,17 @@ public final class AppSettings: ObservableObject {
     /// Default `true`. When disabled, the app stays available from the menu
     /// bar but is absent from the Dock and app switcher.
     @Published public var showInDock: Bool { didSet { persist() } }
+    /// Default `.mirror` (`AT-093`, `L-010`). Applies to the *next* model
+    /// download (and any tokenizer/config re-fetch); never re-downloads an
+    /// already-verified local model.
+    @Published public var modelDownloadSource: ModelDownloadSource { didSet { persist() } }
 
     /// v1 ships exactly one model (`INV-004`); not user-editable.
     public let modelID: String = ModelCatalog.modelID
+
+    /// Convenience read path for the endpoint matching the current
+    /// `modelDownloadSource` (`AT-093`).
+    public var modelDownloadEndpoint: String { modelDownloadSource.endpoint }
 
     /// Thread-safe mirror of `historyEnabled`, kept in sync via `didSet`
     /// above. `HistoryStore` is a plain `actor` (not `@MainActor`), so its
@@ -72,6 +81,7 @@ public final class AppSettings: ObservableObject {
         self.languageMode = TranscriptionLanguage(rawValue: defaults.string(forKey: Keys.languageMode) ?? "") ?? .auto
         self.launchAtLogin = defaults.object(forKey: Keys.launchAtLogin) as? Bool ?? false
         self.showInDock = defaults.object(forKey: Keys.showInDock) as? Bool ?? true
+        self.modelDownloadSource = ModelDownloadSource(rawValue: defaults.string(forKey: Keys.modelDownloadSource) ?? "") ?? .mirror
         // `historyEnabled`'s own `didSet` above doesn't fire for this
         // initializer assignment, so the mirror needs an explicit initial
         // sync to match the value just loaded from `UserDefaults`.
@@ -87,6 +97,7 @@ public final class AppSettings: ObservableObject {
         defaults.set(languageMode.rawValue, forKey: Keys.languageMode)
         defaults.set(launchAtLogin, forKey: Keys.launchAtLogin)
         defaults.set(showInDock, forKey: Keys.showInDock)
+        defaults.set(modelDownloadSource.rawValue, forKey: Keys.modelDownloadSource)
     }
 
     private func persistHotkey() {

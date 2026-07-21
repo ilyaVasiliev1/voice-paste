@@ -125,6 +125,13 @@ private struct SettingsBody: View {
                 countStyle: .file
             ))
             LabeledContent("settings.model.status", value: modelStatusDescription)
+            Picker("settings.model.downloadSource", selection: $settings.modelDownloadSource) {
+                Text("settings.model.downloadSource.mirror").tag(ModelDownloadSource.mirror)
+                Text("settings.model.downloadSource.official").tag(ModelDownloadSource.official)
+            }
+            Text("settings.model.downloadSource.explanation")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             Button("settings.model.loadOrRetry") {
                 Task { _ = try? await appState.modelManager.ensureLoaded() }
             }

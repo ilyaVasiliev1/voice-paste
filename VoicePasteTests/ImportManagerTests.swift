@@ -41,7 +41,7 @@ final class ImportManagerTests: XCTestCase {
         settings.modelUnloadMinutes = 0
         let modelManager = ModelManager(
             modelDirectory: scratchDirectory,
-            makeTranscriber: { _, _ in transcriber }
+            makeTranscriber: { _, _, _ in transcriber }
         )
         return ImportManager(
             modelManager: modelManager,

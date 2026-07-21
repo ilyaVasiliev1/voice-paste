@@ -34,7 +34,7 @@ final class AppStateRoutingTests: XCTestCase {
         addTeardownBlock { try? FileManager.default.removeItem(at: modelDirectory) }
         let modelManager = ModelManager(
             modelDirectory: modelDirectory,
-            makeTranscriber: { _, _ in MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil))) }
+            makeTranscriber: { _, _, _ in MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil))) }
         )
 
         let historyStore = FailingHistoryStore()

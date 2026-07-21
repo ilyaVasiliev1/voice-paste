@@ -147,6 +147,10 @@
 "settings.model.name" = "Название";
 "settings.model.size" = "Размер";
 "settings.model.status" = "Готовность";
+"settings.model.downloadSource" = "Источник загрузки";
+"settings.model.downloadSource.mirror" = "Китайское зеркало (hf-mirror.com)";
+"settings.model.downloadSource.official" = "Официальный (huggingface.co)";
+"settings.model.downloadSource.explanation" = "Зеркало быстрее из материкового Китая, где официальный хост почти недоступен. Смена применится к следующей загрузке.";
 "settings.model.loadOrRetry" = "Загрузить/Повторить";
 "settings.model.unloadAfter" = "Выгружать из памяти при простое (файл модели остаётся на диске)";
 "settings.model.unloadAfter.minutes" = "%d мин";

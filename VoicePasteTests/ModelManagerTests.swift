@@ -17,7 +17,7 @@ final class ModelManagerTests: XCTestCase {
     private func makeManager(result: TranscriptionResult = .init(rawText: "", detectedLanguage: nil)) -> ModelManager {
         ModelManager(
             modelDirectory: FileManager.default.temporaryDirectory,
-            makeTranscriber: { _, _ in MockTranscriber(result: .success(result)) }
+            makeTranscriber: { _, _, _ in MockTranscriber(result: .success(result)) }
         )
     }
 
@@ -95,7 +95,7 @@ final class ModelManagerTests: XCTestCase {
 
         let manager = ModelManager(
             modelDirectory: directory,
-            makeTranscriber: { _, _ in MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil))) }
+            makeTranscriber: { _, _, _ in MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil))) }
         )
 
         XCTAssertEqual(manager.state, .notPrepared)
@@ -111,7 +111,7 @@ final class ModelManagerTests: XCTestCase {
 
         let manager = ModelManager(
             modelDirectory: directory,
-            makeTranscriber: { _, _ in MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil))) }
+            makeTranscriber: { _, _, _ in MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil))) }
         )
 
         XCTAssertEqual(manager.state, .unloaded)
@@ -129,7 +129,7 @@ final class ModelManagerTests: XCTestCase {
 
         let manager = ModelManager(
             modelDirectory: directory,
-            makeTranscriber: { _, _ in MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil))) }
+            makeTranscriber: { _, _, _ in MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil))) }
         )
 
         XCTAssertEqual(manager.state, .notPrepared)
@@ -155,7 +155,7 @@ final class ModelManagerTests: XCTestCase {
 
         let manager = ModelManager(
             modelDirectory: directory,
-            makeTranscriber: { _, _ in MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil))) }
+            makeTranscriber: { _, _, _ in MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil))) }
         )
 
         XCTAssertEqual(manager.state, .notPrepared)
@@ -179,7 +179,7 @@ final class ModelManagerTests: XCTestCase {
 
         let manager = ModelManager(
             modelDirectory: directory,
-            makeTranscriber: { _, _ in MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil))) }
+            makeTranscriber: { _, _, _ in MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil))) }
         )
 
         XCTAssertEqual(manager.state, .notPrepared)
@@ -190,6 +190,20 @@ final class ModelManagerTests: XCTestCase {
     /// "Failed to parse ML Program" on a subtly-corrupt file), so the stale
     /// folder must be wiped and a fresh load attempted — landing on `.ready`
     /// rather than getting stuck in `.failed`.
+    ///
+    /// Adapted for `loadWithAutoRetry()`: a *single* failing attempt is no
+    /// longer enough to reach this wipe path at all, because the blind
+    /// auto-retry (`maxAutoDownloadRetries = 2`) now transparently retries
+    /// the very same (still-corrupt) local folder up to 3 times *before*
+    /// `ensureLoaded()`'s own catch block ever sees an error. To actually
+    /// exercise the wipe-and-redownload branch, the factory must fail on
+    /// *all 3* attempts of that first `loadWithAutoRetry()` session (i.e.
+    /// the corruption is attempt-independent, as real "Failed to parse ML
+    /// Program" corruption would be) — only then does `ensureLoaded()` wipe
+    /// the folder and start a second `loadWithAutoRetry()` session, which
+    /// succeeds on its first attempt against the now-clean directory. This
+    /// makes the test ~3s slower (two 1.5s auto-retry pauses within the
+    /// first session) but honestly exercises the real call path.
     func test_ensureLoaded_whenExistingLocalModelFailsToLoad_wipesAndRetries() async throws {
         let directory = try makeTempModelDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -198,13 +212,18 @@ final class ModelManagerTests: XCTestCase {
         var attempt = 0
         let manager = ModelManager(
             modelDirectory: directory,
-            makeTranscriber: { _, _ in
+            makeTranscriber: { _, _, _ in
                 attempt += 1
-                if attempt == 1 {
+                if attempt <= 3 {
                     // Mirrors `WhisperKitTranscriber.init` throwing at load
                     // time (e.g. "Failed to parse ML Program") — the failure
                     // happens while constructing the engine, not later while
-                    // transcribing.
+                    // transcribing. Fails on all 3 attempts of the first
+                    // `loadWithAutoRetry()` session (the corrupt folder is
+                    // still corrupt however many times it's retried), so
+                    // that session's auto-retry budget is fully exhausted
+                    // and `ensureLoaded()`'s wipe-and-redownload branch
+                    // actually runs.
                     throw TranscribingError.underlying("corrupt model.mil")
                 }
                 return MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil)))
@@ -215,7 +234,7 @@ final class ModelManagerTests: XCTestCase {
         _ = try await manager.ensureLoaded()
 
         XCTAssertEqual(manager.state, .ready)
-        XCTAssertEqual(attempt, 2, "must have retried once after wiping the invalid folder")
+        XCTAssertEqual(attempt, 4, "3 exhausted attempts against the corrupt folder, then 1 successful attempt after the wipe")
         XCTAssertFalse(
             FileManager.default.fileExists(atPath: directory.appendingPathComponent("MelSpectrogram.mlmodelc").path),
             "the invalid folder must have been wiped, not left behind"

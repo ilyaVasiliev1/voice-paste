@@ -12,13 +12,17 @@ public enum ModelState: Equatable, Sendable {
 
 /// Byte-level detail behind `.downloading` (`AT-086`, `L-010`, `UI-002`).
 ///
-/// Percent and "N из 626 МБ" are read directly from `completedBytes`/
-/// `totalBytes` — the same counters `Foundation.Progress` reports for the
-/// download — never from a separate synthetic timer. `speedBytesPerSecond`
-/// is a smoothed derivative of those bytes over monotonic time (never wall
-/// clock), and `etaSeconds` is only populated once that smoothed speed is a
-/// trustworthy signal; both are `nil` until then, so the UI can show
-/// "Считаем время…" honestly instead of guessing.
+/// `completedBytes`/`totalBytes` are *derived*, not read from the loader's
+/// own counters: WhisperKit's multi-file download reports progress in file
+/// counts, not bytes, so `totalBytes` is always the advertised catalog
+/// constant (626 MB) and `completedBytes` is `fraction × totalBytes`, where
+/// `fraction` mirrors `Foundation.Progress.fractionCompleted` — the one
+/// value that stays consistent across a multi-file aggregate. Never a
+/// separate synthetic timer. `speedBytesPerSecond` is a smoothed derivative
+/// of those derived bytes over monotonic time (never wall clock), and
+/// `etaSeconds` is only populated once that smoothed speed is a trustworthy
+/// signal; both are `nil` until then, so the UI can show "Считаем время…"
+/// honestly instead of guessing.
 public struct ModelDownloadProgress: Equatable, Sendable {
     public let completedBytes: Int64
     public let totalBytes: Int64
@@ -65,4 +69,20 @@ public enum ModelCatalog {
     /// `WhisperKitConfig(modelEndpoint:)` honour this. Swap back to
     /// `https://huggingface.co` if the mirror is ever unavailable.
     public static let downloadEndpoint = "https://hf-mirror.com"
+}
+
+/// User-selectable Hugging Face host for model/tokenizer/config downloads
+/// (`AT-093`, `L-010`). Persisted in `DM-001` via `AppSettings.modelDownloadSource`;
+/// applies to the *next* download only — an already-verified local model
+/// (`ModelState.unloaded`/`.ready`) is never re-fetched on a source change.
+public enum ModelDownloadSource: String, CaseIterable, Sendable {
+    case mirror
+    case official
+
+    public var endpoint: String {
+        switch self {
+        case .mirror: return "https://hf-mirror.com"
+        case .official: return "https://huggingface.co"
+        }
+    }
 }

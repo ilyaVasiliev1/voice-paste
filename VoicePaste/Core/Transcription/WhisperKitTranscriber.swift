@@ -15,15 +15,21 @@ public struct WhisperKitTranscriber: Transcribing {
 #if canImport(WhisperKit)
     private let pipe: WhisperKit
 
-    /// - Parameter downloadProgress: forwarded `(completedBytes, totalBytes)`
-    ///   updates for the first-run 626 MB download (`UI-002`, `US-001`,
-    ///   `AT-086`) — raw counters straight from `Foundation.Progress`, so
-    ///   `ModelManager` can derive percent/speed/ETA itself rather than
-    ///   receiving an already-collapsed fraction. Never called on the
+    /// - Parameter downloadProgress: forwarded `Progress.fractionCompleted`
+    ///   (`0...1`) updates for the first-run 626 MB download (`UI-002`,
+    ///   `US-001`, `AT-086`, `L-010`). WhisperKit's multi-file download
+    ///   reports `completedUnitCount`/`totalUnitCount` in *file counts*, not
+    ///   bytes — forwarding those raw counters produces "0 из 0 МБ" and a
+    ///   jumpy ETA. `fractionCompleted` is the one value `Foundation.Progress`
+    ///   keeps consistent across a multi-file aggregate (it accounts for
+    ///   child-progress weighting internally), so `ModelManager` derives all
+    ///   displayed bytes/speed/ETA from this single reliable fraction times
+    ///   the advertised catalog size instead. Never called on the
     ///   already-on-disk branch (no network involved).
     public init(
         modelDirectory: URL,
-        downloadProgress: (@Sendable (Int64, Int64) -> Void)? = nil
+        endpoint: String = ModelCatalog.downloadEndpoint,
+        downloadProgress: (@Sendable (Double) -> Void)? = nil
     ) async throws {
         // `L-010`/`AT-004`/`US-001`: WhisperKit's `setupModels` takes two
         // mutually exclusive branches (see `setupModels` in
@@ -45,12 +51,12 @@ public struct WhisperKitTranscriber: Transcribing {
             // Already downloaded and verified: load straight from disk, no
             // network involved (`AT-004` — "повторная загрузка не требуется").
             // `modelEndpoint`: even on the on-disk branch WhisperKit may still
-            // fetch the tokenizer/config over the network — route that through
-            // the mirror too (`ModelCatalog.downloadEndpoint`) so it isn't slow
-            // from China.
+            // fetch the tokenizer/config over the network — route that
+            // through the selected endpoint (`AT-093`) so it isn't slow from
+            // China when the mirror is chosen.
             let config = WhisperKitConfig(
                 model: ModelCatalog.modelID,
-                modelEndpoint: ModelCatalog.downloadEndpoint,
+                modelEndpoint: endpoint,
                 modelFolder: existing.path,
                 download: false
             )
@@ -70,14 +76,14 @@ public struct WhisperKitTranscriber: Transcribing {
             let downloadedFolder = try await WhisperKit.download(
                 variant: ModelCatalog.modelID,
                 downloadBase: modelDirectory,
-                endpoint: ModelCatalog.downloadEndpoint,
+                endpoint: endpoint,
                 progressCallback: { progress in
-                    downloadProgress?(progress.completedUnitCount, progress.totalUnitCount)
+                    downloadProgress?(progress.fractionCompleted)
                 }
             )
             let config = WhisperKitConfig(
                 model: ModelCatalog.modelID,
-                modelEndpoint: ModelCatalog.downloadEndpoint,
+                modelEndpoint: endpoint,
                 modelFolder: downloadedFolder.path,
                 load: true,
                 download: false
@@ -125,7 +131,8 @@ public struct WhisperKitTranscriber: Transcribing {
 #else
     public init(
         modelDirectory: URL,
-        downloadProgress: (@Sendable (Int64, Int64) -> Void)? = nil
+        endpoint: String = ModelCatalog.downloadEndpoint,
+        downloadProgress: (@Sendable (Double) -> Void)? = nil
     ) async throws {
         throw TranscribingError.underlying(
             "WhisperKit package is not resolvable in this build environment (see report tail)."

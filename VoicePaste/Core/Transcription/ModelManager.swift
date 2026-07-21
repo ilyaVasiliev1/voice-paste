@@ -15,14 +15,21 @@ public final class ModelManager: ObservableObject {
     private var transcriber: Transcribing?
     private var unloadTask: Task<Void, Never>?
     private let modelDirectory: URL
-    private let makeTranscriber: (URL, @escaping @Sendable (Int64, Int64) -> Void) async throws -> Transcribing
+    private let makeTranscriber: (URL, String, @escaping @Sendable (Double) -> Void) async throws -> Transcribing
+    /// Reads the live download-source setting at the moment a download
+    /// starts (`AT-093`, `L-010`) — a change mid-session takes effect on the
+    /// *next* `load()`, not retroactively. Defaults to the mirror when no
+    /// provider is supplied.
+    private let downloadEndpointProvider: @MainActor () -> String
 
     public init(
         modelDirectory: URL,
-        makeTranscriber: @escaping (URL, @escaping @Sendable (Int64, Int64) -> Void) async throws -> Transcribing = ModelManager.defaultTranscriberFactory
+        makeTranscriber: @escaping (URL, String, @escaping @Sendable (Double) -> Void) async throws -> Transcribing = ModelManager.defaultTranscriberFactory,
+        downloadEndpointProvider: @escaping @MainActor () -> String = { ModelCatalog.downloadEndpoint }
     ) {
         self.modelDirectory = modelDirectory
         self.makeTranscriber = makeTranscriber
+        self.downloadEndpointProvider = downloadEndpointProvider
         // `L-001`/`AT-004`: a previous run may have already downloaded and
         // compiled the model into `modelDirectory`. Detect it up front so a
         // restart doesn't ask for a 626 MB re-download — `.unloaded` means
@@ -85,7 +92,7 @@ public final class ModelManager: ObservableObject {
         }
         let hadExistingLocalModel = Self.hasVerifiedLocalModel(in: modelDirectory)
         do {
-            return try await load()
+            return try await loadWithAutoRetry()
         } catch {
             Task { await DiagnosticLog.shared.log("model.load.failed", detail: String(describing: error)) }
             guard hadExistingLocalModel else {
@@ -101,7 +108,7 @@ public final class ModelManager: ObservableObject {
             removeModelDirectoryContents()
             do {
                 Task { await DiagnosticLog.shared.log("model.redownload") }
-                return try await load()
+                return try await loadWithAutoRetry()
             } catch {
                 state = .failed(.downloadFailed)
                 Task { await DiagnosticLog.shared.log("model.load.failed", detail: String(describing: error)) }
@@ -109,6 +116,43 @@ public final class ModelManager: ObservableObject {
             }
         }
     }
+
+    /// First-attempt resilience for a transient network hiccup (observed in
+    /// practice against the `hf-mirror.com` mirror from mainland China):
+    /// retries `load()` up to `Self.maxAutoDownloadRetries` times on *any*
+    /// error before surfacing `.failed` to the caller. Deliberately doesn't
+    /// try to classify the error (e.g. sniff `URLError` codes) — HF Hub's
+    /// download is resumable, so retrying blindly on any failure is both
+    /// simpler and safe: a retry after a transient disconnect resumes the
+    /// already-downloaded parts, and a retry after a genuinely fatal error
+    /// (e.g. disk full) just fails again and is bounded by the retry cap, so
+    /// this stays deterministic and testable. This is a distinct, earlier
+    /// layer from the wipe+redownload fallback in `ensureLoaded()` — that one
+    /// handles a corrupt *existing* local folder; this one handles a flaky
+    /// *first* download attempt and never touches the filesystem itself.
+    private func loadWithAutoRetry() async throws -> Transcribing {
+        var lastError: Error?
+        for attempt in 0...Self.maxAutoDownloadRetries {
+            do {
+                return try await load()
+            } catch {
+                lastError = error
+                guard attempt < Self.maxAutoDownloadRetries else { break }
+                Task { await DiagnosticLog.shared.log("model.load.retry", detail: "attempt \(attempt + 1)") }
+                try? await Task.sleep(nanoseconds: Self.autoRetryPauseNanos)
+            }
+        }
+        throw lastError ?? ModelError.downloadFailed
+    }
+
+    /// Bounds the blind auto-retry in `loadWithAutoRetry()`: a network blip
+    /// gets at most this many extra attempts before the honest failed-state
+    /// (`_tests.md` AT-086) is shown with a manual "Повторить".
+    private static let maxAutoDownloadRetries = 2
+    /// Short pause between auto-retries — long enough to let a transient
+    /// disconnect clear, short enough that the user isn't staring at a
+    /// frozen screen before either success or the next attempt's progress.
+    private static let autoRetryPauseNanos: UInt64 = 1_500_000_000
 
     private func load() async throws -> Transcribing {
         resetDownloadProgressTracking()
@@ -118,13 +162,14 @@ public final class ModelManager: ObservableObject {
             fraction: 0
         ))
         Task { await DiagnosticLog.shared.log("model.load.start") }
-        let engine = try await makeTranscriber(modelDirectory) { [weak self] completedBytes, totalBytes in
+        let endpoint = downloadEndpointProvider()
+        let engine = try await makeTranscriber(modelDirectory, endpoint) { [weak self] fraction in
             // WhisperKit's `progressCallback` may fire from a background
             // download-session thread; hop onto the main actor before
             // touching `@Published state` or the milestone tracker below
             // (Swift 6 strict concurrency — no direct mutation here).
             Task { @MainActor in
-                self?.handleDownloadProgress(completedBytes: completedBytes, totalBytes: totalBytes)
+                self?.handleDownloadProgress(fraction: fraction)
             }
         }
         state = .verifying
@@ -185,25 +230,37 @@ public final class ModelManager: ObservableObject {
     }
 
     /// Highest `fraction` published so far this attempt (`L-010`: "Прогресс
-    /// монотонно растёт"). The raw byte counter can jitter downward (a
-    /// multi-file aggregate, a chunk resume/retry) even though nothing is
-    /// actually being un-downloaded; the *shown* fraction must never follow
-    /// it backwards. Reset on every fresh `load()` attempt so a retry after a
-    /// failure doesn't inherit the previous attempt's high-water mark. This
-    /// only governs `fraction` — `completedBytes`/`totalBytes` in the payload
-    /// stay exactly what the loader reported, since AT-086's "N из 626 МБ"
-    /// is defined as reading straight from those counters, and byte-level
-    /// jitter of a few MB is not the visible "did my progress go backwards?"
-    /// regression `L-010` is guarding against; the percentage/bar is.
+    /// монотонно растёт"). WhisperKit's underlying `Progress` aggregate can
+    /// jitter downward for an instant (child-progress reweighting, a chunk
+    /// resume) even though nothing is actually being un-downloaded; the
+    /// *shown* fraction must never follow it backwards. Reset on every fresh
+    /// `load()` attempt so a retry after a failure doesn't inherit the
+    /// previous attempt's high-water mark.
     private var maxPublishedFraction: Double = 0
 
-    private func handleDownloadProgress(completedBytes: Int64, totalBytes rawTotalBytes: Int64) {
+    /// Derives all displayed download progress from the single reliable
+    /// `Progress.fractionCompleted` value (`L-010`, `AT-086`, `UI-002`).
+    /// WhisperKit's own `completedUnitCount`/`totalUnitCount` count *files*,
+    /// not bytes, in a multi-file download — forwarding those raw counters
+    /// is what previously produced "0 из 0 МБ" and a jumpy ETA. `fraction`
+    /// doesn't have that problem, so `totalBytes` is always the advertised
+    /// catalog constant (626 MB) and `completedBytes` is `fraction ×
+    /// totalBytes`; speed/ETA are then a derivative of *that derived byte
+    /// count* over monotonic time, exactly as before.
+    private func handleDownloadProgress(fraction rawFraction: Double) {
         guard case .downloading = state else { return }
         let now = DispatchTime.now().uptimeNanoseconds
-        // WhisperKit's `Progress.totalUnitCount` is occasionally `0` for a
-        // brief instant right at the start of the session; fall back to the
-        // advertised catalog size rather than divide by zero or show `NaN`.
-        let totalBytes = rawTotalBytes > 0 ? rawTotalBytes : ModelCatalog.approximateSizeBytes
+        let totalBytes = ModelCatalog.approximateSizeBytes
+
+        // Capped below 100%: the jump to "done" only happens via the
+        // `.verifying` transition in `load()`, never here.
+        let cappedFraction = min(max(rawFraction, 0), 0.999)
+        // Monotonic (`L-010`): never publish a fraction lower than the
+        // highest one already shown this attempt, even if the raw signal
+        // jittered downward.
+        let fraction = max(cappedFraction, maxPublishedFraction)
+        maxPublishedFraction = fraction
+        let completedBytes = Int64(fraction * Double(totalBytes))
 
         if let last = lastByteSample {
             let elapsedSeconds = Double(now - last.uptimeNanos) / 1_000_000_000
@@ -227,16 +284,6 @@ public final class ModelManager: ObservableObject {
             return
         }
         lastUIUpdateNanos = now
-
-        let rawFraction = totalBytes > 0 ? Double(completedBytes) / Double(totalBytes) : 0
-        // Capped below 100%: the jump to "done" only happens via the
-        // `.verifying` transition in `load()`, never here.
-        let cappedFraction = min(max(rawFraction, 0), 0.999)
-        // Monotonic (`L-010`): never publish a fraction lower than the
-        // highest one already shown this attempt, even if the raw byte
-        // counter jittered downward.
-        let fraction = max(cappedFraction, maxPublishedFraction)
-        maxPublishedFraction = fraction
 
         let hasEnoughSpeedSignal: Bool = {
             guard speedSampleCount >= Self.minSpeedSamplesForETA,
@@ -293,8 +340,9 @@ public final class ModelManager: ObservableObject {
 
     public static func defaultTranscriberFactory(
         modelDirectory: URL,
-        downloadProgress: @escaping @Sendable (Int64, Int64) -> Void
+        endpoint: String,
+        downloadProgress: @escaping @Sendable (Double) -> Void
     ) async throws -> Transcribing {
-        try await WhisperKitTranscriber(modelDirectory: modelDirectory, downloadProgress: downloadProgress)
+        try await WhisperKitTranscriber(modelDirectory: modelDirectory, endpoint: endpoint, downloadProgress: downloadProgress)
     }
 }
