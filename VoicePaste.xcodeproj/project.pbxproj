@@ -71,6 +71,8 @@
 		C00000000000000000000806 /* TrailingHallucinationFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000807 /* TrailingHallucinationFilter.swift */; };
 		C00000000000000000000808 /* TrailingHallucinationFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000809 /* TrailingHallucinationFilterTests.swift */; };
 		C00000000000000000000900 /* ModelDownloadProgressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000901 /* ModelDownloadProgressTests.swift */; };
+		C00000000000000000000902 /* HotkeyManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000903 /* HotkeyManagerTests.swift */; };
+		C00000000000000000000904 /* AppStateRoutingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000905 /* AppStateRoutingTests.swift */; };
 		D00000000000000000000030 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000020 /* GRDB */; };
 		D00000000000000000000031 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000021 /* WhisperKit */; };
 /* End PBXBuildFile section */
@@ -151,6 +153,8 @@
 		C00000000000000000000807 /* TrailingHallucinationFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailingHallucinationFilter.swift; sourceTree = "<group>"; };
 		C00000000000000000000809 /* TrailingHallucinationFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailingHallucinationFilterTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000901 /* ModelDownloadProgressTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloadProgressTests.swift; sourceTree = "<group>"; };
+		C00000000000000000000903 /* HotkeyManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManagerTests.swift; sourceTree = "<group>"; };
+		C00000000000000000000905 /* AppStateRoutingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStateRoutingTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -458,6 +462,8 @@
 				C00000000000000000000181 /* LocalModelDetectionTests.swift */,
 				C00000000000000000000809 /* TrailingHallucinationFilterTests.swift */,
 				C00000000000000000000901 /* ModelDownloadProgressTests.swift */,
+				C00000000000000000000903 /* HotkeyManagerTests.swift */,
+				C00000000000000000000905 /* AppStateRoutingTests.swift */,
 			);
 			path = VoicePasteTests;
 			sourceTree = "<group>";
@@ -663,6 +669,8 @@
 				C00000000000000000000180 /* LocalModelDetectionTests.swift in Sources */,
 				C00000000000000000000808 /* TrailingHallucinationFilterTests.swift in Sources */,
 				C00000000000000000000900 /* ModelDownloadProgressTests.swift in Sources */,
+				C00000000000000000000902 /* HotkeyManagerTests.swift in Sources */,
+				C00000000000000000000904 /* AppStateRoutingTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

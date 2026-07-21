@@ -64,4 +64,93 @@ final class HotkeyManagerTests: XCTestCase {
 
         XCTAssertFalse(HotkeyManager.shortcutMatches(shortcut, keyCode: 2, flagsRaw: flags))
     }
+
+    // MARK: - AT-090: `HotkeyManager.shouldSwallow` (`INV-015`, `SystemSwallowBox`)
+    //
+    // `shouldSwallow(isHotkey:isEscapeCancellation:systemSwallowEnabled:)` is
+    // the pure, `nonisolated static` extraction of the swallow decision that
+    // used to live only inline inside the private `handleTapEvent(...)`,
+    // reachable only through a real `CGEventTap` callback requiring
+    // `AXIsProcessTrusted() == true` (never granted to the `xcodebuild test`
+    // runner — see the class doc above). Now that the boolean expression is
+    // its own static function, it is directly unit-testable without a real
+    // event tap, Accessibility trust, or a system hotkey press — this covers
+    // the *decision logic* of AT-090/INV-015 deterministically. It does NOT
+    // cover the system-level wiring (whether `CGEventTap`'s `.defaultTap`
+    // actually drops the event, whether the frontmost app truly receives the
+    // passthrough character) — that remains `живой smoke` on an installed
+    // `.app` with real Accessibility trust, before/after `readiness == ready`.
+    //
+    // All four boolean-input combinations relevant to the decision
+    // (`isHotkey` × `systemSwallowEnabled`, with escape-cancellation on/off)
+    // are enumerated below; `isEscapeCancellation` short-circuits to `true`
+    // unconditionally per the `||`, so it is checked in both states too.
+
+    /// Core AT-090/INV-015 criterion: the registered hotkey must pass through
+    /// to the frontmost app while the system-swallow gate is not yet enabled
+    /// (i.e. before `readiness == ready`) — this is what "не проглатывается"
+    /// in AT-090's expected result means. Regresses if the `&&` in
+    /// `shouldSwallow` is ever loosened to swallow unconditionally on
+    /// `isHotkey` alone.
+    func test_shouldSwallow_hotkeyNotReady_isFalse_passthrough() {
+        XCTAssertFalse(
+            HotkeyManager.shouldSwallow(isHotkey: true, isEscapeCancellation: false, systemSwallowEnabled: false),
+            "AT-090: an unmatched-readiness hotkey must pass through to the active app, not be swallowed"
+        )
+    }
+
+    /// Counterpart: once ready, the same hotkey combination *is* swallowed —
+    /// this is the Option+Space leaking-space-character bug fix this gate
+    /// must not regress. Catches the gate being disabled entirely (always
+    /// passthrough) or inverted.
+    func test_shouldSwallow_hotkeyReady_isTrue() {
+        XCTAssertTrue(
+            HotkeyManager.shouldSwallow(isHotkey: true, isEscapeCancellation: false, systemSwallowEnabled: true)
+        )
+    }
+
+    /// Escape-cancellation swallows unconditionally regardless of the
+    /// system-swallow gate (it is only ever enabled during a live recording
+    /// session, which itself implies readiness) — checked in both gate
+    /// states so a future refactor cannot accidentally make it depend on
+    /// `systemSwallowEnabled`.
+    func test_shouldSwallow_escapeCancellation_isTrue_regardlessOfSystemSwallowEnabled() {
+        XCTAssertTrue(
+            HotkeyManager.shouldSwallow(isHotkey: false, isEscapeCancellation: true, systemSwallowEnabled: false)
+        )
+        XCTAssertTrue(
+            HotkeyManager.shouldSwallow(isHotkey: false, isEscapeCancellation: true, systemSwallowEnabled: true)
+        )
+    }
+
+    /// Neither the registered hotkey nor an escape-cancellation: an ordinary
+    /// keystroke must never be swallowed, independent of the system-swallow
+    /// gate. Regresses if the gate is ever checked without also requiring
+    /// `isHotkey`.
+    func test_shouldSwallow_neitherHotkeyNorEscape_isFalse_regardlessOfSystemSwallowEnabled() {
+        XCTAssertFalse(
+            HotkeyManager.shouldSwallow(isHotkey: false, isEscapeCancellation: false, systemSwallowEnabled: false)
+        )
+        XCTAssertFalse(
+            HotkeyManager.shouldSwallow(isHotkey: false, isEscapeCancellation: false, systemSwallowEnabled: true)
+        )
+    }
+
+    /// `setSystemSwallowEnabled(_:)` remains the only public surface that
+    /// drives `systemSwallowEnabled` into the real `CGEventTap` callback path
+    /// (`SystemSwallowBox`, not directly testable headlessly per the class
+    /// doc above); this guards its lifecycle-safety shape only — not a
+    /// behavior proof of the swallow decision itself, which the tests above
+    /// now cover directly via `shouldSwallow`.
+    func test_setSystemSwallowEnabled_isCallable_beforeAndAfterStart_withoutCrashing() {
+        let manager = HotkeyManager(shortcut: .default, onEvent: { _ in }, onEscape: {})
+
+        manager.setSystemSwallowEnabled(false)
+        manager.start() // no-op under xcodebuild test: no Accessibility trust
+        manager.setSystemSwallowEnabled(true)
+        manager.setSystemSwallowEnabled(false)
+        manager.stop()
+
+        XCTAssertFalse(manager.isActive, "start() must stay a no-op without Accessibility trust in this environment")
+    }
 }

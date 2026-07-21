@@ -5,6 +5,7 @@ import SwiftUI
 struct VoicePasteApp: App {
     @StateObject private var appState: AppState
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let windowRouter = WindowRouter.shared
 
@@ -55,16 +56,22 @@ struct VoicePasteApp: App {
                 .foregroundStyle(appState.menuBarSymbolColor)
                 .task {
                     // `UI-001`: wire the AppKit-side delegate to this
-                    // instance's `appState` and its `openWindow` action
-                    // (captured here since `AppDelegate` itself has no
-                    // SwiftUI environment access) so Dock-icon "reopen"
-                    // clicks with no visible windows can resurface the
-                    // right one.
+                    // instance's `appState` and its `openWindow`/`openSettings`
+                    // actions (captured here since `AppDelegate` itself has no
+                    // SwiftUI environment access, and `AppState.openSettings()`
+                    // has none either) so Dock-icon "reopen" clicks with no
+                    // visible windows, and the menu bar's "Настройки…", can
+                    // resurface the right window (`AT-091`).
                     windowRouter.openWindowAction = { id in openWindow(id: id) }
+                    windowRouter.openSettingsAction = { openSettings() }
                     appDelegate.appState = appState
                     appDelegate.windowRouter = windowRouter
 
-                    appState.applyDockVisibility()
+                    // `INV-015`/`AT-089`: `refreshReadiness()` both computes
+                    // `readiness.state` and applies the Dock policy it gates
+                    // (`applyDockVisibility()`, called from inside it) — a
+                    // single call, no separate policy application here, so
+                    // there's no window where the two could disagree.
                     appState.refreshReadiness()
                     // VoicePaste normally lives only in the menu bar. The
                     // main window is an explicit destination for history and

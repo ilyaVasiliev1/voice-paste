@@ -68,7 +68,9 @@ struct HistoryView: View {
                 .labelStyle(.iconOnly)
                 .help("history.toolbar.startDictation")
                 .accessibilityLabel(Text("history.toolbar.startDictation"))
-                .disabled(appState.dictationPhase == .processing)
+                // `INV-015`/`AT-088`: recording stays a disabled, non-erroring
+                // control while not ready, not a tap that surfaces an error.
+                .disabled(appState.dictationPhase == .processing || appState.readiness.state != .ready)
 
                 Button {
                     appState.openImportQueue()
@@ -78,6 +80,8 @@ struct HistoryView: View {
                 .labelStyle(.iconOnly)
                 .help("history.toolbar.transcribeFile")
                 .accessibilityLabel(Text("history.toolbar.transcribeFile"))
+                // `INV-015`/`AT-088`: import stays disabled while not ready.
+                .disabled(appState.readiness.state != .ready)
 
                 Button {
                     copyCurrentTranscript()

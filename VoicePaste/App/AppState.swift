@@ -193,18 +193,34 @@ public final class AppState: ObservableObject {
     }
 
     /// Switch between normal Dock presence and a menu-bar-only resident app
-    /// without restarting. The menu bar remains available in both policies.
+    /// without restarting. `INV-015`/`AT-089`: while the app isn't `ready`
+    /// yet, it is forced `.regular` (visible in the Dock) regardless of the
+    /// saved `showInDock` preference — this is the single call site that
+    /// ever mutates `activationPolicy`; nothing else in the app calls
+    /// `setActivationPolicy` directly.
     public func applyDockVisibility() {
-        let policy: NSApplication.ActivationPolicy = settings.showInDock ? .regular : .accessory
+        let policy: NSApplication.ActivationPolicy
+        if readiness.state != .ready {
+            policy = .regular
+        } else {
+            policy = settings.showInDock ? .regular : .accessory
+        }
         guard NSApp.activationPolicy() != policy else { return }
         NSApp.setActivationPolicy(policy)
     }
 
+    /// `L-001`: the single place that recomputes `readiness.state` also
+    /// re-applies the Dock policy that state gates (`AT-089`) and the
+    /// hotkey tap's system-swallow flag (`AT-090`) — callers never need to
+    /// remember to do either separately, so a permission-granted /
+    /// model-ready transition takes effect without a restart.
     public func refreshReadiness() {
         readiness.refresh()
         if readiness.isAccessibilityTrusted {
             hotkeyManager?.start()
         }
+        hotkeyManager?.setSystemSwallowEnabled(readiness.state == .ready)
+        applyDockVisibility()
     }
 
     public var currentHotkeyDisplayString: String {
@@ -440,22 +456,21 @@ public final class AppState: ObservableObject {
         openSettings()
     }
 
-    /// `UI-001`/`AT-087`: the menu bar's "Настройки…" item must reach the
-    /// front and gain focus even in menu-bar-only (`.accessory`) mode. A
-    /// bare `SettingsLink` does not activate the app first, so in
-    /// `.accessory` mode the window can open behind whatever is frontmost.
-    /// Activating briefly here does *not* change `activationPolicy` — the
-    /// Dock icon stays hidden; the app only becomes momentarily active to
-    /// present its own window, same mechanism as `presentWindow` in
-    /// `MenuBarContentView`.
+    /// `UI-001`/`AT-087`/`AT-091`: the menu bar's "Настройки…" item must
+    /// reach the front and gain focus even in menu-bar-only (`.accessory`)
+    /// mode, and it must open the *Settings* window specifically — never the
+    /// main window (history), which `NSApp.activate` alone can otherwise
+    /// raise first if it happens to already be open. Activating here does
+    /// *not* change `activationPolicy` — the Dock icon stays as
+    /// `applyDockVisibility()` last set it; the app only becomes momentarily
+    /// active to present its own window, same `NSApp.activate` mechanism used
+    /// by `openMainOrOnboarding(section:)` below. The actual window is opened through the
+    /// documented `@Environment(\.openSettings)` action, captured once at
+    /// launch into `WindowRouter` the same way `openWindow` is (`App.swift`),
+    /// not by sending the private `showSettingsWindow:` selector.
     public func openSettings() {
         NSApp.activate(ignoringOtherApps: true)
-        // The selector SwiftUI's own `Settings` scene registers on
-        // `NSApplication` for "VoicePaste > Настройки…" (⌘,) / `SettingsLink`
-        // — sending it directly here works without requiring this call site
-        // to sit inside that scene's SwiftUI environment (a HUD button
-        // handler, wired from `AppState`, does not).
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        WindowRouter.shared.openSettings()
     }
 
     /// `UI-003` error-state "×" close button: dismisses the HUD without
@@ -479,20 +494,33 @@ public final class AppState: ObservableObject {
     /// there is no pending insertion whose target focus needs preserving.
     public func openHistoryRecord(_ id: UUID) {
         requestedHistorySelection = id
-        requestedMainContentSection = .history
-        NSApp.activate(ignoringOtherApps: true)
-        WindowRouter.shared.open("main")
+        openMainOrOnboarding(section: .history)
     }
 
     public func openStatistics() {
-        requestedMainContentSection = .dashboard
-        NSApp.activate(ignoringOtherApps: true)
-        WindowRouter.shared.open("main")
+        openMainOrOnboarding(section: .dashboard)
     }
 
     public func openImportQueue() {
-        requestedMainContentSection = .importQueue
+        openMainOrOnboarding(section: .importQueue)
+    }
+
+    /// `INV-015`/`AT-088`/`AT-089` single router: every entry point that
+    /// wants the app's one permanent window — the menu bar's "Открыть
+    /// VoicePaste"/"Статистика", the HUD's "Открыть в истории"/import-queue
+    /// hand-offs, and the Dock-icon reopen gesture (`AppDelegate`) — funnels
+    /// through here instead of calling `WindowRouter.open("main")` directly,
+    /// so they can never again drift out of sync on whether onboarding must
+    /// intervene first. While `readiness.state != .ready`, onboarding is the
+    /// only reachable window (`main` never opens, empty or otherwise); once
+    /// ready, `section` is applied and `main` opens as requested.
+    public func openMainOrOnboarding(section: MainContentSection) {
         NSApp.activate(ignoringOtherApps: true)
+        guard readiness.state == .ready else {
+            WindowRouter.shared.open("onboarding")
+            return
+        }
+        requestedMainContentSection = section
         WindowRouter.shared.open("main")
     }
 

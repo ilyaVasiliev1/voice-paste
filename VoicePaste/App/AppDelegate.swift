@@ -11,9 +11,19 @@ import SwiftUI
 final class WindowRouter {
     static let shared = WindowRouter()
     var openWindowAction: ((String) -> Void)?
+    /// `AT-091`: `VoicePasteApp` captures the documented `@Environment(\.openSettings)`
+    /// action here, the same way it captures `openWindow` above — `AppState`
+    /// (an `NSObject`-free plain class with no SwiftUI environment access)
+    /// routes "Настройки…" through this closure instead of sending the
+    /// private `showSettingsWindow:` selector.
+    var openSettingsAction: (() -> Void)?
 
     func open(_ id: String) {
         openWindowAction?(id)
+    }
+
+    func openSettings() {
+        openSettingsAction?()
     }
 }
 
@@ -40,15 +50,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 
+    /// `INV-015`/`AT-089`: Dock-reopen funnels through the exact same
+    /// ready-vs-onboarding router as the menu bar's "Открыть VoicePaste"/
+    /// "Статистика" (`AppState.openMainOrOnboarding`) — so a Dock click and a
+    /// menu click can never disagree on where a not-yet-ready app sends the
+    /// user.
     private func openAppropriateWindow() {
-        guard let appState, let windowRouter else { return }
+        guard let appState else { return }
         appState.refreshReadiness()
-        if appState.readiness.state != .ready {
-            windowRouter.open("onboarding")
-        } else {
-            // `UI-004`: the single main window is the "otherwise" reopen
-            // target.
-            windowRouter.open("main")
-        }
+        appState.openMainOrOnboarding(section: .history)
     }
 }

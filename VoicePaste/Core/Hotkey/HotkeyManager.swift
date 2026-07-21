@@ -24,6 +24,12 @@ public final class HotkeyManager {
     // matching key event).
     private let shortcutBox: ShortcutBox
     private let escapeCancellationBox = EscapeCancellationBox()
+    // `INV-015`/`AT-090`: mirrors `AppState.readiness.state == .ready`,
+    // read synchronously from the CGEventTap's C callback the same way
+    // `shortcutBox` is. While `false`, the tap must let a matching hotkey
+    // pass through to whatever app is actually frontmost instead of
+    // swallowing it for no benefit — the app isn't ready to record.
+    private let systemSwallowBox = SystemSwallowBox()
 
     public init(
         shortcut: HotkeyShortcut,
@@ -108,6 +114,17 @@ public final class HotkeyManager {
         escapeCancellationBox.setEnabled(isEnabled)
     }
 
+    /// `INV-015`/`AT-090`: called from `AppState.refreshReadiness()` whenever
+    /// `readiness.state` is recomputed. Only when this is `true` does a
+    /// matched hotkey get swallowed by the tap (`.defaultTap` dropping the
+    /// event); while `false` the combination reaches the frontmost app
+    /// untouched, same as if VoicePaste weren't running a tap at all — the
+    /// tap still stays alive to notify `onEvent` so `AppState` can show its
+    /// short "not ready" explanation.
+    public func setSystemSwallowEnabled(_ isEnabled: Bool) {
+        systemSwallowBox.setEnabled(isEnabled)
+    }
+
     /// Called from the CGEventTap C callback, which may run off the main
     /// actor from Swift's static point of view. Decides synchronously
     /// (via `shortcutBox`, not the main-actor `shortcut`) whether this event
@@ -138,7 +155,32 @@ public final class HotkeyManager {
             }
         }
 
-        return (isHotkey || isEscapeCancellation) ? nil : Unmanaged.passRetained(event)
+        // `INV-015`/`AT-090`: escape-cancellation is only ever enabled during
+        // a live recording session, which itself only exists while ready —
+        // it keeps swallowing unconditionally. The hotkey combination itself
+        // is only swallowed while `systemSwallowBox` says the app is
+        // `ready`; otherwise it passes through to the frontmost app even
+        // though `onEvent` above still fires (to show the "not ready"
+        // explanation).
+        let shouldSwallow = HotkeyManager.shouldSwallow(
+            isHotkey: isHotkey,
+            isEscapeCancellation: isEscapeCancellation,
+            systemSwallowEnabled: systemSwallowBox.isEnabled
+        )
+        return shouldSwallow ? nil : Unmanaged.passRetained(event)
+    }
+
+    /// Pure, `nonisolated`/`static` swallow decision extracted from
+    /// `handleTapEvent` for direct unit-testability (`HotkeyManagerTests`,
+    /// `AT-090`) without a real event tap or Accessibility trust — mirrors
+    /// `shortcutMatches(...)` below in shape and intent. No behavior change:
+    /// same boolean expression that used to live inline in `handleTapEvent`.
+    nonisolated static func shouldSwallow(
+        isHotkey: Bool,
+        isEscapeCancellation: Bool,
+        systemSwallowEnabled: Bool
+    ) -> Bool {
+        isEscapeCancellation || (isHotkey && systemSwallowEnabled)
     }
 
     private func evaluate(keyCode: UInt32, flagsRaw: UInt64, phase: Phase) {
@@ -170,6 +212,29 @@ public final class HotkeyManager {
             && hasOption == wantsOption
             && hasControl == wantsControl
             && hasShift == wantsShift
+    }
+}
+
+/// `INV-015`/`AT-090` counterpart to `EscapeCancellationBox`: whether a
+/// matched hotkey should actually be swallowed by the tap right now.
+/// Defaults to `false` (passthrough) — `AppState.refreshReadiness()` flips
+/// it to `true` only once `readiness.state == .ready`, so an app launched
+/// with Accessibility already trusted but permissions/model still pending
+/// never silently eats the user's chosen combination for no benefit.
+private nonisolated final class SystemSwallowBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = false
+
+    var isEnabled: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return value
+    }
+
+    func setEnabled(_ isEnabled: Bool) {
+        lock.lock()
+        value = isEnabled
+        lock.unlock()
     }
 }
 
