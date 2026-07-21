@@ -167,24 +167,24 @@ final class TextInserterTests: XCTestCase {
         )
     }
 
-    func test_allEligibleTargetsUseTheSameHIDPasteRoute_withoutAutomation() {
+    func test_allEligibleTargetsUseTheSameSystemPasteRoute() {
         XCTAssertEqual(
             TextInserter.pasteEventRoute(
                 for: .init(bundleIdentifier: "com.openai.codex", processIdentifier: 1)
             ),
-            .hid
+            .systemEvents
         )
         XCTAssertEqual(
             TextInserter.pasteEventRoute(
                 for: .init(bundleIdentifier: "com.anthropic.claudefordesktop", processIdentifier: 1)
             ),
-            .hid
+            .systemEvents
         )
         XCTAssertEqual(
             TextInserter.pasteEventRoute(
                 for: .init(bundleIdentifier: "com.microsoft.Word", processIdentifier: 1)
             ),
-            .hid
+            .systemEvents
         )
     }
 
@@ -192,11 +192,10 @@ final class TextInserterTests: XCTestCase {
     /// defect fix targeted directly — pin its policy outcome by name rather
     /// than relying only on the generic compatibility-set loop above, so a
     /// future edit that drops it from `knownOpaqueCompatibilityBundleIdentifiers`
-    /// or routes it back through per-app Automation fails a test that names
-    /// ChatGPT, not just an unrelated sibling bundle (Codex/Claude). Live
-    /// smoke still proves real appearance in the composer; this unit test
-    /// protects the no-Automation route selection.
-    func test_AT098_chatGPT_isOpaqueCompatibilityTarget_usingHIDRouteAndExtendedWindow() {
+    /// or from the System Events/extended-pasteboard-window special cases
+    /// fails a test that names ChatGPT, not just an unrelated sibling bundle.
+    /// The real delivery remains a mandatory live smoke on an installed app.
+    func test_AT098_chatGPT_isOpaqueCompatibilityTarget_usingSystemEventsRouteAndExtendedWindow() {
         XCTAssertEqual(
             TextInserter.pasteTargetEligibility(
                 bundleIdentifier: "com.openai.chat",
@@ -218,7 +217,7 @@ final class TextInserterTests: XCTestCase {
             TextInserter.pasteEventRoute(
                 for: .init(bundleIdentifier: "com.openai.chat", processIdentifier: 1)
             ),
-            .hid
+            .systemEvents
         )
         XCTAssertTrue(
             TextInserter.usesExtendedPasteboardWindow(

@@ -49,7 +49,7 @@ public struct TextInserter {
 
     /// `L-007`: Accessibility is used only to verify that a real editable
     /// target still has focus. Delivery itself has exactly one path:
-    /// clipboard + one Quartz HID ⌘V. A second AX `SetSelectedText` path is
+    /// clipboard + one simulated ⌘V. A second AX `SetSelectedText` path is
     /// deliberately avoided: native editors can accept both operations and
     /// would receive the transcription twice. If paste is not possible, the
     /// text stays on the clipboard as an honest `.copied` (`INV-008`).
@@ -68,8 +68,15 @@ public struct TextInserter {
 
         if isStillFrontmost(snapshot), pasteViaClipboardAndKeystroke(
             text,
+            targetProcessIdentifier: snapshot.processIdentifier,
             eventRoute: Self.pasteEventRoute(for: snapshot),
-            restoreDelayNanoseconds: Self.pasteboardRestoreDelay(for: snapshot)
+            restoreDelayNanoseconds: Self.pasteboardRestoreDelay(for: snapshot),
+            // System Events has the strongest real-world compatibility with
+            // the product's supported editors. If it fails before delivering
+            // a shortcut, a concrete AX target may receive one Quartz retry;
+            // opaque compatibility editors keep the result on the clipboard
+            // rather than risking a second insertion.
+            allowQuartzFallbackOnSystemEventsError: eligibility == .verifiedAXTarget
         ) {
             Task {
                 await DiagnosticLog.shared.log(
@@ -108,15 +115,17 @@ public struct TextInserter {
         return officeBundleIdentifiers.contains(snapshot.bundleIdentifier ?? "")
     }
 
-    /// A Quartz HID event is the only delivery route. It reaches the app that
-    /// is still frontmost after the admission gate, avoids per-app Automation
-    /// TCC, and never retries through a second API after the event is posted.
+    /// System Events emits the normal, user-equivalent paste gesture into the
+    /// editor that remained active during dictation. This is the last route
+    /// with confirmed live insertion in ChatGPT, Office and Terminal.
     enum PasteEventRoute: String, Equatable {
+        case process
         case hid
+        case systemEvents
     }
 
     static func pasteEventRoute(for snapshot: FrontAppSnapshot) -> PasteEventRoute {
-        .hid
+        .systemEvents
     }
 
     /// The two-level L-007 admission gate. A concrete editable AX target is
@@ -283,8 +292,10 @@ public struct TextInserter {
     /// plain clipboard-only `.copied`).
     private func pasteViaClipboardAndKeystroke(
         _ text: String,
+        targetProcessIdentifier: pid_t,
         eventRoute: PasteEventRoute,
-        restoreDelayNanoseconds: UInt64 = 300_000_000
+        restoreDelayNanoseconds: UInt64 = 300_000_000,
+        allowQuartzFallbackOnSystemEventsError: Bool
     ) -> Bool {
         let previous = Self.snapshotPasteboard()
         let pasteboard = NSPasteboard.general
@@ -292,7 +303,11 @@ public struct TextInserter {
         pasteboard.setString(text, forType: .string)
         let voicePasteChangeCount = pasteboard.changeCount
 
-        guard Self.simulatePasteKeystroke(route: eventRoute) else {
+        guard Self.simulatePasteKeystroke(
+            to: targetProcessIdentifier,
+            route: eventRoute,
+            allowQuartzFallbackOnSystemEventsError: allowQuartzFallbackOnSystemEventsError
+        ) else {
             Self.restorePasteboard(previous)
             return false
         }
@@ -314,11 +329,45 @@ public struct TextInserter {
     /// `virtualKey: 9` is `kVK_ANSI_V` (Carbon `HIToolbox` constant), spelled
     /// out numerically here to avoid pulling in `Carbon.HIToolbox` just for
     /// one key code.
-    private static func simulatePasteKeystroke(route: PasteEventRoute) -> Bool {
-        simulateQuartzPasteKeystroke(route: route)
+    private static func simulatePasteKeystroke(
+        to processIdentifier: pid_t,
+        route: PasteEventRoute,
+        allowQuartzFallbackOnSystemEventsError: Bool
+    ) -> Bool {
+        if route == .systemEvents {
+            // The source must contain real quotes; a previous version put
+            // literal backslashes into AppleScript, causing a syntax failure
+            // before macOS could even perform the paste.
+            var error: NSDictionary?
+            let script = NSAppleScript(
+                source: "tell application \"System Events\" to keystroke \"v\" using {command down}"
+            )
+            _ = script?.executeAndReturnError(&error)
+            if error == nil { return true }
+
+            // A concrete editable target can safely get one Quartz fallback:
+            // the System Events call failed before a shortcut was accepted.
+            // Opaque Electron targets intentionally stay clipboard-only on a
+            // denied Automation request, preventing a possible double paste.
+            if allowQuartzFallbackOnSystemEventsError {
+                return simulateQuartzPasteKeystroke(to: processIdentifier, route: .hid)
+            }
+            Task {
+                await DiagnosticLog.shared.log(
+                    "insertion.systemEvents.denied",
+                    detail: "route=systemEvents"
+                )
+            }
+            return false
+        }
+
+        return simulateQuartzPasteKeystroke(to: processIdentifier, route: route)
     }
 
-    private static func simulateQuartzPasteKeystroke(route: PasteEventRoute) -> Bool {
+    private static func simulateQuartzPasteKeystroke(
+        to processIdentifier: pid_t,
+        route: PasteEventRoute
+    ) -> Bool {
         let vKeyCode: CGKeyCode = 9
         // Quartz event posting is the supported macOS route for the normal
         // system paste gesture. It needs the same Accessibility TCC consent
@@ -331,14 +380,15 @@ public struct TextInserter {
         }
         keyDown.flags = .maskCommand
         keyUp.flags = .maskCommand
-        // A normal HID shortcut is accepted by native editors, Office,
-        // Terminal, browsers and Electron composers alike. The immediate
-        // frontmost-process recheck in `insert` is what keeps it targeted;
-        // delivery never activates VoicePaste or invokes Automation.
         switch route {
+        case .process:
+            keyDown.postToPid(processIdentifier)
+            keyUp.postToPid(processIdentifier)
         case .hid:
             keyDown.post(tap: .cghidEventTap)
             keyUp.post(tap: .cghidEventTap)
+        case .systemEvents:
+            preconditionFailure("System Events route returns before CGEvent creation")
         }
         return true
     }
