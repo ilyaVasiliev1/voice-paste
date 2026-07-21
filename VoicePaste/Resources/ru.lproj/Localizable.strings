@@ -114,6 +114,7 @@
 "onboarding.model.failed" = "Не удалось подготовить модель";
 "onboarding.model.retry" = "Повторить";
 "onboarding.model.download" = "Загрузить модель";
+"onboarding.model.sourceRecommendation" = "Если вы в Китае — китайское зеркало (быстрее). Из России и большинства стран — официальный Hugging Face.";
 
 /* Settings (UI-005) */
 "settings.section.general" = "Основное";

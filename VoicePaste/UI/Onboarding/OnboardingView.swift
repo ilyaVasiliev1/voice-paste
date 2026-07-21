@@ -164,10 +164,16 @@ struct OnboardingView: View {
             Text("onboarding.model.verifying")
         case .failed:
             Text("onboarding.model.failed").foregroundStyle(.red)
+            // `AT-096`/`UI-002`: the same source setting as Settings, so
+            // switching here and retrying starts the next attempt from the
+            // newly chosen source without leaving onboarding.
+            ModelSourcePicker(settings: appState.settings)
             Button("onboarding.model.retry") {
                 Task { _ = try? await appState.modelManager.ensureLoaded() }
             }
         case .notPrepared:
+            // `AT-096`/`UI-002`: shown before the first download attempt too.
+            ModelSourcePicker(settings: appState.settings)
             Button("onboarding.model.download") {
                 Task { _ = try? await appState.modelManager.ensureLoaded() }
             }
@@ -288,5 +294,27 @@ struct OnboardingView: View {
     private func stopAccessibilityPolling() {
         accessibilityPollTask?.cancel()
         accessibilityPollTask = nil
+    }
+}
+
+/// `AT-096`/`UI-002`: the same download-source setting exposed on the
+/// model step — not a separate piece of state. Mirrors `SettingsView`'s
+/// `Picker`/tags so `settings.modelDownloadSource` (`AT-093`, `L-010`)
+/// stays the single source of truth; `@ObservedObject` here (like
+/// `SettingsBody`) is what makes the shared `AppSettings` instance drive
+/// this control's live state.
+private struct ModelSourcePicker: View {
+    @ObservedObject var settings: AppSettings
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Picker("settings.model.downloadSource", selection: $settings.modelDownloadSource) {
+                Text("settings.model.downloadSource.mirror").tag(ModelDownloadSource.mirror)
+                Text("settings.model.downloadSource.official").tag(ModelDownloadSource.official)
+            }
+            Text("onboarding.model.sourceRecommendation")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 }
