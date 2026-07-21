@@ -188,6 +188,49 @@ final class TextInserterTests: XCTestCase {
         )
     }
 
+    /// `AT-098`: `com.openai.chat` (desktop ChatGPT) is the bundle id this
+    /// defect fix targeted directly — pin its policy outcome by name rather
+    /// than relying only on the generic compatibility-set loop above, so a
+    /// future edit that drops it from `knownOpaqueCompatibilityBundleIdentifiers`
+    /// or from the `.systemEvents`/extended-pasteboard-window special cases
+    /// fails a test that names ChatGPT, not just an unrelated sibling bundle
+    /// id (Codex/Claude). Does NOT cover the AppleScript-source escaping fix
+    /// itself (`simulatePasteKeystroke`'s literal source string) or the
+    /// Automation-denied honest-`.copied` path — both require a granted/denied
+    /// Automation TCC prompt against a live System Events call, only
+    /// reachable as `живой smoke` on an installed `.app`.
+    func test_AT098_chatGPT_isOpaqueCompatibilityTarget_usingSystemEventsRouteAndExtendedWindow() {
+        XCTAssertEqual(
+            TextInserter.pasteTargetEligibility(
+                bundleIdentifier: "com.openai.chat",
+                hasVerifiedEditableAXTarget: false,
+                hasOpaqueFocusedComposer: true
+            ),
+            .opaqueCompatibilityTarget
+        )
+        XCTAssertEqual(
+            TextInserter.pasteTargetEligibility(
+                bundleIdentifier: "com.openai.chat",
+                hasVerifiedEditableAXTarget: false,
+                hasOpaqueFocusedComposer: false
+            ),
+            .clipboardOnly,
+            "AT-098/AT-084: ChatGPT without a safe opaque focused composer must still be clipboard-only, not blind-pasted"
+        )
+        XCTAssertEqual(
+            TextInserter.pasteEventRoute(
+                for: .init(bundleIdentifier: "com.openai.chat", processIdentifier: 1)
+            ),
+            .systemEvents
+        )
+        XCTAssertTrue(
+            TextInserter.usesExtendedPasteboardWindow(
+                FrontAppSnapshot(bundleIdentifier: "com.openai.chat", processIdentifier: 1)
+            ),
+            "ChatGPT's Electron composer can read the clipboard asynchronously after the shortcut; must not restore under it"
+        )
+    }
+
     // MARK: - L-007 step 2: clipboard snapshot/restore round-trip
     //
     // `pasteViaClipboardAndKeystroke` itself can't be exercised headlessly

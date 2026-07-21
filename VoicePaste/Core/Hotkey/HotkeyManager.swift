@@ -13,8 +13,13 @@ public final class HotkeyManager {
         case up
     }
 
-    private var eventTap: CFMachPort?
-    private var runLoopSource: CFRunLoopSource?
+    // `INV-016`/`AT-097`: owns the CGEventTap's dedicated background thread
+    // and `CFRunLoop`. Never add the tap's source to `CFRunLoopGetMain()` —
+    // doing so ties hotkey delivery (and the ability to swallow the matched
+    // combination at all) to however busy the main thread happens to be,
+    // which can freeze system-wide keyboard input while SwiftUI is doing
+    // something else on it.
+    private let eventTapRunner = EventTapRunner()
     private var shortcut: HotkeyShortcut
     private let onEvent: (Phase) -> Void
     private let onEscape: () -> Void
@@ -42,12 +47,15 @@ public final class HotkeyManager {
         self.onEscape = onEscape
     }
 
-    public var isActive: Bool { eventTap != nil }
+    public var isActive: Bool { eventTapRunner.isRunning }
 
     /// (Re)starts the tap. Safe to call repeatedly; no-op if already active
-    /// or if Accessibility trust has not been granted yet.
+    /// or if Accessibility trust has not been granted yet. The tap itself is
+    /// created, attached to a run loop and enabled entirely on
+    /// `eventTapRunner`'s own dedicated background thread (`INV-016`) —
+    /// this method only kicks that off and reports the outcome to the log.
     public func start() {
-        guard eventTap == nil else { return }
+        guard !eventTapRunner.isRunning else { return }
         guard AXIsProcessTrusted() else {
             Task { await DiagnosticLog.shared.log("hotkey.start.skipped", detail: "accessibilityNotTrusted") }
             return
@@ -62,42 +70,31 @@ public final class HotkeyManager {
         // swallowing the matched hotkey (the Option+Space bug fix) requires
         // `.defaultTap`, whose callback's returned event is authoritative:
         // returning `nil` drops the event, returning it passes it through.
-        guard let tap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
-            place: .headInsertEventTap,
-            options: .defaultTap,
-            eventsOfInterest: mask,
+        eventTapRunner.start(
+            mask: mask,
             callback: { _, type, event, refcon in
                 guard let refcon else { return Unmanaged.passRetained(event) }
                 let manager = Unmanaged<HotkeyManager>.fromOpaque(refcon).takeUnretainedValue()
                 return manager.handleTapEvent(type: type, event: event)
             },
-            userInfo: refcon
-        ) else {
-            Task { await DiagnosticLog.shared.log("hotkey.start.failed", detail: "tapCreateFailed") }
-            return
+            refcon: refcon
+        ) { didStart in
+            Task {
+                if didStart {
+                    await DiagnosticLog.shared.log("hotkey.start.success")
+                } else {
+                    await DiagnosticLog.shared.log("hotkey.start.failed", detail: "tapCreateFailed")
+                }
+            }
         }
-
-        eventTap = tap
-        let source = CFMachPortCreateRunLoopSource(nil, tap, 0)
-        runLoopSource = source
-        if let source {
-            CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
-        }
-        CGEvent.tapEnable(tap: tap, enable: true)
-        Task { await DiagnosticLog.shared.log("hotkey.start.success") }
     }
 
+    /// Idempotent: disables the tap, tears down its run loop source and
+    /// stops/joins the dedicated background thread before returning
+    /// (`INV-016`). A second call while already stopped is a no-op.
     public func stop() {
-        guard eventTap != nil else { return }
-        if let tap = eventTap {
-            CGEvent.tapEnable(tap: tap, enable: false)
-        }
-        if let source = runLoopSource {
-            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
-        }
-        eventTap = nil
-        runLoopSource = nil
+        guard eventTapRunner.isRunning else { return }
+        eventTapRunner.stop()
         Task { await DiagnosticLog.shared.log("hotkey.stop") }
     }
 
@@ -135,6 +132,21 @@ public final class HotkeyManager {
     /// drives side effects (start/stop capture), never the swallow decision,
     /// which must happen synchronously in this same callback invocation.
     private nonisolated func handleTapEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+        // `INV-016`/`AT-097`: macOS disables an event tap on its own — no
+        // subscription needed to receive these two types — either after it
+        // judges the callback too slow (`.tapDisabledByTimeout`) or after a
+        // burst of user input (`.tapDisabledByUserInput`). Left alone the
+        // hotkey would silently stop working until the app is relaunched;
+        // re-enable it immediately, synchronously, right here. `event` is
+        // not a real key event for these two types, so it is simply passed
+        // through unmodified rather than evaluated for swallowing.
+        guard type != .tapDisabledByTimeout, type != .tapDisabledByUserInput else {
+            eventTapRunner.reenable()
+            let reason = type == .tapDisabledByTimeout ? "timeout" : "userInput"
+            Task { await DiagnosticLog.shared.log("hotkey.tap.reenabled", detail: "reason=\(reason)") }
+            return Unmanaged.passRetained(event)
+        }
+
         guard type == .keyDown || type == .keyUp else {
             return Unmanaged.passRetained(event)
         }
@@ -212,6 +224,192 @@ public final class HotkeyManager {
             && hasOption == wantsOption
             && hasControl == wantsControl
             && hasShift == wantsShift
+    }
+}
+
+/// A plain wrapper making an `UnsafeMutableRawPointer?` explicitly
+/// `Sendable` at the one place it needs to cross into a `Thread`'s
+/// `@Sendable` body (`EventTapRunner.start`). The pointer is `refcon` —
+/// `Unmanaged.passUnretained(self).toOpaque()` for the owning
+/// `HotkeyManager` — used only to recover that reference inside the tap's
+/// C callback; nothing here ever dereferences or mutates through it
+/// directly.
+private nonisolated struct RawPointerBox: @unchecked Sendable {
+    let pointer: UnsafeMutableRawPointer?
+
+    init(_ pointer: UnsafeMutableRawPointer?) {
+        self.pointer = pointer
+    }
+}
+
+/// Owns the `CGEventTap`'s dedicated background thread and its own
+/// `CFRunLoop` (`INV-016`/`AT-097`). A `CGEventTap`'s callback only ever
+/// fires on whichever run loop its `CFRunLoopSource` was added to; adding it
+/// to the main run loop (the anti-pattern this type replaces) means hotkey
+/// delivery for the entire system stalls for as long as the main thread is
+/// busy doing anything else — a SwiftUI layout pass, a sheet, a long
+/// synchronous call. This type instead runs the tap's whole lifecycle
+/// (create → add source to the current thread's run loop → enable →
+/// `CFRunLoopRun()`) on one dedicated `Thread`, created fresh by `start()`
+/// and joined by the matching `stop()`, so the main actor's own busyness can
+/// never affect whether the hotkey fires.
+///
+/// `nonisolated`/`@unchecked Sendable` and lock-protected for the same
+/// reason as `ShortcutBox` below: `reenable()` is called synchronously from
+/// the tap's C callback, which the C API always runs off the main actor
+/// from Swift's static point of view (here, literally on this type's own
+/// background thread), and there is no time for an actor hop before the
+/// callback must return.
+private nonisolated final class EventTapRunner: @unchecked Sendable {
+    private let lock = NSLock()
+    private var thread: Thread?
+    private var runLoop: CFRunLoop?
+    private var tap: CFMachPort?
+    private var doneSemaphore: DispatchSemaphore?
+    private var running = false
+
+    var isRunning: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return running
+    }
+
+    /// Starts the dedicated thread if one isn't already running; a second
+    /// call while one is already active is a no-op. `onStarted` fires
+    /// exactly once, off the main actor, reporting whether
+    /// `CGEvent.tapCreate` actually succeeded — the caller hops back to the
+    /// main actor itself to log the outcome.
+    func start(
+        mask: CGEventMask,
+        callback: @escaping CGEventTapCallBack,
+        refcon: UnsafeMutableRawPointer?,
+        onStarted: @escaping @Sendable (Bool) -> Void
+    ) {
+        lock.lock()
+        guard thread == nil else {
+            lock.unlock()
+            return
+        }
+        running = true
+        let semaphore = DispatchSemaphore(value: 0)
+        doneSemaphore = semaphore
+        // `UnsafeMutableRawPointer?` itself is not `Sendable`, but it is
+        // just a plain pointer value here — the object it addresses
+        // (`HotkeyManager`, via `Unmanaged.passUnretained`) is never mutated
+        // through this pointer, only unwrapped back into a reference inside
+        // the tap's callback. Boxing it makes that safety explicit to the
+        // compiler at the one crossing point (`Thread`'s `@Sendable` body).
+        let refconBox = RawPointerBox(refcon)
+        let newThread = Thread { [weak self] in
+            self?.runLoopBody(
+                mask: mask,
+                callback: callback,
+                refcon: refconBox.pointer,
+                doneSemaphore: semaphore,
+                onStarted: onStarted
+            )
+        }
+        newThread.name = "com.voicepaste.hotkeyEventTap"
+        // The tap's callback must never be starved behind other background
+        // work; this thread does nothing but block in `CFRunLoopRun()` and
+        // run the tiny synchronous callback.
+        newThread.qualityOfService = .userInteractive
+        thread = newThread
+        lock.unlock()
+
+        newThread.start()
+    }
+
+    /// The entire body of the dedicated thread. Everything here — tap
+    /// creation, attaching the source to a run loop, enabling the tap —
+    /// must happen on this same thread: `CFRunLoopGetCurrent()` only
+    /// returns *this* thread's run loop when called from it, and a
+    /// `CFRunLoopSource` added to one thread's run loop never fires on
+    /// another thread's.
+    private func runLoopBody(
+        mask: CGEventMask,
+        callback: @escaping CGEventTapCallBack,
+        refcon: UnsafeMutableRawPointer?,
+        doneSemaphore: DispatchSemaphore,
+        onStarted: @escaping @Sendable (Bool) -> Void
+    ) {
+        guard let tap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .defaultTap,
+            eventsOfInterest: mask,
+            callback: callback,
+            userInfo: refcon
+        ), let source = CFMachPortCreateRunLoopSource(nil, tap, 0) else {
+            lock.lock()
+            running = false
+            thread = nil
+            lock.unlock()
+            doneSemaphore.signal()
+            onStarted(false)
+            return
+        }
+
+        let currentRunLoop = CFRunLoopGetCurrent()
+        CFRunLoopAddSource(currentRunLoop, source, .commonModes)
+        CGEvent.tapEnable(tap: tap, enable: true)
+
+        lock.lock()
+        self.tap = tap
+        self.runLoop = currentRunLoop
+        lock.unlock()
+
+        onStarted(true)
+
+        // Blocks this thread — and only this thread — until `stop()` calls
+        // `CFRunLoopStop(currentRunLoop)` below.
+        CFRunLoopRun()
+
+        CFRunLoopRemoveSource(currentRunLoop, source, .commonModes)
+        CGEvent.tapEnable(tap: tap, enable: false)
+
+        lock.lock()
+        self.tap = nil
+        self.runLoop = nil
+        self.thread = nil
+        running = false
+        lock.unlock()
+
+        doneSemaphore.signal()
+    }
+
+    /// Re-enables the tap in place, synchronously, from whatever thread the
+    /// tap's own callback is already executing on (`INV-016`/`AT-097`): the
+    /// system disables a tap on its own after it judges the callback too
+    /// slow, or after a burst of user input; without this the hotkey would
+    /// silently stop working until the app is relaunched.
+    func reenable() {
+        lock.lock()
+        let tap = self.tap
+        lock.unlock()
+        guard let tap else { return }
+        CGEvent.tapEnable(tap: tap, enable: true)
+    }
+
+    /// Idempotent: a `stop()` with no active thread is a no-op. Blocks the
+    /// calling thread — the main actor, briefly — until the dedicated
+    /// thread has actually finished tearing down (disabled the tap, removed
+    /// its source, exited `CFRunLoopRun()`), so a following `start()` can
+    /// never race with this `stop()`'s cleanup.
+    func stop() {
+        lock.lock()
+        guard let runLoop, let semaphore = doneSemaphore else {
+            lock.unlock()
+            return
+        }
+        lock.unlock()
+
+        CFRunLoopStop(runLoop)
+        semaphore.wait()
+
+        lock.lock()
+        doneSemaphore = nil
+        lock.unlock()
     }
 }
 
