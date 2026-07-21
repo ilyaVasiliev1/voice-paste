@@ -11,6 +11,10 @@ struct OnboardingView: View {
     @Environment(\.openWindow) private var openWindow
     @State private var step: Step = .purpose
     @State private var accessibilityPollTask: Task<Void, Never>?
+    /// `AT-092`/`UI-002`: set when `requestMicrophoneAccess()` returns
+    /// `.notPresented` — macOS silently skipped its consent sheet. Cleared on
+    /// every fresh attempt and whenever the step changes.
+    @State private var didFailToPresentConsentSheet = false
 
     private enum Step: Int, CaseIterable {
         case purpose, microphone, accessibility, model
@@ -43,6 +47,9 @@ struct OnboardingView: View {
         }
         .onChange(of: step) { _, newStep in
             updateAccessibilityPolling(for: newStep)
+            if newStep != .microphone {
+                didFailToPresentConsentSheet = false
+            }
         }
         .onDisappear {
             stopAccessibilityPolling()
@@ -72,14 +79,34 @@ struct OnboardingView: View {
             Text("onboarding.microphone.body")
             if appState.readiness.microphoneAuthorization != .authorized {
                 Button("onboarding.microphone.grant") {
+                    didFailToPresentConsentSheet = false
                     Task {
                         let action = await appState.readiness.requestMicrophoneAccess()
+                        // `AT-092`/`UI-002`: only a *real* denial sends the
+                        // person to System Settings. `.notPresented` means
+                        // macOS silently skipped its consent sheet — System
+                        // Settings would show an empty "Microphone" list, so
+                        // stay here and let them retry instead.
                         if action == .needsSystemSettings {
                             openSystemSettings(pane: "Privacy_Microphone")
+                        } else if action == .notPresented {
+                            didFailToPresentConsentSheet = true
                         }
                     }
                 }
-                Button("onboarding.openSystemSettings") { openSystemSettings(pane: "Privacy_Microphone") }
+                // `AT-092`/`UI-002`: the manual System Settings link is only
+                // safe to show for a *real* denial (`.denied`/`.restricted`).
+                // At `.notDetermined` the app is not yet listed under
+                // Privacy & Security → Microphone, so this button would open
+                // an empty list — a dead end the spec forbids.
+                if appState.readiness.microphoneAuthorization == .denied
+                    || appState.readiness.microphoneAuthorization == .restricted {
+                    Button("onboarding.openSystemSettings") { openSystemSettings(pane: "Privacy_Microphone") }
+                }
+            }
+            if didFailToPresentConsentSheet {
+                Text("onboarding.microphone.notPresented")
+                    .foregroundStyle(.secondary)
             }
             Text(microphoneStatusKey)
                 .foregroundStyle(.secondary)

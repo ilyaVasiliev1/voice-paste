@@ -63,8 +63,8 @@ VoicePaste не устанавливается через App Store, поэто�
    ```bash
    rm -rf ~/Library/Application\ Support/VoicePaste
    rm -rf ~/Library/Caches/VoicePaste
-   rm -f  ~/Library/Preferences/com.example.VoicePaste.plist
-   rm -rf ~/Library/Saved\ Application\ State/com.example.VoicePaste.savedState
+   rm -f  ~/Library/Preferences/com.ilyavasiliev.voicepaste.plist
+   rm -rf ~/Library/Saved\ Application\ State/com.ilyavasiliev.voicepaste.savedState
    ```
 
 3. (Необязательно) Убери разрешения в **Системные настройки → Конфиденциальность и безопасность → Микрофон** и **Универсальный доступ**.

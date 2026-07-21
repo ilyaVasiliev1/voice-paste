@@ -96,6 +96,7 @@
 "onboarding.microphone.body" = "VoicePaste использует микрофон только во время активной диктовки — чтобы распознать вашу речь.";
 "onboarding.microphone.grant" = "Разрешить доступ к микрофону";
 "onboarding.microphone.status.systemSettings" = "Доступ отключён в настройках macOS. Откройте раздел «Микрофон» и включите VoicePaste.";
+"onboarding.microphone.notPresented" = "Системный запрос не появился. Нажмите «Разрешить доступ к микрофону» ещё раз.";
 "onboarding.accessibility.title" = "Универсальный доступ";
 "onboarding.accessibility.body" = "Это разрешение нужно для глобальной горячей клавиши и для вставки текста в поле, где вы диктуете, без переключения окон.";
 "onboarding.accessibility.grant" = "Разрешить универсальный доступ";
