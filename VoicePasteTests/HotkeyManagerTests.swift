@@ -136,6 +136,28 @@ final class HotkeyManagerTests: XCTestCase {
         )
     }
 
+    // MARK: - INV-016 regression: no main-actor work for ordinary typing
+
+    /// Regression for a real system-freeze incident: the event tap used to
+    /// enqueue a `Task { @MainActor ... }` for every key down and key up.
+    /// Typing normally then flooded the app's UI queue and caused timeout
+    /// disables. Only the actual hotkey or an enabled Escape cancellation
+    /// may cross from the tap thread into app state.
+    func test_shouldDispatchToAppState_ordinaryKey_isFalse() {
+        XCTAssertFalse(
+            HotkeyManager.shouldDispatchToAppState(isHotkey: false, isEscapeCancellation: false)
+        )
+    }
+
+    func test_shouldDispatchToAppState_hotkeyOrEscape_isTrue() {
+        XCTAssertTrue(
+            HotkeyManager.shouldDispatchToAppState(isHotkey: true, isEscapeCancellation: false)
+        )
+        XCTAssertTrue(
+            HotkeyManager.shouldDispatchToAppState(isHotkey: false, isEscapeCancellation: true)
+        )
+    }
+
     /// `setSystemSwallowEnabled(_:)` remains the only public surface that
     /// drives `systemSwallowEnabled` into the real `CGEventTap` callback path
     /// (`SystemSwallowBox`, not directly testable headlessly per the class

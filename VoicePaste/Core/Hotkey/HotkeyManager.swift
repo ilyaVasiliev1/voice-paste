@@ -158,12 +158,24 @@ public final class HotkeyManager {
             && keyCode == 53 // kVK_Escape
             && escapeCancellationBox.isEnabled
 
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            if isEscapeCancellation {
-                self.onEscape()
-            } else {
-                self.evaluate(keyCode: keyCode, flagsRaw: flagsRaw, phase: phase)
+        // A global event tap receives *every* keystroke. Scheduling a main
+        // actor task for ordinary typing created an unbounded queue while the
+        // user was writing in another application. That starved VoicePaste's
+        // UI and eventually made macOS disable the event tap for a timeout.
+        // Only the registered shortcut (or Escape during an active recording)
+        // is relevant to this app; all other input must return from this
+        // callback without allocating work or touching the main actor.
+        if HotkeyManager.shouldDispatchToAppState(
+            isHotkey: isHotkey,
+            isEscapeCancellation: isEscapeCancellation
+        ) {
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if isEscapeCancellation {
+                    self.onEscape()
+                } else {
+                    self.evaluate(keyCode: keyCode, flagsRaw: flagsRaw, phase: phase)
+                }
             }
         }
 
@@ -193,6 +205,18 @@ public final class HotkeyManager {
         systemSwallowEnabled: Bool
     ) -> Bool {
         isEscapeCancellation || (isHotkey && systemSwallowEnabled)
+    }
+
+    /// `INV-016` regression: ordinary input must never enqueue a main-actor task
+    /// from the global tap. This is deliberately separate from
+    /// `shouldSwallow`: an unready hotkey still needs an app-state callback
+    /// to show its "not ready" feedback, even though it is passed through to
+    /// the frontmost app.
+    nonisolated static func shouldDispatchToAppState(
+        isHotkey: Bool,
+        isEscapeCancellation: Bool
+    ) -> Bool {
+        isHotkey || isEscapeCancellation
     }
 
     private func evaluate(keyCode: UInt32, flagsRaw: UInt64, phase: Phase) {
