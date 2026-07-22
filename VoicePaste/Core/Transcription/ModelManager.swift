@@ -110,6 +110,16 @@ public final class ModelManager: ObservableObject {
         await waitForInitialModelDiscovery()
     }
 
+    /// `L-001`/`UI-002`: the one place at launch that must *not* race the
+    /// startup disk check. Readiness starts at `.notPrepared` (= "модель не
+    /// скачана") until the background walk reports back; deciding whether to
+    /// show onboarding before that lands makes a fully-configured app flash
+    /// its first-run window for no reason. Awaiting here costs a directory
+    /// walk of a few dozen file records and never blocks the main thread.
+    public func awaitInitialModelDiscovery() async {
+        await waitForInitialModelDiscovery()
+    }
+
     public var isReady: Bool {
         if case .ready = state { return true }
         return false

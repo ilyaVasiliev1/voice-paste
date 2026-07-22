@@ -94,8 +94,12 @@ public final class ReadinessCoordinator: ObservableObject {
             state = .downloadingModel(progress: 1)
         case .notPrepared:
             state = .needsModel
-        case .failed(let error):
-            state = .error(error == .verificationFailed ? .modelMissing : .modelMissing)
+        case .failed:
+            // Every `ModelError` (download, verification, insufficient
+            // storage) means the same thing to readiness: there is no usable
+            // model. The distinction between them belongs to the model step,
+            // which reads `modelManager.state` directly and offers the retry.
+            state = .error(.modelMissing)
         }
     }
 

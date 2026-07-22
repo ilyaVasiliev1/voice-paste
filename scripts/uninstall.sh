@@ -22,6 +22,11 @@ TARGETS=(
   "$HOME/Library/HTTPStorages/$BUNDLE_ID"
   "$HOME/Library/Preferences/$BUNDLE_ID.plist"
   "$HOME/Library/Saved Application State/$BUNDLE_ID.savedState"
+  # Наследие версий до 0.1.6: WhisperKit по умолчанию клал токенайзер в
+  # ~/Documents. Теперь он живёт в Application Support, но у тех, кто
+  # обновился, старая копия остаётся. Удаляем ровно свой подкаталог модели —
+  # не всю папку huggingface, которой могут пользоваться другие инструменты.
+  "$HOME/Documents/huggingface/models/openai/whisper-large-v3"
 )
 
 echo "Будут удалены VoicePaste и все его данные (включая модель ~600 МБ):"
@@ -55,6 +60,17 @@ pkill -x VoicePaste 2>/dev/null || true
 for path in "${existing[@]}"; do
   rm -rf "$path"
   echo "удалено: $path"
+done
+
+# После удаления своего подкаталога в ~/Documents убрать оставшиеся пустые
+# родительские папки. `rmdir` не трогает непустые — чужие данные в
+# безопасности.
+find "$HOME/Documents/huggingface" -name .DS_Store -delete 2>/dev/null || true
+for dir in \
+  "$HOME/Documents/huggingface/models/openai" \
+  "$HOME/Documents/huggingface/models" \
+  "$HOME/Documents/huggingface"; do
+  rmdir "$dir" 2>/dev/null || true
 done
 
 echo

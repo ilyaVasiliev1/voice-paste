@@ -1,6 +1,7 @@
 import AppKit
 import CoreGraphics
 import ApplicationServices
+import Dispatch
 
 /// Global hotkey listener backed by a listen-only `CGEventTap` (`DEP-005`).
 /// Requires Accessibility trust to receive events at all; when trust is not
@@ -132,16 +133,27 @@ public final class HotkeyManager {
     /// drives side effects (start/stop capture), never the swallow decision,
     /// which must happen synchronously in this same callback invocation.
     private nonisolated func handleTapEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-        // `INV-016`/`AT-097`: these are macOS fail-safe notifications, not
-        // key events. A disabled tap must never fight the system by instantly
-        // enabling itself again after a user-input burst: that can turn a
-        // momentary stall into a keyboard-wide loop. We fail open — ordinary
-        // typing keeps flowing and the app only records diagnostics. A normal
-        // app restart recreates the shortcut listener if macOS has disabled
-        // it permanently.
+        // `INV-016`/`AT-097`: these are macOS fail-safe notifications, not key
+        // events. macOS disables the tap when its callback thread was starved
+        // (a CPU-saturated machine), and a disabled tap silently stops
+        // delivering *everything* — the hotkey would be dead until the next app
+        // launch, with no sign to the user. The spec therefore requires the tap
+        // to come back up by itself. Re-enabling is done right here, on the
+        // tap's own thread, which is the documented place for it.
+        //
+        // The re-enable is rate-limited (`EventTapRunner`, ≤5 per minute)
+        // precisely so the app can never get into a fight with the system: past
+        // that budget it fails open — ordinary typing keeps flowing untouched
+        // and only diagnostics are recorded.
         guard type != .tapDisabledByTimeout, type != .tapDisabledByUserInput else {
             let reason = type == .tapDisabledByTimeout ? "timeout" : "userInput"
-            Task { await DiagnosticLog.shared.log("hotkey.tap.disabled", detail: "reason=\(reason)") }
+            let didReEnable = eventTapRunner.reEnableAfterSystemDisable()
+            Task {
+                await DiagnosticLog.shared.log(
+                    "hotkey.tap.disabled",
+                    detail: "reason=\(reason) reEnabled=\(didReEnable)"
+                )
+            }
             return Unmanaged.passRetained(event)
         }
 
@@ -287,6 +299,10 @@ private nonisolated final class EventTapRunner: @unchecked Sendable {
     private var tap: CFMachPort?
     private var doneSemaphore: DispatchSemaphore?
     private var running = false
+    /// Rate-limit bookkeeping for `reEnableAfterSystemDisable()`. Cleared on
+    /// every fresh `runLoopBody` so a restarted tap gets a full budget.
+    private var reEnableCount = 0
+    private var reEnableWindowStartNanos: UInt64?
 
     var isRunning: Bool {
         lock.lock()
@@ -377,6 +393,8 @@ private nonisolated final class EventTapRunner: @unchecked Sendable {
         lock.lock()
         self.tap = tap
         self.runLoop = currentRunLoop
+        reEnableCount = 0
+        reEnableWindowStartNanos = nil
         lock.unlock()
 
         onStarted(true)
@@ -397,6 +415,41 @@ private nonisolated final class EventTapRunner: @unchecked Sendable {
 
         doneSemaphore.signal()
     }
+
+    /// `INV-016`/`AT-097`: brings the tap back after macOS disabled it
+    /// (`kCGEventTapDisabledByTimeout`/`ByUserInput`). Called synchronously
+    /// from the tap's own callback thread, which is where `CGEvent.tapEnable`
+    /// belongs. Returns whether it actually re-enabled.
+    ///
+    /// Rate-limited to `maxReEnablesPerWindow` within `reEnableWindowNanos` so
+    /// a genuinely pathological situation (the machine is pinned and the tap
+    /// times out again immediately) degrades into the old fail-open behavior
+    /// instead of an enable/disable loop. The budget resets once the machine
+    /// recovers and a full quiet window passes.
+    func reEnableAfterSystemDisable() -> Bool {
+        lock.lock()
+        guard running, let tap else {
+            lock.unlock()
+            return false
+        }
+        let now = DispatchTime.now().uptimeNanoseconds
+        if reEnableWindowStartNanos == nil || now &- reEnableWindowStartNanos! > Self.reEnableWindowNanos {
+            reEnableWindowStartNanos = now
+            reEnableCount = 0
+        }
+        guard reEnableCount < Self.maxReEnablesPerWindow else {
+            lock.unlock()
+            return false
+        }
+        reEnableCount += 1
+        lock.unlock()
+
+        CGEvent.tapEnable(tap: tap, enable: true)
+        return true
+    }
+
+    private static let maxReEnablesPerWindow = 5
+    private static let reEnableWindowNanos: UInt64 = 60_000_000_000 // 60 s
 
     /// Idempotent: a `stop()` with no active thread is a no-op. Blocks the
     /// calling thread — the main actor, briefly — until the dedicated

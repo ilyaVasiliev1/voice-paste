@@ -71,6 +71,16 @@ struct VoicePasteApp: App {
                     appDelegate.appState = appState
                     appDelegate.windowRouter = windowRouter
 
+                    // `L-001`/`UI-002`: the model's on-disk check runs in the
+                    // background from `ModelManager.init`. Until it reports
+                    // back, model state is `.notPrepared` — i.e. readiness says
+                    // "нужна загрузка модели" even on a machine where the model
+                    // has been installed for weeks. Deciding about onboarding
+                    // before that lands is a race that can pop the first-run
+                    // window in a fully-configured user's face; awaiting it
+                    // makes the launch decision deterministic.
+                    await appState.modelManager.awaitInitialModelDiscovery()
+
                     // `INV-015`/`AT-089`: `refreshReadiness()` both computes
                     // `readiness.state` and applies the Dock policy it gates
                     // (`applyDockVisibility()`, called from inside it) — a

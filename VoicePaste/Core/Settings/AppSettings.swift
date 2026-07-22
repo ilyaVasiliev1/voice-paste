@@ -23,7 +23,10 @@ public final class AppSettings: ObservableObject {
     @Published public var hotkey: HotkeyShortcut { didSet { persistHotkey() } }
     /// Default `toggle`.
     @Published public var recordingMode: RecordingMode { didSet { persist() } }
-    /// `1...60`; `0` keeps the model warm. Default `10`.
+    /// `0...60` minutes of idle time before the model is released. Default
+    /// `0` = keep it warm (`L-010`): a fixed idle timer made every later
+    /// dictation pay a reload, so the model is now given back on system
+    /// memory pressure instead. Non-zero is an explicit user choice.
     @Published public var modelUnloadMinutes: Int { didSet { persist() } }
     /// Default `true`.
     @Published public var historyEnabled: Bool {
@@ -43,7 +46,8 @@ public final class AppSettings: ObservableObject {
     /// Default `true`. When disabled, the app stays available from the menu
     /// bar but is absent from the Dock and app switcher.
     @Published public var showInDock: Bool { didSet { persist() } }
-    /// Default `.mirror` (`AT-093`, `L-010`). Applies to the *next* model
+    /// Default `.github` (`AT-093`, `L-010`) — the project's own release is
+    /// the only source reachable from mainland China. Applies to the *next* model
     /// download (and any tokenizer/config re-fetch); never re-downloads an
     /// already-verified local model.
     @Published public var modelDownloadSource: ModelDownloadSource { didSet { persist() } }
