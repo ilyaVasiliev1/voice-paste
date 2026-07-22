@@ -18,34 +18,73 @@ struct HUDContentView: View {
         let layout = HUDLayout.forState(state)
 
         ZStack(alignment: .bottom) {
-            if state != .hidden {
-                RoundedRectangle(cornerRadius: layout.cornerRadius, style: .continuous)
-                    .fill(.regularMaterial)
-                    // A restrained dark scrim preserves the native material
-                    // while separating the HUD from dark chat/editor windows.
-                    .overlay {
-                        RoundedRectangle(cornerRadius: layout.cornerRadius, style: .continuous)
-                            .fill(.black.opacity(0.20))
-                            .allowsHitTesting(false)
-                    }
-                    .frame(width: layout.width, height: layout.height)
-                    // The material and dark scrim already separate the HUD.
-                    // An extra black drop shadow looked like a horizontal
-                    // stripe under the panel on dark windows, so it is
-                    // intentionally omitted.
-                    .overlay {
-                        content(for: state)
-                            .frame(width: layout.width, height: layout.height)
-                    }
-                    .overlay(alignment: .bottom) {
-                        autoDismissProgress(for: state, cornerRadius: layout.cornerRadius)
-                    }
-                    .onHover { stateHolder.actions.onInteractionChanged($0) }
+            switch state {
+            case .hidden:
+                EmptyView()
+            case let .error(message, .none):
+                // An informational result with no recovery action ("Не удалось
+                // распознать речь", the not-ready reason "Загрузка модели…")
+                // hugs its own text plus a fixed side inset. It must never
+                // stretch to the wide actionable-error capsule, which left the
+                // short message floating with oversized left/right margins.
+                infoPlaque(message: message, cornerRadius: layout.cornerRadius)
+            default:
+                fixedCapsule(state: state, layout: layout)
             }
         }
         .frame(width: HUDLayout.hostWidth, height: HUDLayout.hostHeight, alignment: .bottom)
         .compositingGroup()
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: layout)
+    }
+
+    /// Fixed-geometry capsule used by every state whose child controls have a
+    /// known width (`HUDLayout.forState`). The NSPanel host stays the largest
+    /// required size; only this inner shape morphs, so an AppKit window resize
+    /// never races SwiftUI layout during a state change.
+    private func fixedCapsule(state: HUDState, layout: HUDLayout) -> some View {
+        RoundedRectangle(cornerRadius: layout.cornerRadius, style: .continuous)
+            .fill(.regularMaterial)
+            // A restrained dark scrim preserves the native material while
+            // separating the HUD from dark chat/editor windows.
+            .overlay {
+                RoundedRectangle(cornerRadius: layout.cornerRadius, style: .continuous)
+                    .fill(.black.opacity(0.20))
+                    .allowsHitTesting(false)
+            }
+            .frame(width: layout.width, height: layout.height)
+            // The material and dark scrim already separate the HUD. An extra
+            // black drop shadow looked like a horizontal stripe under the panel
+            // on dark windows, so it is intentionally omitted.
+            .overlay {
+                content(for: state)
+                    .frame(width: layout.width, height: layout.height)
+            }
+            .overlay(alignment: .bottom) {
+                autoDismissProgress(for: state, cornerRadius: layout.cornerRadius)
+            }
+            .onHover { stateHolder.actions.onInteractionChanged($0) }
+    }
+
+    /// Content-sized plaque: the capsule wraps the message (single line) plus a
+    /// fixed horizontal inset, with a sensible minimum, rather than a fixed
+    /// width. Height matches the 48 pt capsules so the morph stays consistent.
+    private func infoPlaque(message: String, cornerRadius: CGFloat) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        return Text(message)
+            .font(.callout.weight(.medium))
+            .foregroundStyle(.primary)
+            .lineLimit(1)
+            .fixedSize()
+            .frame(height: 48)
+            .padding(.horizontal, 20)
+            .frame(minWidth: 120)
+            .background {
+                shape.fill(.regularMaterial)
+                    .overlay {
+                        shape.fill(.black.opacity(0.20)).allowsHitTesting(false)
+                    }
+            }
+            .onHover { stateHolder.actions.onInteractionChanged($0) }
     }
 
     @ViewBuilder
