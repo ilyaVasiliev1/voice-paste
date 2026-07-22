@@ -30,6 +30,7 @@
 		C00000000000000000000144 /* ModelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000143 /* ModelState.swift */; };
 		C00000000000000000000146 /* Transcribing.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000145 /* Transcribing.swift */; };
 		C00000000000000000000148 /* WhisperKitTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000147 /* WhisperKitTranscriber.swift */; };
+		C00000000000000000000201 /* GitHubModelDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000200 /* GitHubModelDownloader.swift */; };
 		C0000000000000000000014A /* AppDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000149 /* AppDatabase.swift */; };
 		C0000000000000000000014C /* HistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000014B /* HistoryStore.swift */; };
 		C0000000000000000000014E /* Migrations.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000014D /* Migrations.swift */; };
@@ -116,6 +117,7 @@
 		C00000000000000000000143 /* ModelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelState.swift; sourceTree = "<group>"; };
 		C00000000000000000000145 /* Transcribing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transcribing.swift; sourceTree = "<group>"; };
 		C00000000000000000000147 /* WhisperKitTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperKitTranscriber.swift; sourceTree = "<group>"; };
+		C00000000000000000000200 /* GitHubModelDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubModelDownloader.swift; sourceTree = "<group>"; };
 		C00000000000000000000149 /* AppDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDatabase.swift; sourceTree = "<group>"; };
 		C0000000000000000000014B /* HistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStore.swift; sourceTree = "<group>"; };
 		C0000000000000000000014D /* Migrations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Migrations.swift; sourceTree = "<group>"; };
@@ -347,6 +349,7 @@
 				C00000000000000000000143 /* ModelState.swift */,
 				C00000000000000000000145 /* Transcribing.swift */,
 				C00000000000000000000147 /* WhisperKitTranscriber.swift */,
+				C00000000000000000000200 /* GitHubModelDownloader.swift */,
 				C00000000000000000000807 /* TrailingHallucinationFilter.swift */,
 				C0000000000000000000024B /* LocalModelDetection.swift */,
 			);
@@ -635,6 +638,7 @@
 				C00000000000000000000144 /* ModelState.swift in Sources */,
 				C00000000000000000000146 /* Transcribing.swift in Sources */,
 				C00000000000000000000148 /* WhisperKitTranscriber.swift in Sources */,
+				C00000000000000000000201 /* GitHubModelDownloader.swift in Sources */,
 				C00000000000000000000806 /* TrailingHallucinationFilter.swift in Sources */,
 				C0000000000000000000024A /* LocalModelDetection.swift in Sources */,
 				C0000000000000000000014A /* AppDatabase.swift in Sources */,
@@ -729,14 +733,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = VoicePaste/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.2;
+				MARKETING_VERSION = 0.1.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ilyavasiliev.voicepaste;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
@@ -755,13 +759,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = VoicePaste/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.2;
+				MARKETING_VERSION = 0.1.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ilyavasiliev.voicepaste;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;

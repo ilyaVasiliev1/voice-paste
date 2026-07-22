@@ -113,6 +113,7 @@
 "onboarding.model.failed" = "Не удалось подготовить модель";
 "onboarding.model.retry" = "Повторить";
 "onboarding.model.download" = "Загрузить модель";
+"onboarding.model.cancelDownload" = "Отменить загрузку";
 "onboarding.model.sourceRecommendation" = "Если вы в Китае — китайское зеркало (быстрее). Из России и большинства стран — официальный Hugging Face.";
 
 /* Settings (UI-005) */
@@ -148,9 +149,10 @@
 "settings.model.size" = "Размер";
 "settings.model.status" = "Готовность";
 "settings.model.downloadSource" = "Источник загрузки";
+"settings.model.downloadSource.github" = "GitHub (рекомендуется, работает из Китая)";
 "settings.model.downloadSource.mirror" = "Китайское зеркало (hf-mirror.com)";
 "settings.model.downloadSource.official" = "Официальный (huggingface.co)";
-"settings.model.downloadSource.explanation" = "Зеркало быстрее из материкового Китая, где официальный хост почти недоступен. Смена применится к следующей загрузке.";
+"settings.model.downloadSource.explanation" = "GitHub качает модель напрямую с релиза проекта — единственный источник, доступный из материкового Китая, с докачкой при обрыве. HuggingFace и зеркало часто недоступны оттуда. Смена применится к следующей загрузке.";
 "settings.model.loadOrRetry" = "Загрузить/Повторить";
 "settings.model.unloadAfter" = "Выгружать из памяти при простое (файл модели остаётся на диске)";
 "settings.model.unloadAfter.minutes" = "%d мин";

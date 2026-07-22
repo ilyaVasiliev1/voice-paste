@@ -127,6 +127,7 @@ private struct SettingsBody: View {
             ))
             LabeledContent("settings.model.status", value: modelStatusDescription)
             Picker("settings.model.downloadSource", selection: $settings.modelDownloadSource) {
+                Text("settings.model.downloadSource.github").tag(ModelDownloadSource.github)
                 Text("settings.model.downloadSource.mirror").tag(ModelDownloadSource.mirror)
                 Text("settings.model.downloadSource.official").tag(ModelDownloadSource.official)
             }

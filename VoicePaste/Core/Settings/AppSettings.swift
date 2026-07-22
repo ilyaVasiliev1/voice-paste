@@ -81,7 +81,7 @@ public final class AppSettings: ObservableObject {
         self.languageMode = TranscriptionLanguage(rawValue: defaults.string(forKey: Keys.languageMode) ?? "") ?? .auto
         self.launchAtLogin = defaults.object(forKey: Keys.launchAtLogin) as? Bool ?? false
         self.showInDock = defaults.object(forKey: Keys.showInDock) as? Bool ?? true
-        self.modelDownloadSource = ModelDownloadSource(rawValue: defaults.string(forKey: Keys.modelDownloadSource) ?? "") ?? .mirror
+        self.modelDownloadSource = ModelDownloadSource(rawValue: defaults.string(forKey: Keys.modelDownloadSource) ?? "") ?? .github
         // `historyEnabled`'s own `didSet` above doesn't fire for this
         // initializer assignment, so the mirror needs an explicit initial
         // sync to match the value just loaded from `UserDefaults`.

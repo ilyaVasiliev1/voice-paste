@@ -18,16 +18,17 @@ final class AppSettingsModelDownloadSourceTests: XCTestCase {
         }
     }
 
-    /// `AT-093`: "по умолчанию — зеркало" — a fresh `UserDefaults` with no
-    /// stored value must resolve to `.mirror`, never `.official`.
-    func test_default_isMirror_onEmptyDefaults() {
+    /// `AT-093`/`L-010`: the default source is `.github` — the only host
+    /// reachable from mainland China (where the app is used), so a fresh
+    /// install downloads the model successfully out of the box instead of
+    /// stalling against HuggingFace/its mirror.
+    func test_default_isGitHub_onEmptyDefaults() {
         let defaults = makeIsolatedDefaults()
         defer { clean(defaults) }
 
         let settings = AppSettings(defaults: defaults)
 
-        XCTAssertEqual(settings.modelDownloadSource, .mirror)
-        XCTAssertEqual(settings.modelDownloadEndpoint, "https://hf-mirror.com")
+        XCTAssertEqual(settings.modelDownloadSource, .github)
     }
 
     /// `AT-093`: "Значение сохраняется между запусками" — setting `.official`
@@ -65,13 +66,13 @@ final class AppSettingsModelDownloadSourceTests: XCTestCase {
     /// A raw defaults value that doesn't match any known case (e.g. a stale
     /// build's removed case, or corrupted defaults) must fall back to the
     /// documented default rather than crash or silently pick `.official`.
-    func test_unrecognizedStoredValue_fallsBackToMirror() {
+    func test_unrecognizedStoredValue_fallsBackToGitHub() {
         let defaults = makeIsolatedDefaults()
         defer { clean(defaults) }
         defaults.set("some-removed-case", forKey: "modelDownloadSource")
 
         let settings = AppSettings(defaults: defaults)
 
-        XCTAssertEqual(settings.modelDownloadSource, .mirror)
+        XCTAssertEqual(settings.modelDownloadSource, .github)
     }
 }

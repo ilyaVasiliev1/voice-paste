@@ -239,6 +239,15 @@ struct OnboardingView: View {
             Text(speedAndETAText(progress))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            // `L-010`: cancel the in-flight download and clear whatever was
+            // written, dropping back to `.notPrepared` so the source can be
+            // switched and the download restarted from the chosen host.
+            Button("onboarding.model.cancelDownload") {
+                appState.modelManager.cancelDownload()
+                Task { await appState.modelManager.deleteModel() }
+            }
+            .buttonStyle(.link)
+            .font(.caption)
         }
     }
 
@@ -367,6 +376,7 @@ private struct ModelSourcePicker: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Picker("settings.model.downloadSource", selection: $settings.modelDownloadSource) {
+                Text("settings.model.downloadSource.github").tag(ModelDownloadSource.github)
                 Text("settings.model.downloadSource.mirror").tag(ModelDownloadSource.mirror)
                 Text("settings.model.downloadSource.official").tag(ModelDownloadSource.official)
             }

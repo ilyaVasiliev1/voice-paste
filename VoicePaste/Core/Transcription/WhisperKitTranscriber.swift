@@ -80,6 +80,7 @@ nonisolated public struct WhisperKitTranscriber: Transcribing {
     public init(
         modelDirectory: URL,
         endpoint: String = ModelCatalog.downloadEndpoint,
+        tokenizerFolder: URL? = nil,
         downloadProgress: (@Sendable (Double) -> Void)? = nil
     ) async throws {
         // `L-010`/`AT-004`/`US-001`: WhisperKit's `setupModels` takes two
@@ -110,6 +111,7 @@ nonisolated public struct WhisperKitTranscriber: Transcribing {
                 model: ModelCatalog.modelID,
                 modelEndpoint: endpoint,
                 modelFolder: existing.path,
+                tokenizerFolder: tokenizerFolder,
                 download: false
             )
             preparedPipe = try await WhisperKit(config)
@@ -137,6 +139,7 @@ nonisolated public struct WhisperKitTranscriber: Transcribing {
                 model: ModelCatalog.modelID,
                 modelEndpoint: endpoint,
                 modelFolder: downloadedFolder.path,
+                tokenizerFolder: tokenizerFolder,
                 load: true,
                 download: false
             )

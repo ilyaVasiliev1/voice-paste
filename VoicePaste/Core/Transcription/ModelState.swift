@@ -59,6 +59,10 @@ public enum ModelError: Error, Equatable, Sendable {
 /// force that loader back onto the SwiftUI main actor.
 nonisolated public enum ModelCatalog {
     public static let modelID = "large-v3-v20240930_626MB"
+    /// On-disk folder name WhisperKit unpacks the model variant into (the Hub
+    /// prefixes the repo owner). Used to verify the GitHub archive extracted a
+    /// complete model, not a truncated one.
+    public static let modelFolderName = "openai_whisper-large-v3-v20240930_626MB"
     /// Advertised download size, used for the `EC-007` free-space check and
     /// for the Settings "Модель" size label.
     public static let approximateSizeBytes: Int64 = 626 * 1024 * 1024
@@ -71,6 +75,25 @@ nonisolated public enum ModelCatalog {
     /// `WhisperKitConfig(modelEndpoint:)` honour this. Swap back to
     /// `https://huggingface.co` if the mirror is ever unavailable.
     public static let downloadEndpoint = "https://hf-mirror.com"
+
+    /// Direct GitHub-Release download for the `.github` source (`L-010`). Used
+    /// from mainland China where both HuggingFace hosts are unreachable but
+    /// GitHub is. The model is an open, static artifact (Whisper, OpenAI)
+    /// re-hosted on the project's own release, so this is a plain HTTPS `.zip`
+    /// fetch that bypasses the Hub — and, unlike WhisperKit's multi-file Hub
+    /// download, it resumes across retries.
+    public static let githubModelArchiveURL = URL(
+        string: "https://github.com/ilyaVasiliev1/voice-paste/releases/download/model-large-v3/whisperkit-large-v3.zip"
+    )!
+    /// The tokenizer WhisperKit otherwise fetches from HuggingFace separately
+    /// from the model (`openai/whisper-large-v3`). Bundling it lets the
+    /// `.github` source load fully offline; ~640 KB.
+    public static let githubTokenizerArchiveURL = URL(
+        string: "https://github.com/ilyaVasiliev1/voice-paste/releases/download/model-large-v3/whisper-large-v3-tokenizer.zip"
+    )!
+    /// The single tokenizer repo id WhisperKit resolves for this model, used to
+    /// verify the tokenizer archive extracted correctly.
+    public static let tokenizerRepoPath = "models/openai/whisper-large-v3"
 }
 
 /// User-selectable Hugging Face host for model/tokenizer/config downloads
@@ -78,13 +101,26 @@ nonisolated public enum ModelCatalog {
 /// applies to the *next* download only — an already-verified local model
 /// (`ModelState.unloaded`/`.ready`) is never re-fetched on a source change.
 public enum ModelDownloadSource: String, CaseIterable, Sendable {
+    /// Direct download from the project's GitHub Release. The only source that
+    /// works from mainland China (HuggingFace is blocked there); fetches the
+    /// model + tokenizer as `.zip` archives, fully offline afterwards.
+    case github
     case mirror
     case official
 
+    /// HuggingFace host WhisperKit downloads from for the `.mirror`/`.official`
+    /// sources. `.github` doesn't use an HF endpoint — it lays the model down
+    /// directly — but returns the official host as a harmless fallback for any
+    /// tokenizer/config lookup that isn't already satisfied locally.
     public var endpoint: String {
         switch self {
+        case .github: return "https://huggingface.co"
         case .mirror: return "https://hf-mirror.com"
         case .official: return "https://huggingface.co"
         }
     }
+
+    /// `true` when the model is fetched as a direct archive (GitHub) rather
+    /// than through WhisperKit's HuggingFace-Hub download.
+    public var usesDirectArchive: Bool { self == .github }
 }

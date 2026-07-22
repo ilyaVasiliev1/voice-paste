@@ -26,15 +26,25 @@ public final class ModelManager: ObservableObject {
     /// *next* `load()`, not retroactively. Defaults to the mirror when no
     /// provider is supplied.
     private let downloadEndpointProvider: @MainActor () -> String
+    /// Reads the live download-*source* at the moment a download starts. The
+    /// `.github` source takes a completely different path (direct archive
+    /// download) from `.mirror`/`.official` (WhisperKit Hub), so the source —
+    /// not just its HF endpoint string — is needed here. Defaults to `.mirror`.
+    private let downloadSourceProvider: @MainActor () -> ModelDownloadSource
+    /// The in-flight GitHub archive download, kept so `cancelDownload()` can
+    /// stop it (producing resume data) without cancelling the whole app.
+    private var activeDownloader: GitHubModelDownloader?
 
     public init(
         modelDirectory: URL,
         makeTranscriber: @escaping (URL, String, @escaping @Sendable (Double) -> Void) async throws -> Transcribing = ModelManager.defaultTranscriberFactory,
-        downloadEndpointProvider: @escaping @MainActor () -> String = { ModelCatalog.downloadEndpoint }
+        downloadEndpointProvider: @escaping @MainActor () -> String = { ModelCatalog.downloadEndpoint },
+        downloadSourceProvider: @escaping @MainActor () -> ModelDownloadSource = { .mirror }
     ) {
         self.modelDirectory = modelDirectory
         self.makeTranscriber = makeTranscriber
         self.downloadEndpointProvider = downloadEndpointProvider
+        self.downloadSourceProvider = downloadSourceProvider
         // `L-001`/`AT-004`: a previous run may have already downloaded and
         // compiled the model into `modelDirectory`. Detect it up front so a
         // restart doesn't ask for a 626 MB re-download — `.unloaded` means
@@ -208,6 +218,28 @@ public final class ModelManager: ObservableObject {
         ))
         Task { await DiagnosticLog.shared.log("model.load.start") }
         let endpoint = downloadEndpointProvider()
+        let source = downloadSourceProvider()
+
+        // `.github` (`L-010`): lay the model + tokenizer down from the project's
+        // own GitHub release before handing off to WhisperKit, which then loads
+        // straight from disk with no HuggingFace access. Only when nothing valid
+        // is on disk yet — an already-verified local model is never re-fetched
+        // on a source change (`AT-093`). This is the path that works from
+        // mainland China, where both HuggingFace hosts are unreachable.
+        if source.usesDirectArchive {
+            // Fetch only what's missing. The tokenizer lives in the app's own
+            // directory (`tokenizerFolder`), separate from the model — a user
+            // who already has the model on disk but whose tokenizer WhisperKit
+            // previously left in `~/Documents/huggingface` still needs the
+            // ~640 KB tokenizer laid down here, or the local load would fall
+            // back to fetching it from an unreachable HuggingFace.
+            let needsModel = LocalModelDetection.discoverModelFolder(in: modelDirectory) == nil
+            let needsTokenizer = !Self.tokenizerPresent(in: modelDirectory)
+            if needsModel || needsTokenizer {
+                try await downloadFromGitHub(model: needsModel, tokenizer: needsTokenizer)
+            }
+        }
+
         let engine = try await makeTranscriber(modelDirectory, endpoint) { [weak self] fraction in
             // WhisperKit's `progressCallback` may fire from a background
             // download-session thread; hop onto the main actor before
@@ -222,6 +254,65 @@ public final class ModelManager: ObservableObject {
         state = .ready
         Task { await DiagnosticLog.shared.log("model.load.success") }
         return engine
+    }
+
+    /// Fetches the model and tokenizer archives from the project's GitHub
+    /// release and unpacks them into the exact on-disk layout WhisperKit's
+    /// local-load path expects (`L-010`). Progress is forwarded through the
+    /// same `handleDownloadProgress` pipeline as the HuggingFace path, so the
+    /// HUD/onboarding "N из 626 МБ" UI is identical. Throws on cancel/failure;
+    /// `GitHubModelDownloader` cleans its own temp files on every exit.
+    private func downloadFromGitHub(model: Bool, tokenizer: Bool) async throws {
+        let workDirectory = modelDirectory.appendingPathComponent(".github-download", isDirectory: true)
+        let downloader = GitHubModelDownloader(workDirectory: workDirectory)
+        activeDownloader = downloader
+        defer { activeDownloader = nil }
+
+        let modelDestination = modelDirectory
+            .appendingPathComponent("models/argmaxinc/whisperkit-coreml", isDirectory: true)
+        let tokenizerDestination = Self.tokenizerDirectory(in: modelDirectory)
+
+        var archives: [GitHubModelDownloader.Archive] = []
+        if model {
+            archives.append(GitHubModelDownloader.Archive(
+                url: ModelCatalog.githubModelArchiveURL,
+                destination: modelDestination,
+                expectedChild: ModelCatalog.modelFolderName,
+                // The tokenizer is ~640 KB against the model's ~450 MB, so it
+                // barely moves the bar; give the model essentially all of it.
+                progressWeight: tokenizer ? 0.99 : 1.0
+            ))
+        }
+        if tokenizer {
+            archives.append(GitHubModelDownloader.Archive(
+                url: ModelCatalog.githubTokenizerArchiveURL,
+                destination: tokenizerDestination,
+                expectedChild: ModelCatalog.tokenizerRepoPath,
+                progressWeight: model ? 0.01 : 1.0
+            ))
+        }
+        guard !archives.isEmpty else { return }
+
+        Task { await DiagnosticLog.shared.log("model.github.download.start") }
+        do {
+            try await downloader.fetchAll(archives) { [weak self] fraction in
+                Task { @MainActor in self?.handleDownloadProgress(fraction: fraction) }
+            }
+            Task { await DiagnosticLog.shared.log("model.github.download.success") }
+        } catch {
+            Task { await DiagnosticLog.shared.log("model.github.download.failed", detail: String(describing: error)) }
+            throw error
+        }
+    }
+
+    /// Settings/onboarding "Отменить загрузку": stops the in-flight GitHub
+    /// archive download. The partial file is discarded by the downloader's own
+    /// cleanup; `deleteModel()` clears anything already written so the user can
+    /// switch source and start fresh. No-op for the HuggingFace path (WhisperKit
+    /// owns that transfer) beyond dropping back to `.notPrepared` via delete.
+    public func cancelDownload() {
+        let downloader = activeDownloader
+        Task { await downloader?.cancel() }
     }
 
     /// Removes everything under `modelDirectory` (recreating the empty
@@ -412,6 +503,32 @@ public final class ModelManager: ObservableObject {
         endpoint: String,
         downloadProgress: @escaping @Sendable (Double) -> Void
     ) async throws -> Transcribing {
-        try await WhisperKitTranscriber(modelDirectory: modelDirectory, endpoint: endpoint, downloadProgress: downloadProgress)
+        try await WhisperKitTranscriber(
+            modelDirectory: modelDirectory,
+            endpoint: endpoint,
+            // Keep the tokenizer inside the app's own model directory instead
+            // of WhisperKit's default `~/Documents/huggingface` — the app must
+            // not litter the user's Documents folder, and the `.github` source
+            // pre-places the tokenizer here for fully-offline loading.
+            tokenizerFolder: Self.tokenizerDirectory(in: modelDirectory),
+            downloadProgress: downloadProgress
+        )
+    }
+
+    /// Hub base for the tokenizer, inside the app's model directory. WhisperKit
+    /// resolves the tokenizer at `<this>/models/openai/whisper-large-v3`.
+    nonisolated static func tokenizerDirectory(in modelDirectory: URL) -> URL {
+        modelDirectory.appendingPathComponent("tokenizers", isDirectory: true)
+    }
+
+    /// Whether the tokenizer is already laid down in the app's own directory
+    /// (so no HuggingFace fetch is needed on load). Checks the concrete
+    /// `tokenizer.json`, not just the folder, so a half-extracted archive
+    /// doesn't read as present.
+    nonisolated static func tokenizerPresent(in modelDirectory: URL) -> Bool {
+        let tokenizerJSON = tokenizerDirectory(in: modelDirectory)
+            .appendingPathComponent(ModelCatalog.tokenizerRepoPath, isDirectory: true)
+            .appendingPathComponent("tokenizer.json")
+        return FileManager.default.fileExists(atPath: tokenizerJSON.path)
     }
 }

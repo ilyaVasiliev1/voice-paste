@@ -14,7 +14,8 @@ struct VoicePasteApp: App {
         let modelDirectory = Self.makeModelDirectory()
         let modelManager = ModelManager(
             modelDirectory: modelDirectory,
-            downloadEndpointProvider: { settings.modelDownloadEndpoint }
+            downloadEndpointProvider: { settings.modelDownloadEndpoint },
+            downloadSourceProvider: { settings.modelDownloadSource }
         )
         let store: any HistoryStoring
         let queueStore: any ImportQueueStoring
