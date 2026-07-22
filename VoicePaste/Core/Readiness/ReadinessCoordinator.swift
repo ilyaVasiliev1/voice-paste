@@ -55,6 +55,10 @@ public final class ReadinessCoordinator: ObservableObject {
 
     private let modelManager: ModelManager
     private var modelStateCancellable: AnyCancellable?
+    /// Whether the load currently in progress is a real network download, as
+    /// opposed to a local warm-up. Distinguishes the two meanings of
+    /// `ModelState.verifying`, which is otherwise identical in both.
+    private var isNetworkDownloadInFlight = false
     private let accessibilityPromptGate = AccessibilityPromptGate()
 
     public init(modelManager: ModelManager) {
@@ -65,17 +69,34 @@ public final class ReadinessCoordinator: ObservableObject {
         // Model discovery starts on a utility executor. Reflect its eventual
         // `.unloaded` result in readiness as soon as it arrives, without
         // making launch wait for a recursive walk of the Core ML bundle.
-        // `$state` publishes after the new value is available; `dropFirst`
-        // skips the current synchronous snapshot already handled above.
+        // `dropFirst` skips the current synchronous snapshot handled above.
+        //
+        // The new state is taken from the publisher and passed in explicitly.
+        // A `@Published` projected value emits in `willSet` — the property
+        // still holds the OLD value while subscribers run — so re-reading
+        // `modelManager.state` here observed every transition one step late.
+        // Because the last transition of a load is `verifying → ready`, that
+        // left readiness computed from `.verifying`, i.e. permanently stuck on
+        // "Загрузка модели…" with no further event to correct it: the first
+        // dictation worked, the second was refused, and only re-activating the
+        // app (which calls `refresh()` directly) unstuck it. This subscription
+        // must never read the property again.
         self.modelStateCancellable = modelManager.$state
             .dropFirst()
-            .sink { [weak self] _ in self?.refresh() }
+            .sink { [weak self] newModelState in self?.refresh(modelState: newModelState) }
     }
 
     /// Recomputes `state` from current system status. Call after returning
     /// from System Settings, after a permission prompt resolves, and after
     /// model state changes.
     public func refresh() {
+        refresh(modelState: modelManager.state)
+    }
+
+    /// - Parameter modelState: the model state to compute against. Callers
+    ///   reacting to a `@Published` emission must pass the value the publisher
+    ///   delivered, not `modelManager.state` (see `init`).
+    private func refresh(modelState: ModelState) {
         microphoneAuthorization = AVCaptureDevice.authorizationStatus(for: .audio)
         isAccessibilityTrusted = AccessibilityTrust.isGranted
 
@@ -95,8 +116,9 @@ public final class ReadinessCoordinator: ObservableObject {
             return
         }
 
-        switch modelManager.state {
+        switch modelState {
         case .ready:
+            isNetworkDownloadInFlight = false
             state = .ready
         case .unloaded:
             // `US-008`/`INV-011`/`L-010`: unloaded-after-idle-timeout still
@@ -112,9 +134,16 @@ public final class ReadinessCoordinator: ObservableObject {
             // never claim "Загрузка модели…", which means a network fetch.
             state = .ready
         case .downloading(let progress):
+            isNetworkDownloadInFlight = true
             state = .downloadingModel(progress: progress.fraction)
         case .verifying:
-            state = .downloadingModel(progress: 1)
+            // `.verifying` follows either a real 626 MB download or a purely
+            // local warm-up (`.preparing`). Only the first is worth blocking
+            // dictation for; in the second the model is on disk and
+            // `ensureLoaded()` coalesces, so a press during it simply joins
+            // the load instead of being refused with a misleading "Загрузка
+            // модели…".
+            state = isNetworkDownloadInFlight ? .downloadingModel(progress: 1) : .ready
         case .notPrepared:
             state = .needsModel
         case .failed:
