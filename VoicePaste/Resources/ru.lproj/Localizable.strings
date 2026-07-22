@@ -9,6 +9,7 @@
 /* Model status (UI-001, UI-005) */
 "model.status.ready" = "Модель готова";
 "model.status.downloading" = "Модель загружается…";
+"model.status.preparing" = "Модель готовится…";
 "model.status.verifying" = "Проверка модели…";
 "model.status.notPrepared" = "Модель не загружена";
 "model.status.failed" = "Не удалось подготовить модель";

@@ -174,7 +174,7 @@ private struct SettingsBody: View {
     /// contents worth confirming a deletion for.
     private var isModelPresentOnDisk: Bool {
         switch appState.modelManager.state {
-        case .ready, .unloaded: return true
+        case .ready, .unloaded, .preparing: return true
         case .notPrepared, .downloading, .verifying, .failed: return false
         }
     }
@@ -286,6 +286,8 @@ private struct SettingsBody: View {
     private var modelStatusDescription: String {
         switch appState.modelManager.state {
         case .ready, .unloaded: return NSLocalizedString("model.status.ready", comment: "")
+        // On-disk model being brought into memory — not a download.
+        case .preparing: return NSLocalizedString("model.status.preparing", comment: "")
         case .downloading: return NSLocalizedString("model.status.downloading", comment: "")
         case .verifying: return NSLocalizedString("model.status.verifying", comment: "")
         case .notPrepared: return NSLocalizedString("model.status.notPrepared", comment: "")

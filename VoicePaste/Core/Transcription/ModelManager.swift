@@ -251,11 +251,18 @@ public final class ModelManager: ObservableObject {
 
     private func load() async throws -> Transcribing {
         resetDownloadProgressTracking()
-        state = .downloading(ModelDownloadProgress(
-            completedBytes: 0,
-            totalBytes: ModelCatalog.approximateSizeBytes,
-            fraction: 0
-        ))
+        // Only a genuinely absent model means a network download. An on-disk
+        // model is just being brought into memory — report `.preparing`, which
+        // keeps the app `ready` and doesn't claim a 626 MB fetch is happening.
+        if LocalModelDetection.discoverModelFolder(in: modelDirectory) == nil {
+            state = .downloading(ModelDownloadProgress(
+                completedBytes: 0,
+                totalBytes: ModelCatalog.approximateSizeBytes,
+                fraction: 0
+            ))
+        } else {
+            state = .preparing
+        }
         Task { await DiagnosticLog.shared.log("model.load.start") }
         let endpoint = downloadEndpointProvider()
         let source = downloadSourceProvider()

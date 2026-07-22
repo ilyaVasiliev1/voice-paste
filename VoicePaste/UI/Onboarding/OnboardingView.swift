@@ -190,10 +190,10 @@ struct OnboardingView: View {
     @ViewBuilder
     private var modelStateBody: some View {
         switch appState.modelManager.state {
-        case .ready, .unloaded:
-            // `.unloaded` here means "verified on disk, not resident in
-            // memory" (`L-001`/`AT-004`) — onboarding should treat it as
-            // done, not prompt a needless re-download.
+        case .ready, .unloaded, .preparing:
+            // `.unloaded`/`.preparing` here mean "verified on disk" (not
+            // resident yet / being brought into memory) — `L-001`/`AT-004`:
+            // onboarding treats both as done, never as a re-download prompt.
             Label("onboarding.model.ready", systemImage: "checkmark.circle.fill")
         case .downloading(let progress):
             modelDownloadingBody(progress)

@@ -82,6 +82,12 @@ public final class ReadinessCoordinator: ObservableObject {
             // (not `needsModel`) — only a genuinely never-downloaded model
             // should block dictation.
             state = .ready
+        case .preparing:
+            // Same reasoning: the model is on disk and merely being brought
+            // into memory (~1 s). Dictation started during it simply joins
+            // that load, so the app must not drop out of `ready` — and must
+            // never claim "Загрузка модели…", which means a network fetch.
+            state = .ready
         case .downloading(let progress):
             state = .downloadingModel(progress: progress.fraction)
         case .verifying:

@@ -3,7 +3,15 @@ import Foundation
 /// `API-local-model` result type (`INV-004`, `L-010`, `L-011`).
 public enum ModelState: Equatable, Sendable {
     case notPrepared
+    /// A real network download of the ~626 MB model is in flight.
     case downloading(ModelDownloadProgress)
+    /// The model is already on disk and is being loaded into memory (and
+    /// compiled by Core ML on first use). Deliberately distinct from
+    /// `.downloading`: nothing is being fetched, it takes ~1 s once compiled,
+    /// and the app stays `ready` throughout — labelling this "Загрузка
+    /// модели…" made a routine warm-up look like a 626 MB download and
+    /// knocked the app out of its ready state for no reason (`L-010`).
+    case preparing
     case verifying
     case ready
     case unloaded
