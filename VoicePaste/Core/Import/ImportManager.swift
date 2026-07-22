@@ -1,4 +1,26 @@
+import Dispatch
 import Foundation
+
+/// Coalesces worker progress before it creates any MainActor work. Video
+/// extraction can emit one callback per audio sample buffer (dozens per
+/// second); previously every one allocated a main-actor `Task` and only then
+/// got throttled, which could backlog SwiftUI behind a long import.
+nonisolated final class ImportProgressGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var lastDeliveryNanos: UInt64 = 0
+    private let minimumIntervalNanos: UInt64 = 250_000_000
+
+    func shouldDeliver(_ value: Double) -> Bool {
+        let now = DispatchTime.now().uptimeNanoseconds
+        lock.lock()
+        defer { lock.unlock() }
+        guard value >= 0.999 || now - lastDeliveryNanos >= minimumIntervalNanos else {
+            return false
+        }
+        lastDeliveryNanos = now
+        return true
+    }
+}
 
 /// One local FIFO worker for every import trigger. Staging, decoding and
 /// transcription never happen in a drop handler, so the main window/HUD stay
@@ -22,7 +44,6 @@ public final class ImportManager: ObservableObject {
     private var workerTask: Task<Void, Never>?
     private var activeJobID: UUID?
     private var stagingTasks: [UUID: Task<Void, Never>] = [:]
-    private var lastProgressUpdate: [UUID: Date] = [:]
 
     public init(
         modelManager: ModelManager,
@@ -120,20 +141,6 @@ public final class ImportManager: ObservableObject {
         }
     }
 
-    public func cancelAll() {
-        workerTask?.cancel()
-        for task in stagingTasks.values { task.cancel() }
-        stagingTasks.removeAll()
-        let identifiers = jobs.map(\.id)
-        Task { [weak self] in
-            guard let self else { return }
-            for id in identifiers {
-                await removeJob(id, removePersistentRecord: true)
-                await Self.removeCache(for: id)
-            }
-        }
-    }
-
     public func dismissFailed(id: UUID) {
         guard jobs.first(where: { $0.id == id })?.state == .failed else { return }
         Task { [weak self] in
@@ -197,11 +204,19 @@ public final class ImportManager: ObservableObject {
                 throw AudioDecodeError.decodeFailed("Staged source is unavailable.")
             }
             await transition(id, to: .preparing, progress: 0.02)
-            let decoder = decoder
-            let decodeProgress: @Sendable (Double) -> Void = { [weak self] value in
-                Task { @MainActor in
-                    self?.updateProgress(id, value: 0.05 + value * 0.40)
+            let progressGate = ImportProgressGate()
+            let publishProgress: @Sendable (Double) -> Void = { [weak self, progressGate] value in
+                // The gate runs on the decoder/inference executor, before a
+                // `Task` is allocated. At most four updates per second can
+                // reach the UI/database, regardless of video frame rate.
+                guard progressGate.shouldDeliver(value) else { return }
+                Task { @MainActor [weak self] in
+                    self?.updateProgress(id, value: value)
                 }
+            }
+            let decoder = decoder
+            let decodeProgress: @Sendable (Double) -> Void = { value in
+                publishProgress(0.05 + value * 0.40)
             }
             // `AudioDecoder` is explicitly nonisolated, so this async call
             // runs on Swift's generic executor rather than blocking UI work.
@@ -217,8 +232,8 @@ public final class ImportManager: ObservableObject {
             }
 
             let engine = try await modelManager.ensureLoaded()
-            let transcriptionProgress: @Sendable (Double) -> Void = { [weak self] value in
-                    Task { @MainActor in self?.updateProgress(id, value: 0.46 + value * 0.53) }
+            let transcriptionProgress: @Sendable (Double) -> Void = { value in
+                publishProgress(0.46 + value * 0.53)
             }
             let request = TranscriptionRequest(
                 samples: samples,
@@ -229,7 +244,7 @@ public final class ImportManager: ObservableObject {
             try Task.checkCancellation()
 
             let vocabulary = (try? await historyStore.fetchVocabulary()) ?? []
-            let (text, _) = normalizer.normalize(
+            let (text, _) = await normalizer.normalizeInBackground(
                 rawText: result.rawText,
                 language: settings.languageMode,
                 vocabulary: vocabulary,
@@ -265,12 +280,9 @@ public final class ImportManager: ObservableObject {
     }
 
     private func updateProgress(_ id: UUID, value: Double) {
-        let now = Date()
-        guard value >= 0.999 || now.timeIntervalSince(lastProgressUpdate[id] ?? .distantPast) >= 0.25 else { return }
-        lastProgressUpdate[id] = now
-        Task { [weak self] in
-            await self?.update(id) { $0.progress = max($0.progress, min(value, 0.99)) }
-        }
+        guard let index = jobs.firstIndex(where: { $0.id == id }) else { return }
+        jobs[index].progress = max(jobs[index].progress, min(value, 0.99))
+        persist(jobs[index])
     }
 
     private func transition(_ id: UUID, to state: ImportJob.State, progress: Double) async {
@@ -298,7 +310,6 @@ public final class ImportManager: ObservableObject {
 
     private func removeJob(_ id: UUID, removePersistentRecord: Bool) async {
         jobs.removeAll { $0.id == id }
-        lastProgressUpdate.removeValue(forKey: id)
         if removePersistentRecord { try? await queueStore.delete(id: id) }
     }
 

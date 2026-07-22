@@ -249,9 +249,7 @@ struct HistoryView: View {
 
     private func copyCurrentTranscript() {
         guard let detail else { return }
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(detail.text, forType: .string)
+        TextInserter.copyToClipboard(detail.text)
     }
 
     private func deleteCurrentTranscript() {

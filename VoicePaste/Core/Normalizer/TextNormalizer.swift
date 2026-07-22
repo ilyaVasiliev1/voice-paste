@@ -14,16 +14,9 @@ public struct NormalizationChange: Equatable, Sendable {
     public let kind: Kind
 }
 
-public enum NormalizeTextError: Error, Equatable, Sendable {
-    /// Never thrown for missing spellcheck language (`EC-011`); kept for
-    /// protocol symmetry with `api.md`'s `spellLanguageUnavailable` — the
-    /// pipeline simply skips that step instead of failing.
-    case spellLanguageUnavailable
-}
-
 /// Abstraction over `NSSpellChecker` (`DEP-007`) so `TextNormalizer` is
 /// pure/testable without touching AppKit in unit tests.
-public protocol SpellChecking: Sendable {
+nonisolated public protocol SpellChecking: Sendable {
     /// Ranges of `text` that look misspelled for `language`, or `nil` if
     /// spellchecking is unavailable for that language (`EC-011`).
     func misspelledRanges(in text: String, language: String) -> [Range<String.Index>]?
@@ -33,10 +26,10 @@ public protocol SpellChecking: Sendable {
 }
 
 /// `NSSpellChecker`-backed implementation used at runtime.
-public struct NSSpellCheckerAdapter: SpellChecking {
+nonisolated public struct NSSpellCheckerAdapter: SpellChecking {
     public init() {}
 
-    public func misspelledRanges(in text: String, language: String) -> [Range<String.Index>]? {
+    nonisolated public func misspelledRanges(in text: String, language: String) -> [Range<String.Index>]? {
         let checker = NSSpellChecker.shared
         guard !text.isEmpty else { return [] }
         guard checker.availableLanguages.contains(where: { $0.hasPrefix(language) }) else {
@@ -63,7 +56,7 @@ public struct NSSpellCheckerAdapter: SpellChecking {
         return ranges
     }
 
-    public func guesses(forWordRange range: Range<String.Index>, in text: String, language: String) -> [String] {
+    nonisolated public func guesses(forWordRange range: Range<String.Index>, in text: String, language: String) -> [String] {
         let nsRange = NSRange(range, in: text)
         return NSSpellChecker.shared.guesses(
             forWordRange: nsRange,
@@ -77,14 +70,14 @@ public struct NSSpellCheckerAdapter: SpellChecking {
 /// Pure, testable pipeline (`L-006`, `INV-007`): `rawText` → whitespace/
 /// typography normalization → exact active vocabulary rules → safe
 /// `NSSpellChecker` corrections → `text`.
-public struct TextNormalizer: Sendable {
+nonisolated public struct TextNormalizer: Sendable {
     private let spellChecker: SpellChecking
 
     public init(spellChecker: SpellChecking = NSSpellCheckerAdapter()) {
         self.spellChecker = spellChecker
     }
 
-    public func normalize(
+    nonisolated public func normalize(
         rawText: String,
         language: TranscriptionLanguage,
         vocabulary: [VocabularyEntry],
@@ -115,9 +108,29 @@ public struct TextNormalizer: Sendable {
         return (spellchecked, changes)
     }
 
+    /// Runs the complete CPU/text-processing pipeline away from the UI
+    /// actor. Long imported videos can produce very large transcripts;
+    /// normalizing them must never make scrolling, HUD animation, or macOS
+    /// event handling wait for regex and spell-check work.
+    nonisolated public func normalizeInBackground(
+        rawText: String,
+        language: TranscriptionLanguage,
+        vocabulary: [VocabularyEntry],
+        autoCorrectSafeTypos: Bool
+    ) async -> (text: String, appliedChanges: [NormalizationChange]) {
+        await Task.detached(priority: .utility) { [self] in
+            normalize(
+                rawText: rawText,
+                language: language,
+                vocabulary: vocabulary,
+                autoCorrectSafeTypos: autoCorrectSafeTypos
+            )
+        }.value
+    }
+
     /// Deterministic, safe punctuation/whitespace cleanup only: collapse
     /// repeated spaces, drop space(s) before `,.!?:;`, trim ends.
-    private func normalizeWhitespaceAndTypography(_ input: String) -> String {
+    nonisolated private func normalizeWhitespaceAndTypography(_ input: String) -> String {
         var result = input
         result = result.replacingOccurrences(of: "[ \\t]{2,}", with: " ", options: .regularExpression)
         result = result.replacingOccurrences(of: "[ \\t]+([,.!?:;])", with: "$1", options: .regularExpression)
@@ -128,7 +141,7 @@ public struct TextNormalizer: Sendable {
     /// Applies only exact, whole-word, case-insensitive active vocabulary
     /// rules (`US-005`, `AT-016`); rules with an empty/nil `replacement`
     /// mean "protect this word", not "replace it", so they never fire here.
-    private func applyVocabulary(
+    nonisolated private func applyVocabulary(
         text: String,
         vocabulary: [VocabularyEntry],
         changes: inout [NormalizationChange]
@@ -154,7 +167,7 @@ public struct TextNormalizer: Sendable {
     /// Applies only unambiguous single-suggestion corrections, skipping
     /// URLs/numbers/abbreviations (`EC-012`) and skipping entirely when the
     /// language has no spellchecker installed (`EC-011`).
-    private func applySpellcheck(
+    nonisolated private func applySpellcheck(
         text: String,
         language: TranscriptionLanguage,
         changes: inout [NormalizationChange]
@@ -186,7 +199,7 @@ public struct TextNormalizer: Sendable {
         return pieces.joined()
     }
 
-    private func resolvedLanguageCode(for language: TranscriptionLanguage) -> String {
+    nonisolated private func resolvedLanguageCode(for language: TranscriptionLanguage) -> String {
         switch language {
         case .ru: return "ru"
         case .en: return "en"
@@ -195,7 +208,7 @@ public struct TextNormalizer: Sendable {
     }
 
     /// `EC-012`: never silently touch URLs, numbers, or all-caps abbreviations.
-    private func isSafeToAutocorrect(_ word: String) -> Bool {
+    nonisolated private func isSafeToAutocorrect(_ word: String) -> Bool {
         let lowered = word.lowercased()
         if lowered.hasPrefix("http") || word.contains("://") || lowered.hasPrefix("www.") { return false }
         if word.contains(where: { $0.isNumber }) { return false }

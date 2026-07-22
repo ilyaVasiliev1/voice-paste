@@ -100,8 +100,7 @@
 "onboarding.accessibility.title" = "Универсальный доступ";
 "onboarding.accessibility.body" = "Это разрешение нужно для глобальной горячей клавиши и для вставки текста в поле, где вы диктуете, без переключения окон.";
 "onboarding.accessibility.grant" = "Разрешить универсальный доступ";
-"onboarding.accessibility.stillPendingHint" = "Если после выдачи доступа статус не обновился — нажмите «Перезапустить».";
-"onboarding.accessibility.relaunch" = "Перезапустить приложение";
+"onboarding.accessibility.requested" = "Подтвердите доступ в системном окне. Если macOS открыла настройки, включите VoicePaste там.";
 "onboarding.model.title" = "Локальная модель распознавания";
 "onboarding.model.body" = "VoicePaste распознаёт речь полностью на устройстве. Один раз загрузите открытую модель — дальше интернет не понадобится.";
 "onboarding.model.ready" = "Модель готова";

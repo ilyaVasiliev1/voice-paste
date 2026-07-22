@@ -59,7 +59,6 @@
 		C00000000000000000000180 /* LocalModelDetectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000181 /* LocalModelDetectionTests.swift */; };
 		C0000000000000000000024A /* LocalModelDetection.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000024B /* LocalModelDetection.swift */; };
 		C00000000000000000000301 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000300 /* AppDelegate.swift */; };
-		C00000000000000000000303 /* AppRelauncher.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000302 /* AppRelauncher.swift */; };
 		C00000000000000000000501 /* UsageStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000500 /* UsageStats.swift */; };
 		C00000000000000000000503 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000502 /* DashboardView.swift */; };
 		C00000000000000000000611 /* MainWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000610 /* MainWindowView.swift */; };
@@ -145,7 +144,6 @@
 		C00000000000000000000181 /* LocalModelDetectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalModelDetectionTests.swift; sourceTree = "<group>"; };
 		C0000000000000000000024B /* LocalModelDetection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalModelDetection.swift; sourceTree = "<group>"; };
 		C00000000000000000000300 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		C00000000000000000000302 /* AppRelauncher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRelauncher.swift; sourceTree = "<group>"; };
 		C00000000000000000000500 /* UsageStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageStats.swift; sourceTree = "<group>"; };
 		C00000000000000000000502 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		C00000000000000000000610 /* MainWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowView.swift; sourceTree = "<group>"; };
@@ -224,7 +222,6 @@
 				C0000000000000000000011B /* App.swift */,
 				C0000000000000000000011D /* AppState.swift */,
 				C00000000000000000000300 /* AppDelegate.swift */,
-				C00000000000000000000302 /* AppRelauncher.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -617,7 +614,6 @@
 				C0000000000000000000011C /* App.swift in Sources */,
 				C0000000000000000000011E /* AppState.swift in Sources */,
 				C00000000000000000000301 /* AppDelegate.swift in Sources */,
-				C00000000000000000000303 /* AppRelauncher.swift in Sources */,
 				C00000000000000000000120 /* AudioCaptureService.swift in Sources */,
 				C00000000000000000000122 /* DictationStateMachine.swift in Sources */,
 				C00000000000000000000124 /* HUDContentView.swift in Sources */,
@@ -731,11 +727,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = B10FF5C8A4A5F274A508079511F9EA98E96374E2;
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 8;
-				DEVELOPMENT_TEAM = HVVQMFJ3QM;
+				CURRENT_PROJECT_VERSION = 10;
 				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -759,11 +753,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = B10FF5C8A4A5F274A508079511F9EA98E96374E2;
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 8;
-				DEVELOPMENT_TEAM = HVVQMFJ3QM;
+				CURRENT_PROJECT_VERSION = 10;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = VoicePaste/Resources/Info.plist;

@@ -156,8 +156,10 @@ private struct SettingsBody: View {
                 isPresented: $showingDeleteModelConfirmation
             ) {
                 Button("settings.model.deleteConfirmAction", role: .destructive) {
-                    appState.modelManager.deleteModel()
-                    appState.refreshReadiness()
+                    Task {
+                        await appState.modelManager.deleteModel()
+                        appState.refreshReadiness()
+                    }
                 }
             }
         }

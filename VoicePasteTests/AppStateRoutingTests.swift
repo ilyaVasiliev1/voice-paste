@@ -22,6 +22,10 @@ import XCTest
 @MainActor
 final class AppStateRoutingTests: XCTestCase {
 
+    func test_processRuntime_detectsXCTestHost() {
+        XCTAssertTrue(ProcessRuntime.isRunningTests)
+    }
+
     private func makeAppState(showInDock: Bool = true) throws -> AppState {
         let suiteName = "AppStateRoutingTests-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -49,7 +53,8 @@ final class AppStateRoutingTests: XCTestCase {
             settings: settings,
             modelManager: modelManager,
             historyStore: historyStore,
-            importManager: importManager
+            importManager: importManager,
+            enableGlobalHotkey: false
         )
         // Sanity precondition every test in this file relies on: without it,
         // any assertion below would be meaningless (see the class doc).

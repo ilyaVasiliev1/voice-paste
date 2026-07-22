@@ -42,6 +42,8 @@ open VoicePaste.xcodeproj
 
 В Xcode выбери схему **VoicePaste** и нажми **Run** (⌘R) — зависимости (WhisperKit, GRDB) подтянутся автоматически по `Package.resolved`.
 
+При первом запуске из исходников Xcode может попросить выбрать команду подписи: в **Signing & Capabilities** выбери свою **Personal Team** и оставь *Automatically manage signing*. Платный аккаунт Apple для этого не нужен.
+
 ## Разрешения
 
 - **Микрофон** — чтобы записывать речь.

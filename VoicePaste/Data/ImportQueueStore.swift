@@ -54,10 +54,6 @@ public actor ImportQueueStore: ImportQueueStoring {
         }
     }
 
-    public func deleteAll() async throws {
-        try await dbPool.write { db in try db.execute(sql: "DELETE FROM import_jobs") }
-    }
-
     private nonisolated static func readJobs(_ db: Database) throws -> [ImportJob] {
         try Row.fetchAll(
             db,

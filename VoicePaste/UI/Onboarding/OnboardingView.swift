@@ -15,6 +15,17 @@ struct OnboardingView: View {
     /// `.notPresented` — macOS silently skipped its consent sheet. Cleared on
     /// every fresh attempt and whenever the step changes.
     @State private var didFailToPresentConsentSheet = false
+    /// Universal Access has only one initial action. After asking macOS once,
+    /// System Settings becomes an explicit fallback instead of a competing
+    /// second button that can open a duplicate window while the system sheet
+    /// is still resolving.
+    @State private var didRequestAccessibility = false
+    /// The manual Settings fallback intentionally appears after macOS has
+    /// had a moment to attach its own prompt. Without this, a fast second
+    /// click could open Settings on top of the first system request.
+    @State private var isAccessibilityFallbackAvailable = false
+    @State private var accessibilityFallbackTask: Task<Void, Never>?
+    @State private var isOpeningAccessibilitySettings = false
 
     private enum Step: Int, CaseIterable {
         case purpose, microphone, accessibility, model
@@ -50,9 +61,21 @@ struct OnboardingView: View {
             if newStep != .microphone {
                 didFailToPresentConsentSheet = false
             }
+            if newStep != .accessibility {
+                didRequestAccessibility = false
+                isAccessibilityFallbackAvailable = false
+                isOpeningAccessibilitySettings = false
+                accessibilityFallbackTask?.cancel()
+                accessibilityFallbackTask = nil
+            }
+        }
+        .onAppear {
+            appState.setOnboardingVisible(true)
         }
         .onDisappear {
             stopAccessibilityPolling()
+            accessibilityFallbackTask?.cancel()
+            appState.setOnboardingVisible(false)
         }
     }
 
@@ -118,10 +141,25 @@ struct OnboardingView: View {
             Text("onboarding.accessibility.title").font(.title2.bold())
             Text("onboarding.accessibility.body")
             if !appState.readiness.isAccessibilityTrusted {
-                Button("onboarding.accessibility.grant") {
-                    appState.readiness.requestAccessibilityTrust()
+                if didRequestAccessibility {
+                    Text("onboarding.accessibility.requested")
+                        .foregroundStyle(.secondary)
+                    if isAccessibilityFallbackAvailable,
+                       !appState.readiness.isAccessibilityTrustRequestInFlight {
+                        Button("onboarding.openSystemSettings") {
+                            openAccessibilitySystemSettings()
+                        }
+                        .disabled(isOpeningAccessibilitySettings)
+                    }
+                } else {
+                    Button("onboarding.accessibility.grant") {
+                        didRequestAccessibility = true
+                        isAccessibilityFallbackAvailable = false
+                        appState.readiness.requestAccessibilityTrust()
+                        scheduleAccessibilityFallback()
+                    }
+                    .disabled(appState.readiness.isAccessibilityTrustRequestInFlight)
                 }
-                Button("onboarding.openSystemSettings") { openSystemSettings(pane: "Privacy_Accessibility") }
             }
             Text(appState.readiness.isAccessibilityTrusted ? "onboarding.status.granted" : "onboarding.status.pending")
                 .foregroundStyle(.secondary)
@@ -273,6 +311,26 @@ struct OnboardingView: View {
     private func openSystemSettings(pane: String) {
         guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(pane)") else { return }
         NSWorkspace.shared.open(url)
+    }
+
+    private func scheduleAccessibilityFallback() {
+        accessibilityFallbackTask?.cancel()
+        accessibilityFallbackTask = Task {
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            guard !Task.isCancelled else { return }
+            isAccessibilityFallbackAvailable = true
+        }
+    }
+
+    private func openAccessibilitySystemSettings() {
+        guard !isOpeningAccessibilitySettings else { return }
+        isOpeningAccessibilitySettings = true
+        openSystemSettings(pane: "Privacy_Accessibility")
+        Task {
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            guard !Task.isCancelled else { return }
+            isOpeningAccessibilitySettings = false
+        }
     }
 
     /// While the Accessibility step is visible, refresh the actual TCC

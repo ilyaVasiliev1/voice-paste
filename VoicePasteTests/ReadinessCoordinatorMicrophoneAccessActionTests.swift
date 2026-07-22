@@ -15,6 +15,15 @@ import XCTest
 @MainActor
 final class ReadinessCoordinatorMicrophoneAccessActionTests: XCTestCase {
 
+    func test_accessibilityPromptGate_coalescesOverlappingRequests_withoutCachingPermission() {
+        let gate = AccessibilityPromptGate()
+
+        XCTAssertTrue(gate.begin())
+        XCTAssertFalse(gate.begin(), "A second tap must not create another system prompt")
+        gate.finish()
+        XCTAssertTrue(gate.begin(), "Finishing only releases the in-flight lock; TCC is still re-read live")
+    }
+
     func test_authorized_mapsTo_alreadyAuthorized() {
         let action = ReadinessCoordinator.microphoneAccessAction(for: .authorized)
 

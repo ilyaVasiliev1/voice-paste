@@ -60,9 +60,13 @@ public final class AppState: ObservableObject {
     /// most every 100 ms instead of occasionally painting twice in one tick.
     private var lastRecordingHUDRefreshAt = Date.distantPast
     private var currentLevel: Float = 0
-    private var workspaceObserver: NSObjectProtocol?
     private var didBecomeActiveObserver: NSObjectProtocol?
     private var forwardingCancellables = Set<AnyCancellable>()
+    /// A ready app may normally become menu-bar-only, but not while its
+    /// first-run window is still visible. Changing activation policy at the
+    /// exact moment Universal Access is granted otherwise makes the visible
+    /// onboarding appear to disappear behind System Settings.
+    private var isOnboardingVisible = false
 
     // MARK: - HUD import drop zone (UI-006, second spec-required surface)
 
@@ -78,17 +82,12 @@ public final class AppState: ObservableObject {
     private var importJobCancellable: AnyCancellable?
     private var hudImportJobID: UUID?
 
-    /// Frontmost *other* app, tracked continuously (not just at hotkey-down).
-    /// No longer read by History's toolbar (`Вставить` removed there, owner
-    /// decision 2026-07-19, `UI-004`) — kept as general-purpose tracking
-    /// infrastructure a future manual-insert entry point could still use.
-    public private(set) var lastExternalAppSnapshot: FrontAppSnapshot?
-
     public init(
         settings: AppSettings,
         modelManager: ModelManager,
         historyStore: any HistoryStoring,
-        importManager: ImportManager
+        importManager: ImportManager,
+        enableGlobalHotkey: Bool = !ProcessRuntime.isRunningTests
     ) {
         self.settings = settings
         self.modelManager = modelManager
@@ -118,16 +117,22 @@ public final class AppState: ObservableObject {
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &forwardingCancellables)
 
-        let manager = HotkeyManager(shortcut: settings.hotkey) { [weak self] phase in
-            switch phase {
-            case .down: self?.handleHotkeyDown()
-            case .up: self?.handleHotkeyUp()
+        // Test hosts must never install a real global event tap. Apart from
+        // affecting the user's keyboard, a tap's lifecycle is inherently a
+        // system integration concern, not a unit-test concern. The shipped
+        // app uses the default (`true`); tests explicitly opt out.
+        if enableGlobalHotkey {
+            let manager = HotkeyManager(shortcut: settings.hotkey) { [weak self] phase in
+                switch phase {
+                case .down: self?.handleHotkeyDown()
+                case .up: self?.handleHotkeyUp()
+                }
+            } onEscape: { [weak self] in
+                self?.cancelDictationWithEscape()
             }
-        } onEscape: { [weak self] in
-            self?.cancelDictationWithEscape()
+            self.hotkeyManager = manager
+            manager.start()
         }
-        self.hotkeyManager = manager
-        manager.start()
 
         audioCapture.onLevel = { [weak self] level in
             self?.currentLevel = level
@@ -151,22 +156,6 @@ public final class AppState: ObservableObject {
             onImportResultOpened: { [weak self] in self?.presentHUD(.importOpened) },
             onCancelPausedDictation: { [weak self] in self?.cancelPausedDictationFromHUD() }
         )
-
-        let ownBundleID = Bundle.main.bundleIdentifier
-        workspaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
-            forName: NSWorkspace.didActivateApplicationNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] notification in
-            guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-                  app.bundleIdentifier != ownBundleID else { return }
-            Task { @MainActor in
-                self?.lastExternalAppSnapshot = FrontAppSnapshot(
-                    bundleIdentifier: app.bundleIdentifier,
-                    processIdentifier: app.processIdentifier
-                )
-            }
-        }
 
         // `L-001`: the user grants mic/Accessibility access in System
         // Settings, a *different* app, then switches back to us — that's a
@@ -200,13 +189,22 @@ public final class AppState: ObservableObject {
     /// `setActivationPolicy` directly.
     public func applyDockVisibility() {
         let policy: NSApplication.ActivationPolicy
-        if readiness.state != .ready {
+        if readiness.state != .ready || isOnboardingVisible {
             policy = .regular
         } else {
             policy = settings.showInDock ? .regular : .accessory
         }
         guard NSApp.activationPolicy() != policy else { return }
         NSApp.setActivationPolicy(policy)
+    }
+
+    /// Called by the single onboarding window's lifecycle. This keeps the
+    /// normal `showInDock` preference intact while preventing a permission
+    /// update from hiding the window that is explaining the next step.
+    public func setOnboardingVisible(_ isVisible: Bool) {
+        guard isOnboardingVisible != isVisible else { return }
+        isOnboardingVisible = isVisible
+        applyDockVisibility()
     }
 
     /// `L-001`: the single place that recomputes `readiness.state` also
@@ -221,10 +219,6 @@ public final class AppState: ObservableObject {
         }
         hotkeyManager?.setSystemSwallowEnabled(readiness.state == .ready)
         applyDockVisibility()
-    }
-
-    public var currentHotkeyDisplayString: String {
-        settings.hotkey.displayString
     }
 
     // MARK: - Menu bar icon (UI-001)
@@ -668,7 +662,7 @@ public final class AppState: ObservableObject {
             let result = try await engine.transcribe(request)
 
             let vocabulary = (try? await historyStore.fetchVocabulary()) ?? []
-            let (normalizedText, _) = normalizer.normalize(
+            let (normalizedText, _) = await normalizer.normalizeInBackground(
                 rawText: result.rawText,
                 language: settings.languageMode,
                 vocabulary: vocabulary,
@@ -729,4 +723,18 @@ public final class AppState: ObservableObject {
         hotkeyManager?.stop()
         modelManager.unloadNow()
     }
+}
+
+/// XCTest uses VoicePaste itself as its test host. A process-wide event tap
+/// must therefore be disabled by default for *every* test invocation — not
+/// only for fixtures that remember to pass a special constructor argument.
+/// The production app has neither XCTest environment variable nor class, so
+/// its default remains the real global hotkey.
+public enum ProcessRuntime {
+    public static let isRunningTests: Bool = {
+        let environment = ProcessInfo.processInfo.environment
+        return environment["XCTestConfigurationFilePath"] != nil
+            || environment["XCTestBundlePath"] != nil
+            || NSClassFromString("XCTestCase") != nil
+    }()
 }

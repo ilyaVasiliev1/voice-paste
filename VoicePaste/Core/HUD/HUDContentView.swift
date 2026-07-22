@@ -129,8 +129,23 @@ struct HUDContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    @ViewBuilder
     private func error(message: String, action: HUDErrorAction) -> some View {
-        HStack(spacing: 8) {
+        if action == .none {
+            // A short recording/no-speech result is informational, not a
+            // destructive failure. Keep it visually identical to the other
+            // centred status plaques: no red icon, close control or special
+            // edge insets that make the HUD appear to be a different system.
+            Text(message)
+                .font(.callout.weight(.medium))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .multilineTextAlignment(.center)
+                .padding(HUDLayout.contentInset)
+        } else {
+            HStack(spacing: 8) {
             // Keep equally sized edge slots. The status therefore stays
             // optically centred in the same way as every text-only HUD
             // state, while an actionable error still exposes Retry/Close.
@@ -154,9 +169,10 @@ struct HUDContentView: View {
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity)
             hudButton(symbol: "xmark", labelKey: "hud.action.dismiss", action: stateHolder.actions.onDismiss)
+            }
+            .padding(HUDLayout.contentInset)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .padding(HUDLayout.contentInset)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var importIdle: some View {
@@ -260,9 +276,7 @@ struct HUDContentView: View {
     }
 
     private func copyToPasteboard(_ text: String) {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
+        TextInserter.copyToClipboard(text)
     }
 
     private func elapsedString(_ value: TimeInterval) -> String {

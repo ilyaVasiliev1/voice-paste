@@ -158,21 +158,20 @@ final class HotkeyManagerTests: XCTestCase {
         )
     }
 
-    /// `setSystemSwallowEnabled(_:)` remains the only public surface that
-    /// drives `systemSwallowEnabled` into the real `CGEventTap` callback path
-    /// (`SystemSwallowBox`, not directly testable headlessly per the class
-    /// doc above); this guards its lifecycle-safety shape only — not a
-    /// behavior proof of the swallow decision itself, which the tests above
-    /// now cover directly via `shouldSwallow`.
-    func test_setSystemSwallowEnabled_isCallable_beforeAndAfterStart_withoutCrashing() {
+    /// The gate is safe to update before an event tap exists. Deliberately do
+    /// not call `start()` here: when the development app already has
+    /// Universal Access, XCTest can inherit that trust and install a real
+    /// global hook while the user is typing. System integration belongs to a
+    /// manual smoke check of the installed app, not to unit tests.
+    func test_setSystemSwallowEnabled_isCallable_withoutInstallingEventTap() {
         let manager = HotkeyManager(shortcut: .default, onEvent: { _ in }, onEscape: {})
 
         manager.setSystemSwallowEnabled(false)
-        manager.start() // no-op under xcodebuild test: no Accessibility trust
         manager.setSystemSwallowEnabled(true)
         manager.setSystemSwallowEnabled(false)
         manager.stop()
 
-        XCTAssertFalse(manager.isActive, "start() must stay a no-op without Accessibility trust in this environment")
+        // The real callback wiring is manually smoke-tested only.
+        XCTAssertNotNil(manager)
     }
 }

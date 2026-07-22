@@ -1,7 +1,18 @@
 import AppKit
 import AVFoundation
 import ApplicationServices
+import Combine
 import Foundation
+
+/// One live source of truth for the current process's Universal Access grant.
+/// `AXIsProcessTrusted()` is deprecated; using the option-based API with no
+/// prompt lets every consumer observe the same current TCC decision. The
+/// consent sheet itself is requested only by `requestAccessibilityTrust()`.
+public enum AccessibilityTrust {
+    public static var isGranted: Bool {
+        AXIsProcessTrustedWithOptions(nil)
+    }
+}
 
 /// `API-local-readiness` (`L-001`, `US-001`). Recomputes `ReadinessState`
 /// from live permission/model status; never starts a capture or inference
@@ -14,14 +25,28 @@ public final class ReadinessCoordinator: ObservableObject {
     /// even when the overall readiness state happens to stay the same.
     @Published public private(set) var microphoneAuthorization: AVAuthorizationStatus
     @Published public private(set) var isAccessibilityTrusted: Bool
+    /// Keeps the system Universal Access prompt single-flight. This is
+    /// published so onboarding can avoid exposing its manual Settings
+    /// fallback while macOS is still attaching the original prompt.
+    @Published public private(set) var isAccessibilityTrustRequestInFlight = false
 
     private let modelManager: ModelManager
+    private var modelStateCancellable: AnyCancellable?
+    private let accessibilityPromptGate = AccessibilityPromptGate()
 
     public init(modelManager: ModelManager) {
         self.modelManager = modelManager
         self.microphoneAuthorization = AVCaptureDevice.authorizationStatus(for: .audio)
-        self.isAccessibilityTrusted = AXIsProcessTrusted()
+        self.isAccessibilityTrusted = AccessibilityTrust.isGranted
         refresh()
+        // Model discovery starts on a utility executor. Reflect its eventual
+        // `.unloaded` result in readiness as soon as it arrives, without
+        // making launch wait for a recursive walk of the Core ML bundle.
+        // `$state` publishes after the new value is available; `dropFirst`
+        // skips the current synchronous snapshot already handled above.
+        self.modelStateCancellable = modelManager.$state
+            .dropFirst()
+            .sink { [weak self] _ in self?.refresh() }
     }
 
     /// Recomputes `state` from current system status. Call after returning
@@ -29,7 +54,7 @@ public final class ReadinessCoordinator: ObservableObject {
     /// model state changes.
     public func refresh() {
         microphoneAuthorization = AVCaptureDevice.authorizationStatus(for: .audio)
-        isAccessibilityTrusted = AXIsProcessTrusted()
+        isAccessibilityTrusted = AccessibilityTrust.isGranted
 
         switch microphoneAuthorization {
         case .authorized:
@@ -126,18 +151,7 @@ public final class ReadinessCoordinator: ObservableObject {
             return .needsSystemSettings
         }
 
-        // A menu-bar app can have an onboarding window on screen while the
-        // process is technically inactive. TCC is allowed to immediately
-        // reject a privacy request made from an inactive client instead of
-        // presenting its consent sheet — a single `Task.yield()` is not
-        // enough to guarantee the activation reached WindowServer before the
-        // request fires. Activate, then actually wait for `NSApp.isActive`
-        // (bounded, so a stuck activation cannot hang the flow forever).
-        NSApp.activate(ignoringOtherApps: true)
-        if let onboardingWindow = NSApp.windows.first(where: { $0.identifier?.rawValue == "onboarding" }) {
-            onboardingWindow.makeKeyAndOrderFront(nil)
-        }
-        await waitUntilActive(timeout: .seconds(1))
+        await preparePrivacyPromptPresentation()
 
         Task { await DiagnosticLog.shared.log("permission.microphone.requestStart") }
         let granted = await withCheckedContinuation { continuation in
@@ -167,15 +181,85 @@ public final class ReadinessCoordinator: ObservableObject {
         }
     }
 
+    /// Brings the window the person is currently using to the front before a
+    /// TCC request. SwiftUI's `Window(id:)` is not guaranteed to expose that
+    /// id as an `NSWindow.identifier`, so looking it up by a hard-coded
+    /// identifier can silently fail and leave the privacy sheet behind the
+    /// main window. The key window is the correct source of truth here; the
+    /// visible/main fallbacks make the request equally reliable from a
+    /// menu-bar-only launch. The short sleep yields to WindowServer — it is
+    /// asynchronous and cannot block the UI or the permission flow.
+    private func preparePrivacyPromptPresentation() async {
+        NSApp.activate(ignoringOtherApps: true)
+        let presentingWindow = NSApp.keyWindow
+            ?? NSApp.mainWindow
+            ?? NSApp.windows.first(where: { $0.isVisible && $0.canBecomeKey })
+            ?? NSApp.windows.first(where: \.isVisible)
+        presentingWindow?.makeKeyAndOrderFront(nil)
+        presentingWindow?.orderFrontRegardless()
+        await waitUntilActive(timeout: .seconds(1))
+        try? await Task.sleep(nanoseconds: 100_000_000)
+    }
+
     /// Prompts the Accessibility trust dialog (`EC-002`, `AT-003`).
+    ///
+    /// Just like microphone TCC, the request must come from an active
+    /// application. A menu-bar utility can otherwise be technically
+    /// inactive even though its onboarding panel is visible; macOS then
+    /// routes the user to Settings without attaching the chosen grant to
+    /// this process. Activating first makes this a normal app permission
+    /// request — no relaunch or manual cache workaround is involved.
     public func requestAccessibilityTrust() {
-        // "AXTrustedCheckOptionPrompt" is the stable, documented value of
-        // `kAXTrustedCheckOptionPrompt`; used as a literal to avoid touching
-        // the imported C global (not concurrency-safe to reference directly).
-        let options: [String: Bool] = ["AXTrustedCheckOptionPrompt": true]
-        Task { await DiagnosticLog.shared.log("permission.accessibility.requestStart") }
-        let trusted = AXIsProcessTrustedWithOptions(options as CFDictionary)
-        Task { await DiagnosticLog.shared.log("permission.accessibility.requestResult", detail: trusted ? "granted" : "pending") }
-        refresh()
+        guard accessibilityPromptGate.begin() else {
+            Task { await DiagnosticLog.shared.log("permission.accessibility.requestCoalesced") }
+            return
+        }
+        isAccessibilityTrustRequestInFlight = true
+        Task { [weak self] in
+            guard let self else { return }
+            defer {
+                self.accessibilityPromptGate.finish()
+                self.isAccessibilityTrustRequestInFlight = false
+            }
+            await self.preparePrivacyPromptPresentation()
+
+            // Another return path may have refreshed the state while the
+            // app was being activated. Never ask macOS again if the grant is
+            // already real; refresh keeps every published value consistent.
+            guard !AccessibilityTrust.isGranted else {
+                self.refresh()
+                return
+            }
+
+            // "AXTrustedCheckOptionPrompt" is the stable, documented value
+            // of `kAXTrustedCheckOptionPrompt`; the prompt is asynchronous.
+            let options: [String: Bool] = ["AXTrustedCheckOptionPrompt": true]
+            await DiagnosticLog.shared.log("permission.accessibility.requestStart")
+            let trusted = AXIsProcessTrustedWithOptions(options as CFDictionary)
+            await DiagnosticLog.shared.log(
+                "permission.accessibility.requestResult",
+                detail: trusted ? "granted" : "pending"
+            )
+            self.refresh()
+        }
+    }
+}
+
+/// A tiny main-actor gate around the one system dialog that must never be
+/// presented twice. It is independent from the permission value itself:
+/// finishing a request does not cache denial or grant, so `refresh()` always
+/// continues to read the real current TCC state.
+@MainActor
+final class AccessibilityPromptGate {
+    private var isInFlight = false
+
+    func begin() -> Bool {
+        guard !isInFlight else { return false }
+        isInFlight = true
+        return true
+    }
+
+    func finish() {
+        isInFlight = false
     }
 }

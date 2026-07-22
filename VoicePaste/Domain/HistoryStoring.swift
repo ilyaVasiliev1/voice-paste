@@ -60,9 +60,3 @@ public protocol HistoryStoring: Sendable {
     /// Deletes a vocabulary entry by `id`.
     func deleteVocabulary(id: UUID) async throws
 }
-
-extension HistoryStoring {
-    public func fetchUsageStats() async throws -> UsageStats {
-        try await fetchUsageStats(now: Date(), dayCount: 30)
-    }
-}

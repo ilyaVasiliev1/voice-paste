@@ -96,7 +96,7 @@ final class ModelManagerTests: XCTestCase {
         _ = try await manager.ensureLoaded()
         XCTAssertEqual(manager.state, .ready)
 
-        manager.deleteModel()
+        await manager.deleteModel()
 
         XCTAssertEqual(manager.state, .notPrepared)
         XCTAssertFalse(manager.isReady)
@@ -115,9 +115,10 @@ final class ModelManagerTests: XCTestCase {
             modelDirectory: directory,
             makeTranscriber: { _, _, _ in MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil))) }
         )
+        await manager.waitForInitialModelDiscoveryForTesting()
         XCTAssertEqual(manager.state, .unloaded, "starts detected as an already-verified local model")
 
-        manager.deleteModel()
+        await manager.deleteModel()
 
         XCTAssertEqual(manager.state, .notPrepared)
     }
@@ -140,7 +141,7 @@ final class ModelManagerTests: XCTestCase {
             makeTranscriber: { _, _, _ in MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil))) }
         )
 
-        manager.deleteModel()
+        await manager.deleteModel()
 
         XCTAssertTrue(
             FileManager.default.fileExists(atPath: directory.path),
@@ -154,7 +155,7 @@ final class ModelManagerTests: XCTestCase {
     /// downloaded (`.notPrepared`, empty directory) must not crash and must
     /// leave the state exactly as it was — mirrors the doc comment's claim
     /// that this is "safe to call from any state".
-    func test_deleteModel_fromNotPrepared_isIdempotent_noCrash() throws {
+    func test_deleteModel_fromNotPrepared_isIdempotent_noCrash() async throws {
         let directory = try makeTempModelDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
 
@@ -164,8 +165,8 @@ final class ModelManagerTests: XCTestCase {
         )
         XCTAssertEqual(manager.state, .notPrepared)
 
-        manager.deleteModel()
-        manager.deleteModel() // called twice: must stay idempotent
+        await manager.deleteModel()
+        await manager.deleteModel() // called twice: must stay idempotent
 
         XCTAssertEqual(manager.state, .notPrepared)
         let remaining = try FileManager.default.contentsOfDirectory(atPath: directory.path)
@@ -203,7 +204,7 @@ final class ModelManagerTests: XCTestCase {
         )
         _ = try await manager.ensureLoaded()
 
-        manager.deleteModel()
+        await manager.deleteModel()
 
         XCTAssertEqual(manager.state, .notPrepared)
         let remainingInModels = try FileManager.default.contentsOfDirectory(atPath: modelsDirectory.path)
@@ -239,7 +240,7 @@ final class ModelManagerTests: XCTestCase {
     /// `AT-004`: a previous run's verified model files already on disk must
     /// be detected at startup as `.unloaded` (verified, lazily reloadable),
     /// never re-triggering the 626 MB download path.
-    func test_init_withVerifiedModelFilesOnDisk_startsUnloaded_notNotPrepared() throws {
+    func test_init_withVerifiedModelFilesOnDisk_startsUnloaded_notNotPrepared() async throws {
         let directory = try makeTempModelDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         try makePlausibleModelFiles(in: directory)
@@ -249,6 +250,7 @@ final class ModelManagerTests: XCTestCase {
             makeTranscriber: { _, _, _ in MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil))) }
         )
 
+        await manager.waitForInitialModelDiscoveryForTesting()
         XCTAssertEqual(manager.state, .unloaded)
     }
 
@@ -364,6 +366,7 @@ final class ModelManagerTests: XCTestCase {
                 return MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil)))
             }
         )
+        await manager.waitForInitialModelDiscoveryForTesting()
         XCTAssertEqual(manager.state, .unloaded, "starts detected as verified, exactly like the real regression")
 
         _ = try await manager.ensureLoaded()

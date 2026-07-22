@@ -7,7 +7,6 @@ public protocol ImportQueueStoring: Sendable {
     func restoreJobs() async throws -> [ImportJob]
     func upsert(_ job: ImportJob) async throws
     func delete(id: UUID) async throws
-    func deleteAll() async throws
 }
 
 /// Fallback used only when `history.sqlite` could not be opened. It keeps a
@@ -31,5 +30,4 @@ public actor InMemoryImportQueueStore: ImportQueueStoring {
 
     public func upsert(_ job: ImportJob) async throws { jobs[job.id] = job }
     public func delete(id: UUID) async throws { jobs.removeValue(forKey: id) }
-    public func deleteAll() async throws { jobs.removeAll() }
 }

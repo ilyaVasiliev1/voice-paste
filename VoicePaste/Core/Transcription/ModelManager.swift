@@ -14,6 +14,11 @@ public final class ModelManager: ObservableObject {
 
     private var transcriber: Transcribing?
     private var unloadTask: Task<Void, Never>?
+    /// Startup model discovery walks the on-disk Core ML bundle and can touch
+    /// hundreds of megabytes. Keep its task separate from UI state so app
+    /// launch and permission/onboarding controls never wait for that walk.
+    private var initialModelDiscoveryTask: Task<Bool, Never>?
+    private var initialModelDiscoveryToken: UUID?
     private let modelDirectory: URL
     private let makeTranscriber: (URL, String, @escaping @Sendable (Double) -> Void) async throws -> Transcribing
     /// Reads the live download-source setting at the moment a download
@@ -35,8 +40,15 @@ public final class ModelManager: ObservableObject {
         // restart doesn't ask for a 626 MB re-download — `.unloaded` means
         // "verified on disk, not resident in memory yet", exactly the state
         // `ensureLoaded()` already knows how to lazily reload from.
-        if Self.hasVerifiedLocalModel(in: modelDirectory) {
-            self.state = .unloaded
+        let token = UUID()
+        let discoveryTask = Task.detached(priority: .utility) {
+            Self.hasVerifiedLocalModel(in: modelDirectory)
+        }
+        self.initialModelDiscoveryToken = token
+        self.initialModelDiscoveryTask = discoveryTask
+        Task { [weak self] in
+            let hasLocalModel = await discoveryTask.value
+            self?.completeInitialModelDiscovery(hasLocalModel, token: token)
         }
     }
 
@@ -49,8 +61,35 @@ public final class ModelManager: ObservableObject {
     /// find everything it needs without re-downloading (`AT-004`), even
     /// though WhisperKit nests the model a few levels below `modelDirectory`
     /// rather than placing it flatly at the root.
-    private static func hasVerifiedLocalModel(in directory: URL) -> Bool {
+    nonisolated private static func hasVerifiedLocalModel(in directory: URL) -> Bool {
         LocalModelDetection.discoverModelFolder(in: directory) != nil
+    }
+
+    /// Finishes the background startup check exactly once. A deletion or a
+    /// load started before the check returns invalidates the old result, so a
+    /// stale directory walk can never overwrite the current model state.
+    private func completeInitialModelDiscovery(_ hasLocalModel: Bool, token: UUID) {
+        guard initialModelDiscoveryToken == token else { return }
+        initialModelDiscoveryTask = nil
+        initialModelDiscoveryToken = nil
+        guard hasLocalModel, transcriber == nil, state == .notPrepared else { return }
+        state = .unloaded
+    }
+
+    /// `ensureLoaded()` waits for the already-running disk check rather than
+    /// starting a competing walk. Awaiting yields the main actor; it does not
+    /// block clicks, animations, or the menu bar.
+    private func waitForInitialModelDiscovery() async {
+        guard let task = initialModelDiscoveryTask,
+              let token = initialModelDiscoveryToken else { return }
+        let hasLocalModel = await task.value
+        completeInitialModelDiscovery(hasLocalModel, token: token)
+    }
+
+    /// Test-only visibility into asynchronous startup discovery. Kept
+    /// internal so product callers continue to use `ensureLoaded()`.
+    func waitForInitialModelDiscoveryForTesting() async {
+        await waitForInitialModelDiscovery()
     }
 
     public var isReady: Bool {
@@ -83,6 +122,7 @@ public final class ModelManager: ObservableObject {
     /// manually clears `~/Library/Application Support`.
     public func ensureLoaded() async throws -> Transcribing {
         beginTask()
+        await waitForInitialModelDiscovery()
         if let transcriber, isReady {
             return transcriber
         }
@@ -90,7 +130,12 @@ public final class ModelManager: ObservableObject {
             state = .failed(storageError)
             throw storageError
         }
-        let hadExistingLocalModel = Self.hasVerifiedLocalModel(in: modelDirectory)
+        let hadExistingLocalModel: Bool
+        if case .unloaded = state {
+            hadExistingLocalModel = true
+        } else {
+            hadExistingLocalModel = false
+        }
         do {
             return try await loadWithAutoRetry()
         } catch {
@@ -105,7 +150,7 @@ public final class ModelManager: ObservableObject {
             // and falls through to `WhisperKitTranscriber`'s clean download
             // branch instead of retrying the same broken files.
             Task { await DiagnosticLog.shared.log("model.local.invalid") }
-            removeModelDirectoryContents()
+            await Self.removeModelDirectoryContents(at: modelDirectory)
             do {
                 Task { await DiagnosticLog.shared.log("model.redownload") }
                 return try await loadWithAutoRetry()
@@ -183,9 +228,11 @@ public final class ModelManager: ObservableObject {
     /// directory) so a corrupt/partial model can't be mistaken for a valid
     /// one on the next attempt. `modelDirectory` is exclusively owned by
     /// this app for model storage (see `App`'s setup), so this is safe.
-    private func removeModelDirectoryContents() {
-        try? FileManager.default.removeItem(at: modelDirectory)
-        try? FileManager.default.createDirectory(at: modelDirectory, withIntermediateDirectories: true)
+    nonisolated private static func removeModelDirectoryContents(at directory: URL) async {
+        await Task.detached(priority: .utility) {
+            try? FileManager.default.removeItem(at: directory)
+            try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        }.value
     }
 
     /// Milestone tracker for download progress logging (`_standards.md`
@@ -346,12 +393,17 @@ public final class ModelManager: ObservableObject {
     /// both `unloadTask` cancellation and `removeModelDirectoryContents()`
     /// are idempotent. Deliberately doesn't touch history/dictionary/settings
     /// (`L-010`): those live in separate stores this method never reaches.
-    public func deleteModel() {
+    public func deleteModel() async {
         unloadTask?.cancel()
         unloadTask = nil
         transcriber = nil
-        removeModelDirectoryContents()
+        // A discovery that started before deletion can otherwise report an
+        // old positive result after the directory has already been emptied.
+        initialModelDiscoveryTask?.cancel()
+        initialModelDiscoveryTask = nil
+        initialModelDiscoveryToken = nil
         state = .notPrepared
+        await Self.removeModelDirectoryContents(at: modelDirectory)
         Task { await DiagnosticLog.shared.log("model.delete") }
     }
 

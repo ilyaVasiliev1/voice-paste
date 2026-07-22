@@ -56,7 +56,7 @@ public final class HotkeyManager {
     /// this method only kicks that off and reports the outcome to the log.
     public func start() {
         guard !eventTapRunner.isRunning else { return }
-        guard AXIsProcessTrusted() else {
+        guard AccessibilityTrust.isGranted else {
             Task { await DiagnosticLog.shared.log("hotkey.start.skipped", detail: "accessibilityNotTrusted") }
             return
         }
@@ -132,18 +132,16 @@ public final class HotkeyManager {
     /// drives side effects (start/stop capture), never the swallow decision,
     /// which must happen synchronously in this same callback invocation.
     private nonisolated func handleTapEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-        // `INV-016`/`AT-097`: macOS disables an event tap on its own — no
-        // subscription needed to receive these two types — either after it
-        // judges the callback too slow (`.tapDisabledByTimeout`) or after a
-        // burst of user input (`.tapDisabledByUserInput`). Left alone the
-        // hotkey would silently stop working until the app is relaunched;
-        // re-enable it immediately, synchronously, right here. `event` is
-        // not a real key event for these two types, so it is simply passed
-        // through unmodified rather than evaluated for swallowing.
+        // `INV-016`/`AT-097`: these are macOS fail-safe notifications, not
+        // key events. A disabled tap must never fight the system by instantly
+        // enabling itself again after a user-input burst: that can turn a
+        // momentary stall into a keyboard-wide loop. We fail open — ordinary
+        // typing keeps flowing and the app only records diagnostics. A normal
+        // app restart recreates the shortcut listener if macOS has disabled
+        // it permanently.
         guard type != .tapDisabledByTimeout, type != .tapDisabledByUserInput else {
-            eventTapRunner.reenable()
             let reason = type == .tapDisabledByTimeout ? "timeout" : "userInput"
-            Task { await DiagnosticLog.shared.log("hotkey.tap.reenabled", detail: "reason=\(reason)") }
+            Task { await DiagnosticLog.shared.log("hotkey.tap.disabled", detail: "reason=\(reason)") }
             return Unmanaged.passRetained(event)
         }
 
@@ -279,11 +277,9 @@ private nonisolated struct RawPointerBox: @unchecked Sendable {
 /// never affect whether the hotkey fires.
 ///
 /// `nonisolated`/`@unchecked Sendable` and lock-protected for the same
-/// reason as `ShortcutBox` below: `reenable()` is called synchronously from
-/// the tap's C callback, which the C API always runs off the main actor
-/// from Swift's static point of view (here, literally on this type's own
-/// background thread), and there is no time for an actor hop before the
-/// callback must return.
+/// reason as `ShortcutBox` below: the C API always runs the callback off the
+/// main actor (here, literally on this type's own background thread), and
+/// its shared lifecycle state must remain safe without an actor hop.
 private nonisolated final class EventTapRunner: @unchecked Sendable {
     private let lock = NSLock()
     private var thread: Thread?
@@ -400,19 +396,6 @@ private nonisolated final class EventTapRunner: @unchecked Sendable {
         lock.unlock()
 
         doneSemaphore.signal()
-    }
-
-    /// Re-enables the tap in place, synchronously, from whatever thread the
-    /// tap's own callback is already executing on (`INV-016`/`AT-097`): the
-    /// system disables a tap on its own after it judges the callback too
-    /// slow, or after a burst of user input; without this the hotkey would
-    /// silently stop working until the app is relaunched.
-    func reenable() {
-        lock.lock()
-        let tap = self.tap
-        lock.unlock()
-        guard let tap else { return }
-        CGEvent.tapEnable(tap: tap, enable: true)
     }
 
     /// Idempotent: a `stop()` with no active thread is a no-op. Blocks the

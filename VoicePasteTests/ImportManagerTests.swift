@@ -117,4 +117,15 @@ final class ImportManagerTests: XCTestCase {
         XCTAssertEqual(restored.map(\.state), [.queued, .queued])
         XCTAssertEqual(restored.map(\.progress), [0, 0])
     }
+
+    func test_AT051_progressBurstIsCoalescedBeforeItCanScheduleUIWork() {
+        let gate = ImportProgressGate()
+
+        XCTAssertTrue(gate.shouldDeliver(0.10))
+        for _ in 0..<100 {
+            XCTAssertFalse(gate.shouldDeliver(0.11))
+        }
+        // A terminal update must not wait for the 250 ms interval.
+        XCTAssertTrue(gate.shouldDeliver(1))
+    }
 }
