@@ -279,6 +279,15 @@ public final class AppState: ObservableObject {
     }
 
     private func presentNotReadyMessage() {
+        // Logged with the *reason*, not just "an error appeared": this plaque
+        // is what the user actually sees when dictation refuses to start, and
+        // without the readiness state behind it the log said nothing useful.
+        Task {
+            await DiagnosticLog.shared.log(
+                "dictation.notReady",
+                detail: ReadinessCoordinator.describe(readiness.state)
+            )
+        }
         presentHUD(.error(
             message: NSLocalizedString(readiness.state.statusLocalizationKey, comment: "")
         ))

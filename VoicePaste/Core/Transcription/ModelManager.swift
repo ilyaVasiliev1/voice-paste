@@ -10,13 +10,27 @@ import Foundation
 /// - `unloadNow()` is called on app quit and from Settings "Выгрузить сейчас".
 @MainActor
 public final class ModelManager: ObservableObject {
-    @Published public private(set) var state: ModelState = .notPrepared
+    @Published public private(set) var state: ModelState = .notPrepared {
+        didSet {
+            // Every state change is recorded, because "почему опять грузится
+            // модель?" is otherwise unanswerable after the fact. Progress ticks
+            // within `.downloading` collapse into one line — `describe` omits
+            // the numbers precisely so a 4 Hz download can't flood the log.
+            let from = Self.describe(oldValue)
+            let to = Self.describe(state)
+            guard from != to else { return }
+            Task { await DiagnosticLog.shared.log("model.state", detail: "\(from)→\(to)") }
+        }
+    }
 
     private var transcriber: Transcribing?
     private var unloadTask: Task<Void, Never>?
     /// The single in-flight load, shared by every concurrent `ensureLoaded()`
     /// caller (launch pre-warm + a dictation started while it runs).
     private var loadTask: Task<Transcribing, Error>?
+    /// Identifies the current load so a late-finishing older one cannot clear
+    /// a newer load's slot (`finishLoad(generation:)`).
+    private var loadGeneration: UInt64 = 0
     /// `L-010`: the model is kept resident for instant dictation and given
     /// back when *the system* says it needs the memory — not on a fixed timer,
     /// which used to make every later dictation pay a reload for no reason.
@@ -160,13 +174,35 @@ public final class ModelManager: ObservableObject {
         if let loadTask {
             return try await loadTask.value
         }
+        // The task clears `loadTask` itself when it finishes, rather than the
+        // caller doing it in a `defer`. With the old `defer`, a caller whose
+        // own task got cancelled while awaiting would clear the slot while the
+        // load kept running — and the next `ensureLoaded()` would then start a
+        // *second* concurrent load of the same 600 MB model, doubling the Core
+        // ML compile and the memory it needs.
+        loadGeneration &+= 1
+        let generation = loadGeneration
         let task = Task<Transcribing, Error> { [weak self] in
             guard let self else { throw ModelError.downloadFailed }
-            return try await self.performLoad()
+            do {
+                let engine = try await self.performLoad()
+                self.finishLoad(generation: generation)
+                return engine
+            } catch {
+                self.finishLoad(generation: generation)
+                throw error
+            }
         }
         loadTask = task
-        defer { loadTask = nil }
         return try await task.value
+    }
+
+    /// Releases the shared load slot, but only if it still belongs to this
+    /// load — a newer `ensureLoaded()` must never have its task cleared by an
+    /// older one finishing late.
+    private func finishLoad(generation: UInt64) {
+        guard loadGeneration == generation else { return }
+        loadTask = nil
     }
 
     /// Pre-warms the model in the background so the *first* dictation doesn't
@@ -190,27 +226,52 @@ public final class ModelManager: ObservableObject {
             state = .failed(storageError)
             throw storageError
         }
-        let hadExistingLocalModel: Bool
-        if case .unloaded = state {
-            hadExistingLocalModel = true
-        } else {
-            hadExistingLocalModel = false
-        }
+        // Read the filesystem, not `state`. Deriving "a model exists" from
+        // `state == .unloaded` was wrong in every other state the loader can
+        // legitimately start from (`.ready` after a memory-pressure release,
+        // `.failed` on a manual retry) — and this flag decides whether 600 MB
+        // of the user's disk gets deleted, so it must reflect reality.
+        let hadExistingLocalModel = LocalModelDetection.discoverModelFolder(in: modelDirectory) != nil
         do {
             return try await loadWithAutoRetry()
         } catch {
             Task { await DiagnosticLog.shared.log("model.load.failed", detail: String(describing: error)) }
-            guard hadExistingLocalModel else {
+
+            // Cancellation is not a model failure: leave both the files and
+            // the state alone so a cancelled pre-warm can't mark the app
+            // broken.
+            if error is CancellationError {
+                throw error
+            }
+
+            // `INV-004`: the local model is deleted ONLY when the error proves
+            // the files themselves are unreadable, and only if it is still
+            // there to be deleted.
+            //
+            // Real-world regression this guards: from mainland China WhisperKit
+            // could fail with a *network* error (`RetriableDownloadFailure`)
+            // while loading a perfectly good on-disk model, because it still
+            // reaches out to HuggingFace for the tokenizer. The old code read
+            // any error as "локальная модель битая", wiped the whole 626 MB
+            // model and dropped into a re-download that could not succeed on
+            // that network — turning a momentary hiccup into a dead app with a
+            // red menu-bar icon. Seen repeatedly in the diagnostic log.
+            guard hadExistingLocalModel,
+                  Self.indicatesUnreadableLocalModel(error),
+                  let corruptFolder = LocalModelDetection.discoverModelFolder(in: modelDirectory) else {
                 state = .failed(.downloadFailed)
                 throw error
             }
+
             // The folder that `LocalModelDetection` trusted turned out to be
-            // unloadable — most likely corrupt/truncated rather than merely
-            // "not yet downloaded". Wipe it so the next attempt can't find it
-            // and falls through to `WhisperKitTranscriber`'s clean download
-            // branch instead of retrying the same broken files.
-            Task { await DiagnosticLog.shared.log("model.local.invalid") }
-            await Self.removeModelDirectoryContents(at: modelDirectory)
+            // unloadable — corrupt/truncated rather than merely "not yet
+            // downloaded". Wipe the model payload so the next attempt can't
+            // find it and falls through to a clean download. The tokenizer is
+            // deliberately kept: it is a separate 640 KB artifact that has
+            // nothing to do with a corrupt Core ML bundle, and re-fetching it
+            // is exactly what the network failure above cannot do.
+            Task { await DiagnosticLog.shared.log("model.local.invalid", detail: String(describing: error)) }
+            await Self.removeModelPayload(at: corruptFolder, keepingTokenizersUnder: modelDirectory)
             do {
                 Task { await DiagnosticLog.shared.log("model.redownload") }
                 return try await loadWithAutoRetry()
@@ -220,6 +281,43 @@ public final class ModelManager: ObservableObject {
                 throw error
             }
         }
+    }
+
+    /// Whether a load error means the on-disk model files are unreadable — the
+    /// only justification for deleting them (`performLoad()`).
+    ///
+    /// Pure and `nonisolated` so it is directly unit-testable. Deliberately
+    /// fails *closed*: anything unrecognised returns `false` and the user keeps
+    /// their model. A wrong `true` costs a 626 MB re-download on a network
+    /// where that may be impossible; a wrong `false` costs one honest error
+    /// message and a "Повторить" button.
+    nonisolated static func indicatesUnreadableLocalModel(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        // Anything the URL loading system reports is a transport problem, full
+        // stop — it says nothing about the bytes already on disk.
+        if error is URLError || nsError.domain == NSURLErrorDomain { return false }
+
+        // Core ML speaks only about the model files it was handed. Checked
+        // before the text markers below because its own wording ("Error in
+        // reading the MIL network") contains the word "network" while having
+        // nothing to do with networking.
+        if nsError.domain == "com.apple.CoreML" { return true }
+
+        let text = String(describing: error).lowercased()
+        // WhisperKit/Hub transport signatures. Deliberately specific — a bare
+        // "network" substring would misread Core ML's own message.
+        let networkMarkers = [
+            "retriabledownloadfailure", "invalidmetadata", "metadata must have been retrieved",
+            "timed out", "timeout", "connection", "offline", "unreachable",
+            "hostname", "http status", "urlerror", "no internet"
+        ]
+        if networkMarkers.contains(where: { text.contains($0) }) { return false }
+
+        let corruptMarkers = [
+            "model.mil", "mil network", "mlmodelc", "mlpackage", "corrupt",
+            "failed to parse", "cannot be read", "compiling", "compilation"
+        ]
+        return corruptMarkers.contains(where: { text.contains($0) })
     }
 
     /// First-attempt resilience for a transient network hiccup (observed in
@@ -283,18 +381,31 @@ public final class ModelManager: ObservableObject {
         // is on disk yet — an already-verified local model is never re-fetched
         // on a source change (`AT-093`). This is the path that works from
         // mainland China, where both HuggingFace hosts are unreachable.
+        // Fetch only what's missing. The tokenizer lives in the app's own
+        // directory (`tokenizerFolder`), separate from the model — a user who
+        // already has the model on disk but whose tokenizer WhisperKit
+        // previously left in `~/Documents/huggingface` still needs the ~640 KB
+        // tokenizer laid down here, or the local load would fall back to
+        // fetching it from an unreachable HuggingFace.
+        let needsModel = LocalModelDetection.discoverModelFolder(in: modelDirectory) == nil
+        let needsTokenizer = !Self.tokenizerPresent(in: modelDirectory)
         if source.usesDirectArchive {
-            // Fetch only what's missing. The tokenizer lives in the app's own
-            // directory (`tokenizerFolder`), separate from the model — a user
-            // who already has the model on disk but whose tokenizer WhisperKit
-            // previously left in `~/Documents/huggingface` still needs the
-            // ~640 KB tokenizer laid down here, or the local load would fall
-            // back to fetching it from an unreachable HuggingFace.
-            let needsModel = LocalModelDetection.discoverModelFolder(in: modelDirectory) == nil
-            let needsTokenizer = !Self.tokenizerPresent(in: modelDirectory)
             if needsModel || needsTokenizer {
                 try await downloadFromGitHub(model: needsModel, tokenizer: needsTokenizer)
             }
+        } else if needsTokenizer, !needsModel {
+            // A local model with no local tokenizer is the one combination that
+            // makes WhisperKit reach for HuggingFace on an otherwise offline
+            // load — the exact call that failed from China and, before the
+            // guard in `performLoad()`, got the model deleted. Lay the 640 KB
+            // tokenizer down from the project's own release instead; it is a
+            // static file, identical whichever host the model came from.
+            //
+            // Only when the model itself is already here: if the model is
+            // being fetched from HuggingFace anyway, its tokenizer arrives on
+            // that same trip and this would be a pointless second request.
+            // Best-effort — on failure the old HuggingFace path still runs.
+            try? await downloadFromGitHub(model: false, tokenizer: true)
         }
 
         let engine = try await makeTranscriber(modelDirectory, endpoint) { [weak self] fraction in
@@ -380,6 +491,44 @@ public final class ModelManager: ObservableObject {
         await Task.detached(priority: .utility) {
             try? FileManager.default.removeItem(at: directory)
             try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        }.value
+    }
+
+    /// Removes only the Core ML model payload, leaving the tokenizer in place.
+    /// Used by the corrupt-model recovery in `performLoad()`: a broken model
+    /// bundle is no reason to throw away the separate 640 KB tokenizer, whose
+    /// presence is exactly what lets the next load run without touching the
+    /// network. The full wipe stays reserved for the user's explicit
+    /// "Удалить модель" (`deleteModel()`).
+    /// - Parameters:
+    ///   - folder: the exact folder `LocalModelDetection` verified — removing
+    ///     that, rather than a hard-coded relative path, keeps this correct
+    ///     for both on-disk layouts (WhisperKit's nested
+    ///     `models/argmaxinc/whisperkit-coreml/<variant>` and a model sitting
+    ///     flat at the root).
+    ///   - modelDirectory: the app's model root, used to locate the tokenizer
+    ///     that must survive.
+    nonisolated private static func removeModelPayload(
+        at folder: URL,
+        keepingTokenizersUnder modelDirectory: URL
+    ) async {
+        let tokenizers = tokenizerDirectory(in: modelDirectory).standardizedFileURL
+        let root = modelDirectory.standardizedFileURL
+        let target = folder.standardizedFileURL
+        await Task.detached(priority: .utility) {
+            guard target != root else {
+                // The model sits flat at the root: clear its contents one by
+                // one so the tokenizer directory alongside it survives.
+                let children = (try? FileManager.default.contentsOfDirectory(
+                    at: modelDirectory,
+                    includingPropertiesForKeys: nil
+                )) ?? []
+                for child in children where child.standardizedFileURL != tokenizers {
+                    try? FileManager.default.removeItem(at: child)
+                }
+                return
+            }
+            try? FileManager.default.removeItem(at: target)
         }.value
     }
 
@@ -547,10 +696,32 @@ public final class ModelManager: ObservableObject {
     public func unloadNow() {
         unloadTask?.cancel()
         unloadTask = nil
+        let wasResident = transcriber != nil
+        let previousState = state
         transcriber = nil
         if case .ready = state {
             state = .unloaded
-            Task { await DiagnosticLog.shared.log("model.unload") }
+        }
+        // Always report an actual release. The old version logged only from
+        // `.ready`, so a release from any other state dropped the resident
+        // model with no trace at all — which is precisely the situation that
+        // makes a later "почему опять грузится?" impossible to explain.
+        if wasResident {
+            Task { await DiagnosticLog.shared.log("model.unload", detail: "from=\(Self.describe(previousState))") }
+        }
+    }
+
+    /// Short, stable label for a state in diagnostics. Never includes progress
+    /// numbers — those would make every 4 Hz tick a distinct log line.
+    nonisolated static func describe(_ state: ModelState) -> String {
+        switch state {
+        case .notPrepared: return "notPrepared"
+        case .downloading: return "downloading"
+        case .preparing: return "preparing"
+        case .verifying: return "verifying"
+        case .ready: return "ready"
+        case .unloaded: return "unloaded"
+        case .failed: return "failed"
         }
     }
 

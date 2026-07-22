@@ -19,7 +19,30 @@ public enum AccessibilityTrust {
 /// session by itself.
 @MainActor
 public final class ReadinessCoordinator: ObservableObject {
-    @Published public private(set) var state: ReadinessState = .needsMicrophonePermission
+    @Published public private(set) var state: ReadinessState = .needsMicrophonePermission {
+        didSet {
+            // The menu-bar icon and every "не готов" plaque are read straight
+            // off this value, so a transition out of `.ready` is the single
+            // most useful thing a diagnostic log can carry.
+            guard oldValue != state else { return }
+            let from = Self.describe(oldValue)
+            let to = Self.describe(state)
+            Task { await DiagnosticLog.shared.log("readiness.state", detail: "\(from)→\(to)") }
+        }
+    }
+
+    /// Stable short label for diagnostics; omits the download fraction so a
+    /// progressing download is one line, not hundreds.
+    nonisolated static func describe(_ state: ReadinessState) -> String {
+        switch state {
+        case .ready: return "ready"
+        case .needsMicrophonePermission: return "needsMicrophone"
+        case .needsAccessibilityPermission: return "needsAccessibility"
+        case .needsModel: return "needsModel"
+        case .downloadingModel: return "downloadingModel"
+        case .error: return "error"
+        }
+    }
     /// A snapshot of the live TCC values. Keeping them published makes a
     /// return from System Settings visibly update onboarding and Settings,
     /// even when the overall readiness state happens to stay the same.
