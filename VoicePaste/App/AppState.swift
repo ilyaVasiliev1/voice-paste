@@ -288,6 +288,13 @@ public final class AppState: ObservableObject {
 
     private func beginRecording() {
         frontAppSnapshot = TextInserter.captureFrontAppSnapshot()
+        // `L-010`: start loading the model the moment recording begins, so it
+        // warms up *while the user is still speaking* instead of after they
+        // stop. Dictation takes seconds; the load overlaps it and the wait
+        // disappears. Nothing is loaded when the user isn't dictating, and
+        // `ensureLoaded()` coalesces, so the transcription that follows joins
+        // this same load rather than starting a second one.
+        modelManager.prewarm()
         do {
             try audioCapture.start()
         } catch {

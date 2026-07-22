@@ -74,7 +74,12 @@ public final class AppSettings: ObservableObject {
         self.defaults = defaults
         self.hotkey = Self.loadHotkey(defaults) ?? .default
         self.recordingMode = RecordingMode(rawValue: defaults.string(forKey: Keys.recordingMode) ?? "") ?? .toggle
-        self.modelUnloadMinutes = defaults.object(forKey: Keys.modelUnloadMinutes) as? Int ?? 10
+        // `L-010`: keep the model resident by default. Unloading it after an
+        // idle timeout made every later dictation pay a reload (and, on the
+        // first load after an app update, the multi-minute Core ML compile),
+        // which reads as "the app is stuck". Users who want the ~600 MB back
+        // can still set a timeout in Settings.
+        self.modelUnloadMinutes = defaults.object(forKey: Keys.modelUnloadMinutes) as? Int ?? 0
         self.historyEnabled = defaults.object(forKey: Keys.historyEnabled) as? Bool ?? true
         self.autoInsertEnabled = defaults.object(forKey: Keys.autoInsertEnabled) as? Bool ?? true
         self.autoCorrectSafeTypos = defaults.object(forKey: Keys.autoCorrectSafeTypos) as? Bool ?? true

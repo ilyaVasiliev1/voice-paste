@@ -14,6 +14,13 @@ public final class ModelManager: ObservableObject {
 
     private var transcriber: Transcribing?
     private var unloadTask: Task<Void, Never>?
+    /// The single in-flight load, shared by every concurrent `ensureLoaded()`
+    /// caller (launch pre-warm + a dictation started while it runs).
+    private var loadTask: Task<Transcribing, Error>?
+    /// `L-010`: the model is kept resident for instant dictation and given
+    /// back when *the system* says it needs the memory — not on a fixed timer,
+    /// which used to make every later dictation pay a reload for no reason.
+    private var memoryPressureSource: DispatchSourceMemoryPressure?
     /// Startup model discovery walks the on-disk Core ML bundle and can touch
     /// hundreds of megabytes. Keep its task separate from UI state so app
     /// launch and permission/onboarding controls never wait for that walk.
@@ -45,6 +52,7 @@ public final class ModelManager: ObservableObject {
         self.makeTranscriber = makeTranscriber
         self.downloadEndpointProvider = downloadEndpointProvider
         self.downloadSourceProvider = downloadSourceProvider
+        startMemoryPressureMonitoring()
         // `L-001`/`AT-004`: a previous run may have already downloaded and
         // compiled the model into `modelDirectory`. Detect it up front so a
         // restart doesn't ask for a 626 MB re-download — `.unloaded` means
@@ -136,6 +144,38 @@ public final class ModelManager: ObservableObject {
         if let transcriber, isReady {
             return transcriber
         }
+        // Coalesce concurrent loads (`L-010`): the launch pre-warm and a user
+        // dictation that starts while it's still running must share ONE load —
+        // otherwise the multi-minute Core ML compile would run twice.
+        if let loadTask {
+            return try await loadTask.value
+        }
+        let task = Task<Transcribing, Error> { [weak self] in
+            guard let self else { throw ModelError.downloadFailed }
+            return try await self.performLoad()
+        }
+        loadTask = task
+        defer { loadTask = nil }
+        return try await task.value
+    }
+
+    /// Pre-warms the model in the background so the *first* dictation doesn't
+    /// pay the one-time Core ML compile (observed ~45 s on `large-v3`).
+    /// Fire-and-forget and idempotent: `ensureLoaded()` coalesces, so a
+    /// dictation started mid-pre-warm joins the same load instead of queueing
+    /// a second one. Called once the app reaches `ready` (`L-001`).
+    public func prewarm() {
+        guard transcriber == nil, loadTask == nil else { return }
+        // Only when the model is already verified on disk. `.notPrepared` must
+        // stay a deliberate user action — pre-warm never starts a 626 MB
+        // download by itself.
+        guard case .unloaded = state else { return }
+        Task { [weak self] in
+            _ = try? await self?.ensureLoaded()
+        }
+    }
+
+    private func performLoad() async throws -> Transcribing {
         if let storageError = checkStorage(), state == .notPrepared {
             state = .failed(storageError)
             throw storageError
@@ -463,6 +503,27 @@ public final class ModelManager: ObservableObject {
             guard !Task.isCancelled else { return }
             self?.unloadNow()
         }
+    }
+
+    /// Releases the resident model when macOS reports memory pressure, so the
+    /// "keep it warm" default never starves the rest of the system. A load in
+    /// flight is left alone (dropping it would just restart the compile); an
+    /// in-flight transcription is unaffected because it holds its own strong
+    /// reference to the engine and only this manager's reference is cleared.
+    private func startMemoryPressureMonitoring() {
+        let source = DispatchSource.makeMemoryPressureSource(
+            eventMask: [.warning, .critical],
+            queue: .main
+        )
+        source.setEventHandler { [weak self] in
+            Task { @MainActor in
+                guard let self, self.loadTask == nil, self.transcriber != nil else { return }
+                self.unloadNow()
+                await DiagnosticLog.shared.log("model.unload", detail: "reason=memoryPressure")
+            }
+        }
+        source.resume()
+        memoryPressureSource = source
     }
 
     /// `AT-026`/quit: releases the loaded model immediately.
