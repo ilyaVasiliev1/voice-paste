@@ -57,19 +57,39 @@ open VoicePaste.xcodeproj
 
 ## Удаление
 
-VoicePaste не устанавливается через App Store, поэтому удаляется вручную. Перетащить приложение в корзину недостаточно — модель распознавания (~626 МБ) и данные лежат отдельно.
+VoicePaste не устанавливается через App Store, поэтому удаляется вручную. **Перетащить приложение в Корзину недостаточно** — модель распознавания (~600 МБ), история, настройки и кэши лежат отдельно, вне бандла приложения, и остаются на диске.
 
-1. Перетащи **VoicePaste** из папки «Программы» в корзину.
-2. Удали данные приложения — в Терминале:
+### Полное удаление одной командой
 
-   ```bash
-   rm -rf ~/Library/Application\ Support/VoicePaste
-   rm -rf ~/Library/Caches/VoicePaste
-   rm -f  ~/Library/Preferences/com.ilyavasiliev.voicepaste.plist
-   rm -rf ~/Library/Saved\ Application\ State/com.ilyavasiliev.voicepaste.savedState
-   ```
+Из папки проекта:
 
-3. (Необязательно) Убери разрешения в **Системные настройки → Конфиденциальность и безопасность → Микрофон** и **Универсальный доступ**.
+```bash
+bash scripts/uninstall.sh
+```
+
+Скрипт закрывает приложение, показывает, что и сколько будет удалено, и после подтверждения сносит **всё**: сам `.app`, данные, модель и кэши. Флаг `--yes` — без вопросов.
+
+### Вручную
+
+Если запускать скрипт не хочешь — то же самое в Терминале:
+
+```bash
+# 1. приложение
+rm -rf /Applications/VoicePaste.app
+# 2. данные + модель (~600 МБ)
+rm -rf ~/Library/Application\ Support/VoicePaste
+# 3. кэши (в т.ч. скомпилированная CoreML-модель)
+rm -rf ~/Library/Caches/VoicePaste
+rm -rf ~/Library/Caches/com.ilyavasiliev.voicepaste
+rm -rf ~/Library/HTTPStorages/com.ilyavasiliev.voicepaste
+# 4. настройки и состояние окон
+rm -f  ~/Library/Preferences/com.ilyavasiliev.voicepaste.plist
+rm -rf ~/Library/Saved\ Application\ State/com.ilyavasiliev.voicepaste.savedState
+```
+
+### Разрешения
+
+Ни скрипт, ни команды не трогают выданные разрешения (macOS не даёт менять их программно). Убери их вручную: **Системные настройки → Конфиденциальность и безопасность → Микрофон** и **Универсальный доступ** — сними VoicePaste.
 
 После этого на Mac не остаётся никаких следов приложения.
 
