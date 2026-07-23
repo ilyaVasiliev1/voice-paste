@@ -24,6 +24,35 @@ nonisolated public enum AudioDecodeError: Error, Equatable, Sendable {
     case decodeFailed(String)
 }
 
+/// One bounded 16 kHz mono window. `uniqueSampleCount` excludes the overlap
+/// copied from the preceding window and is therefore safe for duration math.
+nonisolated public struct DecodedAudioChunk: Sendable {
+    public let samples: [Float]
+    public let uniqueSampleCount: Int
+
+    public init(samples: [Float], uniqueSampleCount: Int) {
+        self.samples = samples
+        self.uniqueSampleCount = uniqueSampleCount
+    }
+}
+
+private nonisolated final class DecodedSampleCollector: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: [Float] = []
+
+    func append(_ samples: [Float]) {
+        lock.lock()
+        storage.append(contentsOf: samples)
+        lock.unlock()
+    }
+
+    func take() -> [Float] {
+        lock.lock()
+        defer { lock.unlock() }
+        return storage
+    }
+}
+
 /// Decodes an already security-scoped-accessible media file into 16 kHz mono
 /// Float32 samples using only system CoreAudio/AVFoundation (`DEP-008`,
 /// spike closed 2026-07-19 — no third-party OGG/Opus library).
@@ -36,17 +65,56 @@ nonisolated public struct AudioDecoder: Sendable {
     /// Number of source seconds decoded per chunk.
     private let chunkDurationSeconds: Double
 
-    public init(chunkDurationSeconds: Double = 60) {
+    public init(chunkDurationSeconds: Double = 28) {
         self.chunkDurationSeconds = chunkDurationSeconds
     }
 
+    /// Compatibility helper for short microphone/test fixtures. Production
+    /// media imports use `decodeInChunks` and never build this full array.
     public func decode(url: URL, onProgress: (@Sendable (Double) -> Void)? = nil) async throws -> [Float] {
+        let collector = DecodedSampleCollector()
+        _ = try await decodeInChunks(url: url, overlapSeconds: 0, onProgress: onProgress) { chunk in
+            collector.append(chunk.samples)
+        }
+        return collector.take()
+    }
+
+    /// Streams bounded windows to `consume`, awaiting recognition before the
+    /// next window is retained. Memory is therefore proportional to one
+    /// Whisper window rather than media duration (`INV-018`, `AT-100`).
+    @discardableResult
+    public func decodeInChunks(
+        url: URL,
+        overlapSeconds: Double = 0.75,
+        onProgress: (@Sendable (Double) -> Void)? = nil,
+        consume: @escaping @Sendable (DecodedAudioChunk) async throws -> Void
+    ) async throws -> Int {
         guard SupportedImportFormat.isSupported(pathExtension: url.pathExtension) else {
             throw AudioDecodeError.unsupportedFormat
         }
         if Self.isVideo(url) {
-            return try await decodeVideoAudioTrack(url: url, onProgress: onProgress)
+            return try await decodeVideoAudioTrackInChunks(
+                url: url,
+                overlapSeconds: overlapSeconds,
+                onProgress: onProgress,
+                consume: consume
+            )
         }
+
+        return try await decodeAudioFileInChunks(
+            url: url,
+            overlapSeconds: overlapSeconds,
+            onProgress: onProgress,
+            consume: consume
+        )
+    }
+
+    private func decodeAudioFileInChunks(
+        url: URL,
+        overlapSeconds: Double,
+        onProgress: (@Sendable (Double) -> Void)?,
+        consume: @escaping @Sendable (DecodedAudioChunk) async throws -> Void
+    ) async throws -> Int {
 
         let file: AVAudioFile
         do {
@@ -70,11 +138,11 @@ nonisolated public struct AudioDecoder: Sendable {
             throw AudioDecodeError.decodeFailed("Empty or unreadable audio track.")
         }
 
-        var result: [Float] = []
-        result.reserveCapacity(Int(Double(totalFrames) * 16_000.0 / sourceFormat.sampleRate) + 1)
-
         let chunkFrameCount = max(1, AVAudioFrameCount(sourceFormat.sampleRate * chunkDurationSeconds))
+        let overlapSampleCount = max(0, Int(overlapSeconds * 16_000))
         var framesRead: AVAudioFramePosition = 0
+        var previousTail: [Float] = []
+        var totalUniqueSamples = 0
 
         while framesRead < totalFrames {
             try Task.checkCancellation()
@@ -116,23 +184,38 @@ nonisolated public struct AudioDecoder: Sendable {
             }
             if let channelData = outBuffer.floatChannelData {
                 let frameCount = Int(outBuffer.frameLength)
-                result.append(contentsOf: UnsafeBufferPointer(start: channelData[0], count: frameCount))
+                let unique = Array(UnsafeBufferPointer(start: channelData[0], count: frameCount))
+                guard !unique.isEmpty else { continue }
+                var emitted = previousTail
+                emitted.reserveCapacity(previousTail.count + unique.count)
+                emitted.append(contentsOf: unique)
+                try await consume(DecodedAudioChunk(samples: emitted, uniqueSampleCount: unique.count))
+                totalUniqueSamples += unique.count
+                previousTail = overlapSampleCount > 0
+                    ? Array(unique.suffix(min(overlapSampleCount, unique.count)))
+                    : []
             }
 
             onProgress?(Double(framesRead) / Double(totalFrames))
         }
 
-        return result
+        guard totalUniqueSamples > 0 else {
+            throw AudioDecodeError.decodeFailed("The audio track is empty.")
+        }
+        onProgress?(1)
+        return totalUniqueSamples
     }
 
     /// `AVAudioFile` is ideal for standalone audio, but does not reliably
     /// expose an embedded track from every MP4/MOV container. Video imports
     /// therefore use `AVAssetReader` directly and request just one 16 kHz
     /// mono PCM audio stream: no video frames are decoded or retained.
-    private func decodeVideoAudioTrack(
+    private func decodeVideoAudioTrackInChunks(
         url: URL,
-        onProgress: (@Sendable (Double) -> Void)? = nil
-    ) async throws -> [Float] {
+        overlapSeconds: Double,
+        onProgress: (@Sendable (Double) -> Void)? = nil,
+        consume: @escaping @Sendable (DecodedAudioChunk) async throws -> Void
+    ) async throws -> Int {
         let asset = AVURLAsset(url: url)
         let tracks = try await asset.loadTracks(withMediaType: .audio)
         guard let track = tracks.first else {
@@ -167,7 +250,12 @@ nonisolated public struct AudioDecoder: Sendable {
             throw AudioDecodeError.decodeFailed(reader.error?.localizedDescription ?? "Could not start audio extraction.")
         }
 
-        var result: [Float] = []
+        let uniqueWindowSamples = max(1, Int(chunkDurationSeconds * 16_000))
+        let overlapSampleCount = max(0, Int(overlapSeconds * 16_000))
+        var pending: [Float] = []
+        pending.reserveCapacity(uniqueWindowSamples + 16_000)
+        var previousTail: [Float] = []
+        var totalUniqueSamples = 0
         while reader.status == .reading {
             try Task.checkCancellation()
             guard let sampleBuffer = output.copyNextSampleBuffer() else { break }
@@ -190,17 +278,38 @@ nonisolated public struct AudioDecoder: Sendable {
             guard status == noErr, let rawPointer, byteCount >= MemoryLayout<Float>.size else { continue }
             let sampleCount = byteCount / MemoryLayout<Float>.size
             rawPointer.withMemoryRebound(to: Float.self, capacity: sampleCount) { pointer in
-                result.append(contentsOf: UnsafeBufferPointer(start: pointer, count: sampleCount))
+                pending.append(contentsOf: UnsafeBufferPointer(start: pointer, count: sampleCount))
+            }
+
+            while pending.count >= uniqueWindowSamples {
+                let unique = Array(pending.prefix(uniqueWindowSamples))
+                pending.removeFirst(uniqueWindowSamples)
+                var emitted = previousTail
+                emitted.reserveCapacity(previousTail.count + unique.count)
+                emitted.append(contentsOf: unique)
+                try await consume(DecodedAudioChunk(samples: emitted, uniqueSampleCount: unique.count))
+                totalUniqueSamples += unique.count
+                previousTail = overlapSampleCount > 0
+                    ? Array(unique.suffix(min(overlapSampleCount, unique.count)))
+                    : []
             }
         }
         if reader.status == .failed {
             throw AudioDecodeError.decodeFailed(reader.error?.localizedDescription ?? "Could not extract video audio.")
         }
-        guard !result.isEmpty else {
+        if !pending.isEmpty {
+            let unique = pending
+            var emitted = previousTail
+            emitted.reserveCapacity(previousTail.count + unique.count)
+            emitted.append(contentsOf: unique)
+            try await consume(DecodedAudioChunk(samples: emitted, uniqueSampleCount: unique.count))
+            totalUniqueSamples += unique.count
+        }
+        guard totalUniqueSamples > 0 else {
             throw AudioDecodeError.decodeFailed("The video audio track is empty.")
         }
         onProgress?(1)
-        return result
+        return totalUniqueSamples
     }
 
     /// Best-effort duration read for the "имя и длительность" preview in

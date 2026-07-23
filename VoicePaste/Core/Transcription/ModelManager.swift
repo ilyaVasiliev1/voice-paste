@@ -3,7 +3,8 @@ import Foundation
 
 /// Owns the WhisperKit model lifecycle (`L-010`, `L-011`, `API-local-model`).
 ///
-/// - First transcription lazily loads/compiles the model (`ensureLoaded()`).
+/// - Readiness pre-warms the model once per launch; a later first use lazily
+///   loads/compiles it when that warm-up was skipped or it has been unloaded.
 /// - After the last active task, an unload timer starts using
 ///   `DM-001.modelUnloadMinutes` (1–60, default 10; `0` keeps it warm).
 /// - A new recording/import cancels the pending timer (`beginTask()`).
@@ -52,6 +53,10 @@ public final class ModelManager: ObservableObject {
     /// download) from `.mirror`/`.official` (WhisperKit Hub), so the source —
     /// not just its HF endpoint string — is needed here. Defaults to `.mirror`.
     private let downloadSourceProvider: @MainActor () -> ModelDownloadSource
+    /// Public release bundles immutable model assets. In that mode the
+    /// runtime must fail locally instead of silently contacting a host.
+    private let allowsNetworkDownloads: Bool
+    public let isBundledModel: Bool
     /// The in-flight GitHub archive download, kept so `cancelDownload()` can
     /// stop it (producing resume data) without cancelling the whole app.
     private var activeDownloader: GitHubModelDownloader?
@@ -60,12 +65,16 @@ public final class ModelManager: ObservableObject {
         modelDirectory: URL,
         makeTranscriber: @escaping (URL, String, @escaping @Sendable (Double) -> Void) async throws -> Transcribing = ModelManager.defaultTranscriberFactory,
         downloadEndpointProvider: @escaping @MainActor () -> String = { ModelCatalog.downloadEndpoint },
-        downloadSourceProvider: @escaping @MainActor () -> ModelDownloadSource = { .mirror }
+        downloadSourceProvider: @escaping @MainActor () -> ModelDownloadSource = { .mirror },
+        allowsNetworkDownloads: Bool = true,
+        isBundledModel: Bool = false
     ) {
         self.modelDirectory = modelDirectory
         self.makeTranscriber = makeTranscriber
         self.downloadEndpointProvider = downloadEndpointProvider
         self.downloadSourceProvider = downloadSourceProvider
+        self.allowsNetworkDownloads = allowsNetworkDownloads
+        self.isBundledModel = isBundledModel
         startMemoryPressureMonitoring()
         // `L-001`/`AT-004`: a previous run may have already downloaded and
         // compiled the model into `modelDirectory`. Detect it up front so a
@@ -185,7 +194,7 @@ public final class ModelManager: ObservableObject {
         let task = Task<Transcribing, Error> { [weak self] in
             guard let self else { throw ModelError.downloadFailed }
             do {
-                let engine = try await self.performLoad()
+                let engine = try await self.performLoad(generation: generation)
                 self.finishLoad(generation: generation)
                 return engine
             } catch {
@@ -221,8 +230,9 @@ public final class ModelManager: ObservableObject {
         }
     }
 
-    private func performLoad() async throws -> Transcribing {
-        if let storageError = checkStorage(), state == .notPrepared {
+    private func performLoad(generation: UInt64) async throws -> Transcribing {
+        try requireCurrentLoad(generation)
+        if allowsNetworkDownloads, let storageError = checkStorage(), state == .notPrepared {
             state = .failed(storageError)
             throw storageError
         }
@@ -233,7 +243,7 @@ public final class ModelManager: ObservableObject {
         // of the user's disk gets deleted, so it must reflect reality.
         let hadExistingLocalModel = LocalModelDetection.discoverModelFolder(in: modelDirectory) != nil
         do {
-            return try await loadWithAutoRetry()
+            return try await loadWithAutoRetry(generation: generation)
         } catch {
             Task { await DiagnosticLog.shared.log("model.load.failed", detail: String(describing: error)) }
 
@@ -259,7 +269,9 @@ public final class ModelManager: ObservableObject {
             guard hadExistingLocalModel,
                   Self.indicatesUnreadableLocalModel(error),
                   let corruptFolder = LocalModelDetection.discoverModelFolder(in: modelDirectory) else {
-                state = .failed(.downloadFailed)
+                if loadGeneration == generation {
+                    state = .failed((error as? ModelError) ?? .downloadFailed)
+                }
                 throw error
             }
 
@@ -274,9 +286,10 @@ public final class ModelManager: ObservableObject {
             await Self.removeModelPayload(at: corruptFolder, keepingTokenizersUnder: modelDirectory)
             do {
                 Task { await DiagnosticLog.shared.log("model.redownload") }
-                return try await loadWithAutoRetry()
+                try requireCurrentLoad(generation)
+                return try await loadWithAutoRetry(generation: generation)
             } catch {
-                state = .failed(.downloadFailed)
+                if loadGeneration == generation { state = .failed(.downloadFailed) }
                 Task { await DiagnosticLog.shared.log("model.load.failed", detail: String(describing: error)) }
                 throw error
             }
@@ -333,12 +346,14 @@ public final class ModelManager: ObservableObject {
     /// layer from the wipe+redownload fallback in `ensureLoaded()` — that one
     /// handles a corrupt *existing* local folder; this one handles a flaky
     /// *first* download attempt and never touches the filesystem itself.
-    private func loadWithAutoRetry() async throws -> Transcribing {
+    private func loadWithAutoRetry(generation: UInt64) async throws -> Transcribing {
         var lastError: Error?
         for attempt in 0...Self.maxAutoDownloadRetries {
             do {
-                return try await load()
+                try requireCurrentLoad(generation)
+                return try await load(generation: generation)
             } catch {
+                if error is CancellationError { throw error }
                 lastError = error
                 guard attempt < Self.maxAutoDownloadRetries else { break }
                 Task { await DiagnosticLog.shared.log("model.load.retry", detail: "attempt \(attempt + 1)") }
@@ -357,7 +372,8 @@ public final class ModelManager: ObservableObject {
     /// frozen screen before either success or the next attempt's progress.
     private static let autoRetryPauseNanos: UInt64 = 1_500_000_000
 
-    private func load() async throws -> Transcribing {
+    private func load(generation: UInt64) async throws -> Transcribing {
+        try requireCurrentLoad(generation)
         resetDownloadProgressTracking()
         // Only a genuinely absent model means a network download. An on-disk
         // model is just being brought into memory — report `.preparing`, which
@@ -389,9 +405,13 @@ public final class ModelManager: ObservableObject {
         // fetching it from an unreachable HuggingFace.
         let needsModel = LocalModelDetection.discoverModelFolder(in: modelDirectory) == nil
         let needsTokenizer = !Self.tokenizerPresent(in: modelDirectory)
+        if !allowsNetworkDownloads, needsModel || needsTokenizer {
+            state = .failed(.verificationFailed)
+            throw ModelError.verificationFailed
+        }
         if source.usesDirectArchive {
             if needsModel || needsTokenizer {
-                try await downloadFromGitHub(model: needsModel, tokenizer: needsTokenizer)
+                try await downloadFromGitHub(model: needsModel, tokenizer: needsTokenizer, generation: generation)
             }
         } else if needsTokenizer, !needsModel {
             // A local model with no local tokenizer is the one combination that
@@ -405,18 +425,20 @@ public final class ModelManager: ObservableObject {
             // being fetched from HuggingFace anyway, its tokenizer arrives on
             // that same trip and this would be a pointless second request.
             // Best-effort — on failure the old HuggingFace path still runs.
-            try? await downloadFromGitHub(model: false, tokenizer: true)
+            try? await downloadFromGitHub(model: false, tokenizer: true, generation: generation)
         }
 
+        try requireCurrentLoad(generation)
         let engine = try await makeTranscriber(modelDirectory, endpoint) { [weak self] fraction in
             // WhisperKit's `progressCallback` may fire from a background
             // download-session thread; hop onto the main actor before
             // touching `@Published state` or the milestone tracker below
             // (Swift 6 strict concurrency — no direct mutation here).
             Task { @MainActor in
-                self?.handleDownloadProgress(fraction: fraction)
+                self?.handleDownloadProgress(fraction: fraction, generation: generation)
             }
         }
+        try requireCurrentLoad(generation)
         state = .verifying
         transcriber = engine
         state = .ready
@@ -430,7 +452,8 @@ public final class ModelManager: ObservableObject {
     /// same `handleDownloadProgress` pipeline as the HuggingFace path, so the
     /// HUD/onboarding "N из 626 МБ" UI is identical. Throws on cancel/failure;
     /// `GitHubModelDownloader` cleans its own temp files on every exit.
-    private func downloadFromGitHub(model: Bool, tokenizer: Bool) async throws {
+    private func downloadFromGitHub(model: Bool, tokenizer: Bool, generation: UInt64) async throws {
+        try requireCurrentLoad(generation)
         let workDirectory = modelDirectory.appendingPathComponent(".github-download", isDirectory: true)
         let downloader = GitHubModelDownloader(workDirectory: workDirectory)
         activeDownloader = downloader
@@ -464,8 +487,9 @@ public final class ModelManager: ObservableObject {
         Task { await DiagnosticLog.shared.log("model.github.download.start") }
         do {
             try await downloader.fetchAll(archives) { [weak self] fraction in
-                Task { @MainActor in self?.handleDownloadProgress(fraction: fraction) }
+                Task { @MainActor in self?.handleDownloadProgress(fraction: fraction, generation: generation) }
             }
+            try requireCurrentLoad(generation)
             Task { await DiagnosticLog.shared.log("model.github.download.success") }
         } catch {
             Task { await DiagnosticLog.shared.log("model.github.download.failed", detail: String(describing: error)) }
@@ -591,7 +615,8 @@ public final class ModelManager: ObservableObject {
     /// catalog constant (626 MB) and `completedBytes` is `fraction ×
     /// totalBytes`; speed/ETA are then a derivative of *that derived byte
     /// count* over monotonic time, exactly as before.
-    private func handleDownloadProgress(fraction rawFraction: Double) {
+    private func handleDownloadProgress(fraction rawFraction: Double, generation: UInt64) {
+        guard loadGeneration == generation else { return }
         guard case .downloading = state else { return }
         let now = DispatchTime.now().uptimeNanoseconds
         let totalBytes = ModelCatalog.approximateSizeBytes
@@ -737,6 +762,20 @@ public final class ModelManager: ObservableObject {
         unloadTask?.cancel()
         unloadTask = nil
         transcriber = nil
+        // Invalidate and cancel every in-flight producer before touching the
+        // directory. A late Core ML compile/download is then unable to publish
+        // `.ready` or repopulate files after the user deleted the model.
+        loadGeneration &+= 1
+        loadTask?.cancel()
+        loadTask = nil
+        let downloader = activeDownloader
+        activeDownloader = nil
+        await downloader?.cancel()
+        if isBundledModel {
+            state = .unloaded
+            Task { await DiagnosticLog.shared.log("model.delete.skipped", detail: "bundledReadOnly") }
+            return
+        }
         // A discovery that started before deletion can otherwise report an
         // old positive result after the directory has already been emptied.
         initialModelDiscoveryTask?.cancel()
@@ -745,6 +784,12 @@ public final class ModelManager: ObservableObject {
         state = .notPrepared
         await Self.removeModelDirectoryContents(at: modelDirectory)
         Task { await DiagnosticLog.shared.log("model.delete") }
+    }
+
+    private func requireCurrentLoad(_ generation: UInt64) throws {
+        guard !Task.isCancelled, loadGeneration == generation else {
+            throw CancellationError()
+        }
     }
 
     public static func defaultTranscriberFactory(

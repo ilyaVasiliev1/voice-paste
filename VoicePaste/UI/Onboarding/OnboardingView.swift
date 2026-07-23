@@ -202,18 +202,20 @@ struct OnboardingView: View {
             Text("onboarding.model.verifying")
         case .failed:
             Text("onboarding.model.failed").foregroundStyle(.red)
-            // `AT-096`/`UI-002`: the same source setting as Settings, so
-            // switching here and retrying starts the next attempt from the
-            // newly chosen source without leaving onboarding.
-            ModelSourcePicker(settings: appState.settings)
-            Button("onboarding.model.retry") {
-                Task { _ = try? await appState.modelManager.ensureLoaded() }
+            if !appState.modelManager.isBundledModel {
+                ModelSourcePicker(settings: appState.settings)
+                Button("onboarding.model.retry") {
+                    Task { _ = try? await appState.modelManager.ensureLoaded() }
+                }
             }
         case .notPrepared:
-            // `AT-096`/`UI-002`: shown before the first download attempt too.
-            ModelSourcePicker(settings: appState.settings)
-            Button("onboarding.model.download") {
-                Task { _ = try? await appState.modelManager.ensureLoaded() }
+            if appState.modelManager.isBundledModel {
+                Text("onboarding.model.failed").foregroundStyle(.red)
+            } else {
+                ModelSourcePicker(settings: appState.settings)
+                Button("onboarding.model.download") {
+                    Task { _ = try? await appState.modelManager.ensureLoaded() }
+                }
             }
         }
     }

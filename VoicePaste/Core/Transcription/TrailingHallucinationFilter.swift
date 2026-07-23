@@ -1,8 +1,8 @@
 import Foundation
 
-/// Removes a known Whisper terminal filler. Long end silence is trimmed
-/// before inference; the exact reserved technical suffix is also removed
-/// from the final result to cover decoders that merge it into speech.
+/// Removes a known Whisper terminal filler only when the audio evidence also
+/// contains a long silent tail. Text alone is never enough evidence: a user
+/// may legitimately dictate the same phrase.
 public enum TrailingHallucinationFilter {
     public struct Segment: Sendable, Equatable {
         public let text: String
@@ -28,17 +28,20 @@ public enum TrailingHallucinationFilter {
         rawText: String,
         segments: [Segment],
         samples: [Float],
+        hadLongTrailingSilence: Bool? = nil,
         sampleRate: Double = 16_000
     ) -> String {
+        let hadLongTrailingSilence = hadLongTrailingSilence
+            ?? self.hasLongTrailingSilence(in: samples, sampleRate: sampleRate)
+        guard hadLongTrailingSilence else { return rawText }
+
         if let terminal = segments.last,
            knownTerminalFillers.contains(canonical(terminal.text)),
            let lastAudibleSecond = lastAudibleSecond(
                 in: samples,
                 sampleRate: sampleRate
            ) {
-            let audioDuration = Double(samples.count) / sampleRate
-            if audioDuration - lastAudibleSecond >= 0.6,
-               terminal.startSeconds >= lastAudibleSecond + 0.2 {
+            if terminal.startSeconds >= lastAudibleSecond + 0.2 {
                 let suffix = terminal.text.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !suffix.isEmpty,
                    rawText.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix(suffix) {
@@ -48,11 +51,13 @@ public enum TrailingHallucinationFilter {
             }
         }
 
-        // Some decoders coalesce speech and filler into one segment. The
-        // exact final phrase is a known Whisper artefact in this product, so
-        // it is reserved and removed irrespective of auto-detected language.
-        // This is intentionally narrower than generic text rewriting.
-        return removingKnownTerminalFiller(rawText)
+        // Some decoders coalesce speech and filler into one segment. A long
+        // silent tail plus an appended filler is sufficient evidence, but a
+        // transcript consisting only of the phrase is preserved: that is the
+        // explicit user-dictated case covered by AT-053.
+        return canonical(rawText) == "продолжение следует"
+            ? rawText
+            : removingKnownTerminalFiller(rawText)
     }
 
     /// Trims a long silent tail before it reaches Whisper. This addresses the
@@ -73,6 +78,16 @@ public enum TrailingHallucinationFilter {
             Int((lastAudibleSecond + 0.25) * sampleRate)
         )
         return Array(samples.prefix(retainedSampleCount))
+    }
+
+    public nonisolated static func hasLongTrailingSilence(
+        in samples: [Float],
+        sampleRate: Double = 16_000
+    ) -> Bool {
+        guard let lastAudibleSecond = lastAudibleSecond(in: samples, sampleRate: sampleRate) else {
+            return false
+        }
+        return Double(samples.count) / sampleRate - lastAudibleSecond >= 0.6
     }
 
     /// Finds the final 20 ms window with enough signal energy for speech.

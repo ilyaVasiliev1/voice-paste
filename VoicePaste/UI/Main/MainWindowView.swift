@@ -10,6 +10,22 @@ struct MainWindowView: View {
     var body: some View {
         HistoryView(section: $section)
             .frame(minWidth: 680, minHeight: 460)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if appState.persistenceFailureMessage != nil {
+                    Label(
+                        NSLocalizedString("storage.unavailable", comment: ""),
+                        systemImage: "externaldrive.badge.exclamationmark"
+                    )
+                    .font(.callout)
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.orange.opacity(0.14))
+                    .overlay(alignment: .bottom) { Divider() }
+                    .accessibilityIdentifier("storage-unavailable-banner")
+                }
+            }
             .onAppear { consumeRequestedSection() }
             .onChange(of: appState.requestedMainContentSection) { _, _ in consumeRequestedSection() }
     }

@@ -195,6 +195,9 @@ private actor WhisperInferenceWorker {
             detectLanguage: plan.detectLanguage,
             suppressBlank: true
         )
+        let hadLongTrailingSilence = TrailingHallucinationFilter.hasLongTrailingSilence(
+            in: request.samples
+        )
         let samplesForInference = TrailingHallucinationFilter.trimmingLongTrailingSilence(
             from: request.samples
         )
@@ -209,7 +212,8 @@ private actor WhisperInferenceWorker {
         let text = TrailingHallucinationFilter.filtering(
             rawText: rawText,
             segments: segments,
-            samples: samplesForInference
+            samples: request.samples,
+            hadLongTrailingSilence: hadLongTrailingSilence
         )
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw TranscribingError.emptyAudio

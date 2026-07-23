@@ -4,7 +4,7 @@ import Carbon.HIToolbox
 /// Serializable global-shortcut description (`DM-001.hotkey`).
 /// Stores a virtual key code plus a Carbon-compatible modifier mask so the
 /// same value can be used both for display (`NSEvent`-style flags) and for
-/// registering the low-level event tap in `HotkeyManager`.
+/// Carbon `RegisterEventHotKey` registration in `HotkeyManager`.
 public struct HotkeyShortcut: Codable, Equatable, Sendable {
     public var keyCode: UInt32
     /// Raw value of `NSEvent.ModifierFlags` (device-independent subset: command/option/control/shift).
@@ -47,9 +47,8 @@ public struct HotkeyShortcut: Codable, Equatable, Sendable {
 // NSEvent.ModifierFlags raw values, duplicated here to avoid importing AppKit
 // into a value type meant to stay lightweight and testable. `nonisolated`:
 // under `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` a plain top-level `let`
-// otherwise defaults to `@MainActor` isolation, but these are read from
-// `HotkeyManager.shortcutMatches(...)`, a `nonisolated` function called
-// synchronously off the main actor from the CGEventTap's C callback.
+// otherwise defaults to `@MainActor` isolation, but these are also used by
+// pure shortcut conversion helpers.
 nonisolated let NSEventModifierFlagsCommand: UInt = 1 << 20
 nonisolated let NSEventModifierFlagsShift: UInt = 1 << 17
 nonisolated let NSEventModifierFlagsOption: UInt = 1 << 19

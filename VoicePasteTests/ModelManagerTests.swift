@@ -1,6 +1,18 @@
 import XCTest
 @testable import VoicePaste
 
+private actor ModelFactoryInvocationFlag {
+    private var wasCalled = false
+    func set() { wasCalled = true }
+    func get() -> Bool { wasCalled }
+}
+
+private actor ModelFactoryInvocationCounter {
+    private var count = 0
+    func increment() { count += 1 }
+    func get() -> Int { count }
+}
+
 /// Gate 1 unit tests for `ModelManager`'s unload timer (`L-010`, `INV-011`).
 ///
 /// `ModelManager` has no injectable clock — `endTask(unloadMinutes:)` always
@@ -31,6 +43,37 @@ final class ModelManagerTests: XCTestCase {
 
         XCTAssertTrue(manager.isReady)
         XCTAssertEqual(manager.state, .ready)
+    }
+
+    /// `AT-099`: once onboarding/readiness schedules a background pre-warm,
+    /// repeated readiness refreshes and an immediately-started dictation must
+    /// all join the same model load instead of compiling Core ML twice.
+    func test_AT099_repeatedPrewarmAndFirstUseShareOneLoad() async throws {
+        let directory = try makeTempModelDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try makePlausibleModelFiles(in: directory)
+        try makeTokenizerFile(in: directory)
+        let invocations = ModelFactoryInvocationCounter()
+        let manager = ModelManager(
+            modelDirectory: directory,
+            makeTranscriber: { _, _, _ in
+                await invocations.increment()
+                try await Task.sleep(for: .milliseconds(100))
+                return MockTranscriber()
+            },
+            allowsNetworkDownloads: false,
+            isBundledModel: true
+        )
+        await manager.waitForInitialModelDiscoveryForTesting()
+        XCTAssertEqual(manager.state, .unloaded)
+
+        manager.prewarm()
+        manager.prewarm()
+        _ = try await manager.ensureLoaded()
+
+        XCTAssertEqual(manager.state, .ready)
+        let invocationCount = await invocations.get()
+        XCTAssertEqual(invocationCount, 1)
     }
 
     /// `AT-026`/quit: `unloadNow()` releases the model synchronously, no
@@ -171,6 +214,54 @@ final class ModelManagerTests: XCTestCase {
         XCTAssertEqual(manager.state, .notPrepared)
         let remaining = try FileManager.default.contentsOfDirectory(atPath: directory.path)
         XCTAssertTrue(remaining.isEmpty)
+    }
+
+    func test_deleteModel_invalidatesLateFinishingLoad() async throws {
+        let directory = try makeTempModelDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let manager = ModelManager(
+            modelDirectory: directory,
+            makeTranscriber: { _, _, _ in
+                // Deliberately ignore cancellation to emulate Core ML work
+                // which can finish after its awaiting task was cancelled.
+                try? await Task.sleep(for: .milliseconds(250))
+                return MockTranscriber()
+            }
+        )
+
+        let loading = Task { try? await manager.ensureLoaded() }
+        try await Task.sleep(for: .milliseconds(40))
+        await manager.deleteModel()
+        _ = await loading.value
+
+        XCTAssertEqual(manager.state, .notPrepared)
+        XCTAssertFalse(manager.isReady)
+    }
+
+    func test_AT099_offlinePolicyNeverInvokesDownloadFactoryWhenArtifactsAreMissing() async throws {
+        let directory = try makeTempModelDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let factoryCalled = ModelFactoryInvocationFlag()
+        let manager = ModelManager(
+            modelDirectory: directory,
+            makeTranscriber: { _, _, _ in
+                await factoryCalled.set()
+                return MockTranscriber()
+            },
+            allowsNetworkDownloads: false,
+            isBundledModel: true
+        )
+
+        do {
+            _ = try await manager.ensureLoaded()
+            XCTFail("Missing offline artifacts must fail locally")
+        } catch ModelError.verificationFailed {
+            // expected
+        }
+
+        let wasCalled = await factoryCalled.get()
+        XCTAssertFalse(wasCalled)
+        XCTAssertEqual(manager.state, .failed(.verificationFailed))
     }
 
     /// `AT-094`/`L-010`: "история/словарь/настройки не затронуты". Simulates
@@ -401,6 +492,20 @@ final class ModelManagerTests: XCTestCase {
             try handle.truncate(atOffset: UInt64(perComponentBytes))
             try handle.close()
         }
+    }
+
+    /// Completes the offline fixture. `allowsNetworkDownloads == false`
+    /// deliberately rejects a model-only directory because WhisperKit would
+    /// otherwise try to fetch the missing tokenizer at runtime.
+    private func makeTokenizerFile(in directory: URL) throws {
+        let tokenizerDirectory = ModelManager.tokenizerDirectory(in: directory)
+            .appendingPathComponent(ModelCatalog.tokenizerRepoPath, isDirectory: true)
+        try FileManager.default.createDirectory(at: tokenizerDirectory, withIntermediateDirectories: true)
+        let tokenizerURL = tokenizerDirectory.appendingPathComponent("tokenizer.json")
+        XCTAssertTrue(FileManager.default.createFile(
+            atPath: tokenizerURL.path,
+            contents: Data("{}".utf8)
+        ))
     }
 
     // MARK: - Real-time timer behavior (slow: ~61s total for both assertions)

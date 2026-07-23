@@ -1,6 +1,10 @@
 import Dispatch
 import Foundation
 
+nonisolated private enum ImportManagerError: Error, Sendable {
+    case persistenceFailed
+}
+
 /// Coalesces worker progress before it creates any MainActor work. Video
 /// extraction can emit one callback per audio sample buffer (dozens per
 /// second); previously every one allocated a main-actor `Task` and only then
@@ -19,6 +23,22 @@ nonisolated final class ImportProgressGate: @unchecked Sendable {
         }
         lastDeliveryNanos = now
         return true
+    }
+}
+
+/// Small actor-owned result, while decoded PCM windows are released after
+/// each inference. Only text grows with media duration, not audio memory.
+private actor ImportTranscriptAccumulator {
+    private var text = ""
+    private var detectedLanguage: String?
+
+    func append(_ result: TranscriptionResult) {
+        text = TranscriptChunkMerger.merge(text, with: result.rawText)
+        if detectedLanguage == nil { detectedLanguage = result.detectedLanguage }
+    }
+
+    func result() -> TranscriptionResult {
+        TranscriptionResult(rawText: text, detectedLanguage: detectedLanguage)
     }
 }
 
@@ -91,7 +111,6 @@ public final class ImportManager: ObservableObject {
             mediaKind: Self.mediaKind(for: url)
         )
         jobs.append(job)
-        persist(job)
 
         let task = Task { [weak self] in
             guard let self else { return }
@@ -102,6 +121,14 @@ public final class ImportManager: ObservableObject {
             // commit that feedback before staging begins.
             await Task.yield()
             do {
+                // The visible row is optimistic, but disk work only begins
+                // after its durable queue record commits. This preserves FIFO
+                // and crash recovery without a fire-and-forget write race.
+                do {
+                    try await queueStore.upsert(job)
+                } catch {
+                    throw ImportManagerError.persistenceFailed
+                }
                 // Cancellation may arrive while SwiftUI is committing the
                 // immediately-visible queue row. Never start a disk copy
                 // after that cancellation, otherwise a removed job can leave
@@ -112,11 +139,11 @@ public final class ImportManager: ObservableObject {
                 }
                 try await Self.stage(url: url, for: job.id)
                 try Task.checkCancellation()
-                await transition(job.id, to: .queued, progress: 0)
+                try await transition(job.id, to: .queued, progress: 0)
                 stagingTasks.removeValue(forKey: job.id)
                 startWorkerIfNeeded()
             } catch is CancellationError {
-                await removeJob(job.id, removePersistentRecord: true)
+                try? await removeJob(job.id, removePersistentRecord: true)
                 await Self.removeCache(for: job.id)
             } catch {
                 stagingTasks.removeValue(forKey: job.id)
@@ -136,7 +163,7 @@ public final class ImportManager: ObservableObject {
         stagingTasks.removeValue(forKey: id)?.cancel()
         Task { [weak self] in
             guard let self else { return }
-            await removeJob(id, removePersistentRecord: true)
+            try? await removeJob(id, removePersistentRecord: true)
             await Self.removeCache(for: id)
         }
     }
@@ -145,7 +172,7 @@ public final class ImportManager: ObservableObject {
         guard jobs.first(where: { $0.id == id })?.state == .failed else { return }
         Task { [weak self] in
             guard let self else { return }
-            await removeJob(id, removePersistentRecord: true)
+            try? await removeJob(id, removePersistentRecord: true)
             await Self.removeCache(for: id)
         }
     }
@@ -161,11 +188,16 @@ public final class ImportManager: ObservableObject {
               ) else {
             return
         }
-        await update(id) {
-            $0.state = .queued
-            $0.progress = 0
-            $0.failureKey = nil
-            $0.stageStartedAt = Self.nowMillis()
+        do {
+            try await update(id) {
+                $0.state = .queued
+                $0.progress = 0
+                $0.failureKey = nil
+                $0.stageStartedAt = Self.nowMillis()
+            }
+        } catch {
+            await fail(id, error: error)
+            return
         }
         startWorkerIfNeeded()
     }
@@ -203,7 +235,7 @@ public final class ImportManager: ObservableObject {
             guard FileManager.default.fileExists(atPath: sourceURL.path) else {
                 throw AudioDecodeError.decodeFailed("Staged source is unavailable.")
             }
-            await transition(id, to: .preparing, progress: 0.02)
+            try await transition(id, to: .preparing, progress: 0.02)
             let progressGate = ImportProgressGate()
             let publishProgress: @Sendable (Double) -> Void = { [weak self, progressGate] value in
                 // The gate runs on the decoder/inference executor, before a
@@ -214,34 +246,37 @@ public final class ImportManager: ObservableObject {
                     self?.updateProgress(id, value: value)
                 }
             }
-            let decoder = decoder
-            let decodeProgress: @Sendable (Double) -> Void = { value in
-                publishProgress(0.05 + value * 0.40)
-            }
-            // `AudioDecoder` is explicitly nonisolated, so this async call
-            // runs on Swift's generic executor rather than blocking UI work.
-            let samples = try await decoder.decode(url: sourceURL, onProgress: decodeProgress)
-            try Task.checkCancellation()
-            guard !samples.isEmpty else { throw AudioDecodeError.decodeFailed("Empty audio track.") }
-            let duration = Int(Double(samples.count) / 16_000 * 1_000)
-            await update(id) {
-                $0.durationMilliseconds = duration
+            let engine = try await modelManager.ensureLoaded()
+            try await update(id) {
                 $0.state = .transcribing
-                $0.progress = max($0.progress, 0.46)
+                $0.progress = max($0.progress, 0.05)
                 $0.stageStartedAt = Self.nowMillis()
             }
 
-            let engine = try await modelManager.ensureLoaded()
-            let transcriptionProgress: @Sendable (Double) -> Void = { value in
-                publishProgress(0.46 + value * 0.53)
+            let decoder = decoder
+            let language = settings.languageMode
+            let accumulator = ImportTranscriptAccumulator()
+            let mediaProgress: @Sendable (Double) -> Void = { value in
+                publishProgress(0.05 + value * 0.94)
             }
-            let request = TranscriptionRequest(
-                samples: samples,
-                language: settings.languageMode,
-                onProgress: transcriptionProgress
-            )
-            let result = try await engine.transcribe(request)
+            // The decoder awaits this closure before retaining the next
+            // window. A three-hour file therefore has the same PCM footprint
+            // as a short file (`INV-018`, `AT-100`).
+            let uniqueSampleCount = try await decoder.decodeInChunks(
+                url: sourceURL,
+                onProgress: mediaProgress
+            ) { chunk in
+                try Task.checkCancellation()
+                let result = try await engine.transcribe(TranscriptionRequest(
+                    samples: chunk.samples,
+                    language: language
+                ))
+                await accumulator.append(result)
+            }
             try Task.checkCancellation()
+            let result = await accumulator.result()
+            let duration = Int(Double(uniqueSampleCount) / 16_000 * 1_000)
+            try await update(id) { $0.durationMilliseconds = duration }
 
             let vocabulary = (try? await historyStore.fetchVocabulary()) ?? []
             let (text, _) = await normalizer.normalizeInBackground(
@@ -264,12 +299,28 @@ public final class ImportManager: ObservableObject {
             // History is optional. A disabled history must never turn a
             // successful local transcription into an artificial import
             // error: the HUD can still offer the finished text for copying.
-            if settings.historyEnabled { try? await historyStore.save(transcript) }
+            if settings.historyEnabled {
+                do {
+                    try await historyStore.save(transcript)
+                } catch {
+                    // The transcription itself is already complete and must
+                    // remain copyable even if optional history persistence is
+                    // unavailable. Startup database failures are disclosed by
+                    // MainWindowView's persistent banner; diagnostics retain
+                    // the technical reason without logging transcript text.
+                    Task {
+                        await DiagnosticLog.shared.log(
+                            "import.historySaveFailed",
+                            detail: String(describing: error)
+                        )
+                    }
+                }
+            }
             lastCompletion = Completion(jobID: id, transcript: transcript)
-            await removeJob(id, removePersistentRecord: true)
+            try await removeJob(id, removePersistentRecord: true)
             await Self.removeCache(for: id)
         } catch is CancellationError {
-            await removeJob(id, removePersistentRecord: true)
+            try? await removeJob(id, removePersistentRecord: true)
             await Self.removeCache(for: id)
         } catch {
             await fail(id, error: error)
@@ -282,11 +333,12 @@ public final class ImportManager: ObservableObject {
     private func updateProgress(_ id: UUID, value: Double) {
         guard let index = jobs.firstIndex(where: { $0.id == id }) else { return }
         jobs[index].progress = max(jobs[index].progress, min(value, 0.99))
-        persist(jobs[index])
+        // Progress is transient UI, not a durable state transition. Avoid a
+        // 4 Hz SQLite write stream and persist only stage boundaries.
     }
 
-    private func transition(_ id: UUID, to state: ImportJob.State, progress: Double) async {
-        await update(id) {
+    private func transition(_ id: UUID, to state: ImportJob.State, progress: Double) async throws {
+        try await update(id) {
             $0.state = state
             $0.progress = progress
             $0.stageStartedAt = Self.nowMillis()
@@ -295,26 +347,26 @@ public final class ImportManager: ObservableObject {
     }
 
     private func fail(_ id: UUID, error: Error) async {
-        await update(id) {
-            $0.state = .failed
-            $0.failureKey = Self.errorKey(for: error)
-            $0.stageStartedAt = Self.nowMillis()
-        }
+        guard let index = jobs.firstIndex(where: { $0.id == id }) else { return }
+        jobs[index].state = .failed
+        jobs[index].failureKey = Self.errorKey(for: error)
+        jobs[index].stageStartedAt = Self.nowMillis()
+        try? await queueStore.upsert(jobs[index])
     }
 
-    private func update(_ id: UUID, mutate: (inout ImportJob) -> Void) async {
+    private func update(_ id: UUID, mutate: (inout ImportJob) -> Void) async throws {
         guard let index = jobs.firstIndex(where: { $0.id == id }) else { return }
         mutate(&jobs[index])
-        persist(jobs[index])
+        do { try await queueStore.upsert(jobs[index]) }
+        catch { throw ImportManagerError.persistenceFailed }
     }
 
-    private func removeJob(_ id: UUID, removePersistentRecord: Bool) async {
+    private func removeJob(_ id: UUID, removePersistentRecord: Bool) async throws {
+        if removePersistentRecord {
+            do { try await queueStore.delete(id: id) }
+            catch { throw ImportManagerError.persistenceFailed }
+        }
         jobs.removeAll { $0.id == id }
-        if removePersistentRecord { try? await queueStore.delete(id: id) }
-    }
-
-    private func persist(_ job: ImportJob) {
-        Task { [queueStore] in try? await queueStore.upsert(job) }
     }
 
     nonisolated private static func stage(url: URL, for id: UUID) async throws {
@@ -361,6 +413,7 @@ public final class ImportManager: ObservableObject {
         case AudioDecodeError.noAudioTrack: return "import.error.noAudioTrack"
         case AudioDecodeError.decodeFailed: return "import.error.decodeFailed"
         case TranscribingError.emptyAudio: return "dictation.emptyAudio"
+        case ImportManagerError.persistenceFailed: return "import.error.persistenceFailed"
         default: return "import.error.transcriptionFailed"
         }
     }

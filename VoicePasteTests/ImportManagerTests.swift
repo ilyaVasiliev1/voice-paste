@@ -2,6 +2,17 @@ import AVFoundation
 import XCTest
 @testable import VoicePaste
 
+private actor RecordingImportTranscriber: Transcribing {
+    private var sampleCounts: [Int] = []
+
+    func transcribe(_ request: TranscriptionRequest) async throws -> TranscriptionResult {
+        sampleCounts.append(request.samples.count)
+        return TranscriptionResult(rawText: "Тестовый сегмент", detectedLanguage: "ru")
+    }
+
+    func snapshot() -> [Int] { sampleCounts }
+}
+
 /// Queue-level acceptance tests for local file imports. They intentionally
 /// use the real decoder and a deterministic transcriber: no test downloads
 /// or invokes WhisperKit, while the same staging/FIFO/cleanup path runs.
@@ -127,5 +138,20 @@ final class ImportManagerTests: XCTestCase {
         }
         // A terminal update must not wait for the 250 ms interval.
         XCTAssertTrue(gate.shouldDeliver(1))
+    }
+
+    func test_AT100_longImportIsTranscribedInBoundedSequentialWindows() async throws {
+        let url = try makeSilentWAV(seconds: 65, name: "long.wav")
+        let transcriber = RecordingImportTranscriber()
+        let manager = makeManager(transcriber: transcriber)
+
+        let jobID = manager.enqueue(url: url)
+        try await waitUntil(timeout: 15) { manager.lastCompletion?.jobID == jobID }
+
+        let counts = await transcriber.snapshot()
+        XCTAssertGreaterThan(counts.count, 1)
+        XCTAssertLessThanOrEqual(counts.max() ?? .max, Int(28.75 * 16_000) + 2_048)
+        let duration = try XCTUnwrap(manager.lastCompletion?.transcript.durationMilliseconds)
+        XCTAssertEqual(duration, 65_000, accuracy: 50)
     }
 }

@@ -48,6 +48,43 @@ nonisolated public enum TranscribingError: Error, Equatable, Sendable {
     case underlying(String)
 }
 
+/// Joins sequential Whisper windows while removing the textual overlap
+/// shared by adjacent windows. It never rewrites words; it only drops an
+/// exact normalized suffix/prefix match of at least two tokens.
+nonisolated public enum TranscriptChunkMerger {
+    public static func merge(_ current: String, with next: String) -> String {
+        let left = tokens(current)
+        let right = tokens(next)
+        guard !left.isEmpty else { return next.trimmingCharacters(in: .whitespacesAndNewlines) }
+        guard !right.isEmpty else { return current.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+        let maximum = min(24, left.count, right.count)
+        var overlap = 0
+        if maximum >= 2 {
+            for count in stride(from: maximum, through: 2, by: -1) {
+                let leftSlice = left.suffix(count).map(normalizedToken)
+                let rightSlice = right.prefix(count).map(normalizedToken)
+                if leftSlice == rightSlice, !leftSlice.contains("") {
+                    overlap = count
+                    break
+                }
+            }
+        }
+
+        let remainder = right.dropFirst(overlap).joined(separator: " ")
+        if remainder.isEmpty { return left.joined(separator: " ") }
+        return left.joined(separator: " ") + " " + remainder
+    }
+
+    private static func tokens(_ text: String) -> [String] {
+        text.split(whereSeparator: { $0.isWhitespace }).map(String.init)
+    }
+
+    private static func normalizedToken(_ token: String) -> String {
+        token.lowercased().filter { $0.isLetter || $0.isNumber }
+    }
+}
+
 /// Abstraction over the local speech-to-text engine so the app compiles and
 /// is unit-testable regardless of whether the concrete WhisperKit adapter is
 /// available in a given build environment. The WhisperKit-backed

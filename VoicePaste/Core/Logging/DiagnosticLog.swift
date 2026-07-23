@@ -12,7 +12,7 @@ public actor DiagnosticLog {
 
     private init(maxFileBytes: Int = 1_000_000) {
         self.maxFileBytes = maxFileBytes
-        self.logFileURL = try? Self.makeLogFileURL()
+        self.logFileURL = ProcessRuntime.isRunningTests ? nil : (try? Self.makeLogFileURL())
     }
 
     public func log(_ event: String, detail: String = "") {

@@ -119,7 +119,7 @@ public actor GitHubModelDownloader {
                     resumeData: resumeData,
                     progress: progress
                 )
-                try extract(zip: downloaded, into: archive.destination)
+                try await extract(zip: downloaded, into: archive.destination)
                 try? FileManager.default.removeItem(at: downloaded)
                 try verify(archive)
                 return
@@ -204,17 +204,36 @@ public actor GitHubModelDownloader {
     /// Unzips via `/usr/bin/ditto`, which ships on every macOS and handles the
     /// standard zip written by `zip -X` correctly (including nested `.mlmodelc`
     /// bundles). The app is not sandboxed, so spawning it is permitted.
-    private func extract(zip: URL, into destination: URL) throws {
+    private func extract(zip: URL, into destination: URL) async throws {
         try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
         process.arguments = ["-x", "-k", zip.path, destination.path]
-        let pipe = Pipe()
-        process.standardError = pipe
-        process.standardOutput = pipe
-        try process.run()
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else {
+        // Nothing in ditto's output is user-facing. Piping without draining
+        // can fill the pipe and deadlock a verbose child; /dev/null keeps the
+        // extraction bounded and lets completion be driven solely by status.
+        process.standardError = FileHandle.nullDevice
+        process.standardOutput = FileHandle.nullDevice
+        let status: Int32 = try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                process.terminationHandler = { completed in
+                    continuation.resume(returning: completed.terminationStatus)
+                }
+                do {
+                    try process.run()
+                } catch {
+                    process.terminationHandler = nil
+                    continuation.resume(throwing: error)
+                }
+            }
+        } onCancel: {
+            // Process is thread-safe for termination. Cancelling a model
+            // download must not leave a CPU/disk-heavy unzip running after
+            // the owning task has gone away.
+            if process.isRunning { process.terminate() }
+        }
+        try Task.checkCancellation()
+        guard status == 0 else {
             throw DownloadError.extractionFailed
         }
     }

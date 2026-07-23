@@ -60,4 +60,21 @@ final class WhisperDecodingPlanTests: XCTestCase {
             XCTAssertTrue(plan.usePrefillPrompt, "usePrefillPrompt must be true for \(language)")
         }
     }
+
+    func test_chunkMerger_removesExactTwoWordOverlap() {
+        XCTAssertEqual(
+            TranscriptChunkMerger.merge(
+                "Первая часть и важная мысль.",
+                with: "важная мысль. Продолжение ответа."
+            ),
+            "Первая часть и важная мысль. Продолжение ответа."
+        )
+    }
+
+    func test_chunkMerger_doesNotDropSingleCoincidentalWord() {
+        XCTAssertEqual(
+            TranscriptChunkMerger.merge("Поговорим про модель", with: "модель работает локально"),
+            "Поговорим про модель модель работает локально"
+        )
+    }
 }

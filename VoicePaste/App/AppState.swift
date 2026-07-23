@@ -29,6 +29,10 @@ public final class AppState: ObservableObject {
     public let readiness: ReadinessCoordinator
     public let historyStore: any HistoryStoring
     public let importManager: ImportManager
+    /// Non-nil only when the durable local database could not be opened or
+    /// migrated at launch. Dictation/insertion remain usable, but the main
+    /// window must never pretend that history and queue persistence work.
+    public let persistenceFailureMessage: String?
 
     @Published public private(set) var dictationPhase: DictationPhase = .idle
     /// `UI-003` "Выбрать микрофон": set right before opening the Settings
@@ -62,6 +66,10 @@ public final class AppState: ObservableObject {
     private var currentLevel: Float = 0
     private var didBecomeActiveObserver: NSObjectProtocol?
     private var forwardingCancellables = Set<AnyCancellable>()
+    /// Schedules the initial background model warm-up at most once per app
+    /// process. A later manual or memory-pressure unload must stay unloaded
+    /// until the next real transcription request.
+    private var hasScheduledInitialModelPrewarm = false
     /// A ready app may normally become menu-bar-only, but not while its
     /// first-run window is still visible. Changing activation policy at the
     /// exact moment Universal Access is granted otherwise makes the visible
@@ -87,6 +95,7 @@ public final class AppState: ObservableObject {
         modelManager: ModelManager,
         historyStore: any HistoryStoring,
         importManager: ImportManager,
+        persistenceFailureMessage: String? = nil,
         enableGlobalHotkey: Bool = !ProcessRuntime.isRunningTests
     ) {
         self.settings = settings
@@ -94,6 +103,7 @@ public final class AppState: ObservableObject {
         self.readiness = ReadinessCoordinator(modelManager: modelManager)
         self.historyStore = historyStore
         self.importManager = importManager
+        self.persistenceFailureMessage = persistenceFailureMessage
         self.dictationStateMachine = DictationStateMachine(mode: settings.recordingMode)
 
         importManager.restoreQueue()
@@ -117,10 +127,8 @@ public final class AppState: ObservableObject {
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &forwardingCancellables)
 
-        // Test hosts must never install a real global event tap. Apart from
-        // affecting the user's keyboard, a tap's lifecycle is inherently a
-        // system integration concern, not a unit-test concern. The shipped
-        // app uses the default (`true`); tests explicitly opt out.
+        // Test hosts never register a real global shortcut. The shipped app
+        // uses the default (`true`); tests explicitly opt out.
         if enableGlobalHotkey {
             let manager = HotkeyManager(shortcut: settings.hotkey) { [weak self] phase in
                 switch phase {
@@ -131,7 +139,6 @@ public final class AppState: ObservableObject {
                 self?.cancelDictationWithEscape()
             }
             self.hotkeyManager = manager
-            manager.start()
         }
 
         audioCapture.onLevel = { [weak self] level in
@@ -209,15 +216,25 @@ public final class AppState: ObservableObject {
 
     /// `L-001`: the single place that recomputes `readiness.state` also
     /// re-applies the Dock policy that state gates (`AT-089`) and the
-    /// hotkey tap's system-swallow flag (`AT-090`) — callers never need to
+    /// registered-hotkey readiness gate (`AT-090`) — callers never need to
     /// remember to do either separately, so a permission-granted /
     /// model-ready transition takes effect without a restart.
     public func refreshReadiness() {
         readiness.refresh()
-        if readiness.isAccessibilityTrusted {
-            hotkeyManager?.start()
+        let isReady = readiness.state == .ready
+        hotkeyManager?.setSystemSwallowEnabled(isReady)
+        // `L-010`/`AT-099`: the verified on-disk model should become resident
+        // as soon as onboarding/permissions make the app usable, not only
+        // after the user has already finished their first recording.
+        // This one-shot process guard also preserves an explicit later unload.
+        // `ensureLoaded()` is single-flight, so dictation started while the
+        // warm-up is running joins that same load. The actual WhisperKit/Core
+        // ML work runs on its own executor; this MainActor call only schedules
+        // it and returns immediately.
+        if isReady, !hasScheduledInitialModelPrewarm {
+            hasScheduledInitialModelPrewarm = true
+            modelManager.prewarm()
         }
-        hotkeyManager?.setSystemSwallowEnabled(readiness.state == .ready)
         applyDockVisibility()
     }
 
@@ -298,9 +315,8 @@ public final class AppState: ObservableObject {
     private func beginRecording() {
         frontAppSnapshot = TextInserter.captureFrontAppSnapshot()
         // `L-010`: start loading the model the moment recording begins, so it
-        // warms up *while the user is still speaking* instead of after they
-        // stop. Dictation takes seconds; the load overlaps it and the wait
-        // disappears. Nothing is loaded when the user isn't dictating, and
+        // warms up *while the user is still speaking* if the one-time launch
+        // warm-up has not completed (or the model was later unloaded).
         // `ensureLoaded()` coalesces, so the transcription that follows joins
         // this same load rather than starting a second one.
         modelManager.prewarm()
@@ -741,15 +757,16 @@ public final class AppState: ObservableObject {
     }
 }
 
-/// XCTest uses VoicePaste itself as its test host. A process-wide event tap
-/// must therefore be disabled by default for *every* test invocation — not
-/// only for fixtures that remember to pass a special constructor argument.
+/// XCTest currently uses VoicePaste itself as its test host. Every system
+/// integration is therefore disabled by default for *every* test invocation
+/// — not only for fixtures that remember to pass a constructor argument.
 /// The production app has neither XCTest environment variable nor class, so
 /// its default remains the real global hotkey.
 public enum ProcessRuntime {
-    public static let isRunningTests: Bool = {
+    public nonisolated static let isRunningTests: Bool = {
         let environment = ProcessInfo.processInfo.environment
-        return environment["XCTestConfigurationFilePath"] != nil
+        return environment["VOICEPASTE_TEST_HOST"] == "1"
+            || environment["XCTestConfigurationFilePath"] != nil
             || environment["XCTestBundlePath"] != nil
             || NSClassFromString("XCTestCase") != nil
     }()

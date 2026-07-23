@@ -1,12 +1,13 @@
 import AppKit
+import Carbon.HIToolbox
 import CoreGraphics
-import ApplicationServices
-import Dispatch
 
-/// Global hotkey listener backed by a listen-only `CGEventTap` (`DEP-005`).
-/// Requires Accessibility trust to receive events at all; when trust is not
-/// granted, `start()` is a no-op and `isActive` stays `false` — the menu bar
-/// "Начать диктовку" action remains the always-available fallback.
+/// Global shortcut owner backed by Carbon's registered-hotkey API.
+///
+/// Unlike a session-wide `CGEventTap`, `RegisterEventHotKey` is not inserted
+/// into the delivery path of every keyboard event. macOS sends this object
+/// only the two explicitly registered combinations, so a paused process,
+/// debugger or busy UI can never stall ordinary typing across the system.
 @MainActor
 public final class HotkeyManager {
     public enum Phase: Sendable {
@@ -14,28 +15,18 @@ public final class HotkeyManager {
         case up
     }
 
-    // `INV-016`/`AT-097`: owns the CGEventTap's dedicated background thread
-    // and `CFRunLoop`. Never add the tap's source to `CFRunLoopGetMain()` —
-    // doing so ties hotkey delivery (and the ability to swallow the matched
-    // combination at all) to however busy the main thread happens to be,
-    // which can freeze system-wide keyboard input while SwiftUI is doing
-    // something else on it.
-    private let eventTapRunner = EventTapRunner()
+    private nonisolated static let signature: OSType = 0x5650_5354 // "VPST"
+    private nonisolated static let primaryID: UInt32 = 1
+    private nonisolated static let escapeID: UInt32 = 2
+
     private var shortcut: HotkeyShortcut
     private let onEvent: (Phase) -> Void
     private let onEscape: () -> Void
-    // Thread-safe mirror of `shortcut`, read synchronously from the
-    // CGEventTap's C callback (bug fix: Option+Space's space character was
-    // leaking into the focused app because the callback never consumed the
-    // matching key event).
-    private let shortcutBox: ShortcutBox
-    private let escapeCancellationBox = EscapeCancellationBox()
-    // `INV-015`/`AT-090`: mirrors `AppState.readiness.state == .ready`,
-    // read synchronously from the CGEventTap's C callback the same way
-    // `shortcutBox` is. While `false`, the tap must let a matching hotkey
-    // pass through to whatever app is actually frontmost instead of
-    // swallowing it for no benefit — the app isn't ready to record.
-    private let systemSwallowBox = SystemSwallowBox()
+    private var handlerRef: EventHandlerRef?
+    private var primaryRef: EventHotKeyRef?
+    private var escapeRef: EventHotKeyRef?
+    private var shouldRegisterPrimary = false
+    private var shouldRegisterEscape = false
 
     public init(
         shortcut: HotkeyShortcut,
@@ -43,507 +34,186 @@ public final class HotkeyManager {
         onEscape: @escaping () -> Void = {}
     ) {
         self.shortcut = shortcut
-        self.shortcutBox = ShortcutBox(shortcut)
         self.onEvent = onEvent
         self.onEscape = onEscape
     }
 
-    public var isActive: Bool { eventTapRunner.isRunning }
+    public var isActive: Bool { primaryRef != nil }
 
-    /// (Re)starts the tap. Safe to call repeatedly; no-op if already active
-    /// or if Accessibility trust has not been granted yet. The tap itself is
-    /// created, attached to a run loop and enabled entirely on
-    /// `eventTapRunner`'s own dedicated background thread (`INV-016`) —
-    /// this method only kicks that off and reports the outcome to the log.
+    /// Registers only the configured shortcut. Safe and idempotent; it does
+    /// not require Accessibility and cannot observe unrelated keystrokes.
     public func start() {
-        guard !eventTapRunner.isRunning else { return }
-        guard AccessibilityTrust.isGranted else {
-            Task { await DiagnosticLog.shared.log("hotkey.start.skipped", detail: "accessibilityNotTrusted") }
+        shouldRegisterPrimary = true
+        guard primaryRef == nil else { return }
+        guard installHandlerIfNeeded() else { return }
+
+        var ref: EventHotKeyRef?
+        let hotKeyID = EventHotKeyID(signature: Self.signature, id: Self.primaryID)
+        let status = RegisterEventHotKey(
+            shortcut.keyCode,
+            Self.carbonModifiers(for: shortcut.modifierFlags),
+            hotKeyID,
+            GetApplicationEventTarget(),
+            0,
+            &ref
+        )
+        guard status == noErr, let ref else {
+            Task {
+                await DiagnosticLog.shared.log(
+                    "hotkey.register.failed",
+                    detail: "status=\(status)"
+                )
+            }
             return
         }
-
-        let mask: CGEventMask = (1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.keyUp.rawValue)
-        let refcon = Unmanaged.passUnretained(self).toOpaque()
-
-        // `.defaultTap` (not `.listenOnly`): a listen-only tap can never
-        // consume an event regardless of what its callback returns — the
-        // system ignores the return value entirely in that mode. Actually
-        // swallowing the matched hotkey (the Option+Space bug fix) requires
-        // `.defaultTap`, whose callback's returned event is authoritative:
-        // returning `nil` drops the event, returning it passes it through.
-        eventTapRunner.start(
-            mask: mask,
-            callback: { _, type, event, refcon in
-                guard let refcon else { return Unmanaged.passRetained(event) }
-                let manager = Unmanaged<HotkeyManager>.fromOpaque(refcon).takeUnretainedValue()
-                return manager.handleTapEvent(type: type, event: event)
-            },
-            refcon: refcon
-        ) { didStart in
-            Task {
-                if didStart {
-                    await DiagnosticLog.shared.log("hotkey.start.success")
-                } else {
-                    await DiagnosticLog.shared.log("hotkey.start.failed", detail: "tapCreateFailed")
-                }
-            }
-        }
+        primaryRef = ref
+        Task { await DiagnosticLog.shared.log("hotkey.register.success") }
     }
 
-    /// Idempotent: disables the tap, tears down its run loop source and
-    /// stops/joins the dedicated background thread before returning
-    /// (`INV-016`). A second call while already stopped is a no-op.
+    /// Removes registrations synchronously through Carbon. There is no
+    /// worker thread, run-loop join or event-tap callback to wait for.
     public func stop() {
-        guard eventTapRunner.isRunning else { return }
-        eventTapRunner.stop()
+        shouldRegisterPrimary = false
+        shouldRegisterEscape = false
+        unregister(&escapeRef)
+        unregister(&primaryRef)
+        if let handlerRef {
+            RemoveEventHandler(handlerRef)
+            self.handlerRef = nil
+        }
         Task { await DiagnosticLog.shared.log("hotkey.stop") }
     }
 
-    /// `AT-011`: assigning a new combination stops matching the old one immediately.
     public func updateShortcut(_ shortcut: HotkeyShortcut) {
         self.shortcut = shortcut
-        shortcutBox.update(shortcut)
+        guard shouldRegisterPrimary else { return }
+        unregister(&primaryRef)
+        start()
     }
 
-    /// Escape keeps its normal meaning in the focused app while idle. It is
-    /// captured only during a live dictation session, when it cancels that
-    /// session without sending Escape into the text field below it.
+    /// Escape is registered only for the lifetime of an active recording.
+    /// Carbon consumes that one registered key without observing or delaying
+    /// any other keyboard input.
     public func setEscapeCancellationEnabled(_ isEnabled: Bool) {
-        escapeCancellationBox.setEnabled(isEnabled)
+        shouldRegisterEscape = isEnabled
+        if isEnabled {
+            registerEscapeIfNeeded()
+        } else {
+            unregister(&escapeRef)
+        }
     }
 
-    /// `INV-015`/`AT-090`: called from `AppState.refreshReadiness()` whenever
-    /// `readiness.state` is recomputed. Only when this is `true` does a
-    /// matched hotkey get swallowed by the tap (`.defaultTap` dropping the
-    /// event); while `false` the combination reaches the frontmost app
-    /// untouched, same as if VoicePaste weren't running a tap at all — the
-    /// tap still stays alive to notify `onEvent` so `AppState` can show its
-    /// short "not ready" explanation.
+    /// Compatibility name for the readiness gate. A not-ready application
+    /// has no registered shortcut at all, so the combination naturally
+    /// reaches the foreground app and no callback has to decide whether to
+    /// swallow it.
     public func setSystemSwallowEnabled(_ isEnabled: Bool) {
-        systemSwallowBox.setEnabled(isEnabled)
+        if isEnabled {
+            start()
+        } else {
+            shouldRegisterPrimary = false
+            shouldRegisterEscape = false
+            unregister(&escapeRef)
+            unregister(&primaryRef)
+        }
     }
 
-    /// Called from the CGEventTap C callback, which may run off the main
-    /// actor from Swift's static point of view. Decides synchronously
-    /// (via `shortcutBox`, not the main-actor `shortcut`) whether this event
-    /// *is* the registered hotkey and, if so, returns `nil` so `.defaultTap`
-    /// drops it right here — before it can ever reach the focused app (bug
-    /// fix: Option+Space's space character leaking through). Notifying
-    /// `onEvent` still hops to the main actor, same as before; that hop only
-    /// drives side effects (start/stop capture), never the swallow decision,
-    /// which must happen synchronously in this same callback invocation.
-    private nonisolated func handleTapEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-        // `INV-016`/`AT-097`: these are macOS fail-safe notifications, not key
-        // events. macOS disables the tap when its callback thread was starved
-        // (a CPU-saturated machine), and a disabled tap silently stops
-        // delivering *everything* — the hotkey would be dead until the next app
-        // launch, with no sign to the user. The spec therefore requires the tap
-        // to come back up by itself. Re-enabling is done right here, on the
-        // tap's own thread, which is the documented place for it.
-        //
-        // The re-enable is rate-limited (`EventTapRunner`, ≤5 per minute)
-        // precisely so the app can never get into a fight with the system: past
-        // that budget it fails open — ordinary typing keeps flowing untouched
-        // and only diagnostics are recorded.
-        guard type != .tapDisabledByTimeout, type != .tapDisabledByUserInput else {
-            let reason = type == .tapDisabledByTimeout ? "timeout" : "userInput"
-            let didReEnable = eventTapRunner.reEnableAfterSystemDisable()
-            Task {
-                await DiagnosticLog.shared.log(
-                    "hotkey.tap.disabled",
-                    detail: "reason=\(reason) reEnabled=\(didReEnable)"
-                )
-            }
-            return Unmanaged.passRetained(event)
-        }
-
-        guard type == .keyDown || type == .keyUp else {
-            return Unmanaged.passRetained(event)
-        }
-        let keyCode = UInt32(event.getIntegerValueField(.keyboardEventKeycode))
-        let flagsRaw = event.flags.rawValue
-        let phase: Phase = (type == .keyDown) ? .down : .up
-        let isHotkey = shortcutBox.matches(keyCode: keyCode, flagsRaw: flagsRaw)
-        let isEscapeCancellation = type == .keyDown
-            && keyCode == 53 // kVK_Escape
-            && escapeCancellationBox.isEnabled
-
-        // A global event tap receives *every* keystroke. Scheduling a main
-        // actor task for ordinary typing created an unbounded queue while the
-        // user was writing in another application. That starved VoicePaste's
-        // UI and eventually made macOS disable the event tap for a timeout.
-        // Only the registered shortcut (or Escape during an active recording)
-        // is relevant to this app; all other input must return from this
-        // callback without allocating work or touching the main actor.
-        if HotkeyManager.shouldDispatchToAppState(
-            isHotkey: isHotkey,
-            isEscapeCancellation: isEscapeCancellation
-        ) {
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                if isEscapeCancellation {
-                    self.onEscape()
-                } else {
-                    self.evaluate(keyCode: keyCode, flagsRaw: flagsRaw, phase: phase)
-                }
-            }
-        }
-
-        // `INV-015`/`AT-090`: escape-cancellation is only ever enabled during
-        // a live recording session, which itself only exists while ready —
-        // it keeps swallowing unconditionally. The hotkey combination itself
-        // is only swallowed while `systemSwallowBox` says the app is
-        // `ready`; otherwise it passes through to the frontmost app even
-        // though `onEvent` above still fires (to show the "not ready"
-        // explanation).
-        let shouldSwallow = HotkeyManager.shouldSwallow(
-            isHotkey: isHotkey,
-            isEscapeCancellation: isEscapeCancellation,
-            systemSwallowEnabled: systemSwallowBox.isEnabled
+    private func registerEscapeIfNeeded() {
+        guard escapeRef == nil, installHandlerIfNeeded() else { return }
+        var ref: EventHotKeyRef?
+        let hotKeyID = EventHotKeyID(signature: Self.signature, id: Self.escapeID)
+        let status = RegisterEventHotKey(
+            UInt32(kVK_Escape),
+            0,
+            hotKeyID,
+            GetApplicationEventTarget(),
+            0,
+            &ref
         )
-        return shouldSwallow ? nil : Unmanaged.passRetained(event)
+        if status == noErr { escapeRef = ref }
     }
 
-    /// Pure, `nonisolated`/`static` swallow decision extracted from
-    /// `handleTapEvent` for direct unit-testability (`HotkeyManagerTests`,
-    /// `AT-090`) without a real event tap or Accessibility trust — mirrors
-    /// `shortcutMatches(...)` below in shape and intent. No behavior change:
-    /// same boolean expression that used to live inline in `handleTapEvent`.
-    nonisolated static func shouldSwallow(
-        isHotkey: Bool,
-        isEscapeCancellation: Bool,
-        systemSwallowEnabled: Bool
-    ) -> Bool {
-        isEscapeCancellation || (isHotkey && systemSwallowEnabled)
-    }
-
-    /// `INV-016` regression: ordinary input must never enqueue a main-actor task
-    /// from the global tap. This is deliberately separate from
-    /// `shouldSwallow`: an unready hotkey still needs an app-state callback
-    /// to show its "not ready" feedback, even though it is passed through to
-    /// the frontmost app.
-    nonisolated static func shouldDispatchToAppState(
-        isHotkey: Bool,
-        isEscapeCancellation: Bool
-    ) -> Bool {
-        isHotkey || isEscapeCancellation
-    }
-
-    private func evaluate(keyCode: UInt32, flagsRaw: UInt64, phase: Phase) {
-        guard HotkeyManager.shortcutMatches(shortcut, keyCode: keyCode, flagsRaw: flagsRaw) else { return }
-        onEvent(phase)
-    }
-
-    /// Pure, `nonisolated`/`static` shortcut comparison shared by the
-    /// synchronous swallow-decision (`ShortcutBox`, off the main actor) and
-    /// the main-actor `evaluate(...)` that actually fires `onEvent` — kept
-    /// as one function so the two can never drift apart, and directly unit
-    /// -testable (`HotkeyManagerTests`) without a real event tap or
-    /// Accessibility trust.
-    nonisolated static func shortcutMatches(_ shortcut: HotkeyShortcut, keyCode: UInt32, flagsRaw: UInt64) -> Bool {
-        guard keyCode == shortcut.keyCode else { return false }
-
-        let deviceFlags = CGEventFlags(rawValue: flagsRaw)
-        let hasCommand = deviceFlags.contains(.maskCommand)
-        let hasOption = deviceFlags.contains(.maskAlternate)
-        let hasControl = deviceFlags.contains(.maskControl)
-        let hasShift = deviceFlags.contains(.maskShift)
-
-        let wantsCommand = shortcut.modifierFlags & NSEventModifierFlagsCommand != 0
-        let wantsOption = shortcut.modifierFlags & NSEventModifierFlagsOption != 0
-        let wantsControl = shortcut.modifierFlags & NSEventModifierFlagsControl != 0
-        let wantsShift = shortcut.modifierFlags & NSEventModifierFlagsShift != 0
-
-        return hasCommand == wantsCommand
-            && hasOption == wantsOption
-            && hasControl == wantsControl
-            && hasShift == wantsShift
-    }
-}
-
-/// A plain wrapper making an `UnsafeMutableRawPointer?` explicitly
-/// `Sendable` at the one place it needs to cross into a `Thread`'s
-/// `@Sendable` body (`EventTapRunner.start`). The pointer is `refcon` —
-/// `Unmanaged.passUnretained(self).toOpaque()` for the owning
-/// `HotkeyManager` — used only to recover that reference inside the tap's
-/// C callback; nothing here ever dereferences or mutates through it
-/// directly.
-private nonisolated struct RawPointerBox: @unchecked Sendable {
-    let pointer: UnsafeMutableRawPointer?
-
-    init(_ pointer: UnsafeMutableRawPointer?) {
-        self.pointer = pointer
-    }
-}
-
-/// Owns the `CGEventTap`'s dedicated background thread and its own
-/// `CFRunLoop` (`INV-016`/`AT-097`). A `CGEventTap`'s callback only ever
-/// fires on whichever run loop its `CFRunLoopSource` was added to; adding it
-/// to the main run loop (the anti-pattern this type replaces) means hotkey
-/// delivery for the entire system stalls for as long as the main thread is
-/// busy doing anything else — a SwiftUI layout pass, a sheet, a long
-/// synchronous call. This type instead runs the tap's whole lifecycle
-/// (create → add source to the current thread's run loop → enable →
-/// `CFRunLoopRun()`) on one dedicated `Thread`, created fresh by `start()`
-/// and joined by the matching `stop()`, so the main actor's own busyness can
-/// never affect whether the hotkey fires.
-///
-/// `nonisolated`/`@unchecked Sendable` and lock-protected for the same
-/// reason as `ShortcutBox` below: the C API always runs the callback off the
-/// main actor (here, literally on this type's own background thread), and
-/// its shared lifecycle state must remain safe without an actor hop.
-private nonisolated final class EventTapRunner: @unchecked Sendable {
-    private let lock = NSLock()
-    private var thread: Thread?
-    private var runLoop: CFRunLoop?
-    private var tap: CFMachPort?
-    private var doneSemaphore: DispatchSemaphore?
-    private var running = false
-    /// Rate-limit bookkeeping for `reEnableAfterSystemDisable()`. Cleared on
-    /// every fresh `runLoopBody` so a restarted tap gets a full budget.
-    private var reEnableCount = 0
-    private var reEnableWindowStartNanos: UInt64?
-
-    var isRunning: Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        return running
-    }
-
-    /// Starts the dedicated thread if one isn't already running; a second
-    /// call while one is already active is a no-op. `onStarted` fires
-    /// exactly once, off the main actor, reporting whether
-    /// `CGEvent.tapCreate` actually succeeded — the caller hops back to the
-    /// main actor itself to log the outcome.
-    func start(
-        mask: CGEventMask,
-        callback: @escaping CGEventTapCallBack,
-        refcon: UnsafeMutableRawPointer?,
-        onStarted: @escaping @Sendable (Bool) -> Void
-    ) {
-        lock.lock()
-        guard thread == nil else {
-            lock.unlock()
-            return
-        }
-        running = true
-        let semaphore = DispatchSemaphore(value: 0)
-        doneSemaphore = semaphore
-        // `UnsafeMutableRawPointer?` itself is not `Sendable`, but it is
-        // just a plain pointer value here — the object it addresses
-        // (`HotkeyManager`, via `Unmanaged.passUnretained`) is never mutated
-        // through this pointer, only unwrapped back into a reference inside
-        // the tap's callback. Boxing it makes that safety explicit to the
-        // compiler at the one crossing point (`Thread`'s `@Sendable` body).
-        let refconBox = RawPointerBox(refcon)
-        let newThread = Thread { [weak self] in
-            self?.runLoopBody(
-                mask: mask,
-                callback: callback,
-                refcon: refconBox.pointer,
-                doneSemaphore: semaphore,
-                onStarted: onStarted
-            )
-        }
-        newThread.name = "com.voicepaste.hotkeyEventTap"
-        // The tap's callback must never be starved behind other background
-        // work; this thread does nothing but block in `CFRunLoopRun()` and
-        // run the tiny synchronous callback.
-        newThread.qualityOfService = .userInteractive
-        thread = newThread
-        lock.unlock()
-
-        newThread.start()
-    }
-
-    /// The entire body of the dedicated thread. Everything here — tap
-    /// creation, attaching the source to a run loop, enabling the tap —
-    /// must happen on this same thread: `CFRunLoopGetCurrent()` only
-    /// returns *this* thread's run loop when called from it, and a
-    /// `CFRunLoopSource` added to one thread's run loop never fires on
-    /// another thread's.
-    private func runLoopBody(
-        mask: CGEventMask,
-        callback: @escaping CGEventTapCallBack,
-        refcon: UnsafeMutableRawPointer?,
-        doneSemaphore: DispatchSemaphore,
-        onStarted: @escaping @Sendable (Bool) -> Void
-    ) {
-        guard let tap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
-            place: .headInsertEventTap,
-            options: .defaultTap,
-            eventsOfInterest: mask,
-            callback: callback,
-            userInfo: refcon
-        ), let source = CFMachPortCreateRunLoopSource(nil, tap, 0) else {
-            lock.lock()
-            running = false
-            thread = nil
-            lock.unlock()
-            doneSemaphore.signal()
-            onStarted(false)
-            return
-        }
-
-        let currentRunLoop = CFRunLoopGetCurrent()
-        CFRunLoopAddSource(currentRunLoop, source, .commonModes)
-        CGEvent.tapEnable(tap: tap, enable: true)
-
-        lock.lock()
-        self.tap = tap
-        self.runLoop = currentRunLoop
-        reEnableCount = 0
-        reEnableWindowStartNanos = nil
-        lock.unlock()
-
-        onStarted(true)
-
-        // Blocks this thread — and only this thread — until `stop()` calls
-        // `CFRunLoopStop(currentRunLoop)` below.
-        CFRunLoopRun()
-
-        CFRunLoopRemoveSource(currentRunLoop, source, .commonModes)
-        CGEvent.tapEnable(tap: tap, enable: false)
-
-        lock.lock()
-        self.tap = nil
-        self.runLoop = nil
-        self.thread = nil
-        running = false
-        lock.unlock()
-
-        doneSemaphore.signal()
-    }
-
-    /// `INV-016`/`AT-097`: brings the tap back after macOS disabled it
-    /// (`kCGEventTapDisabledByTimeout`/`ByUserInput`). Called synchronously
-    /// from the tap's own callback thread, which is where `CGEvent.tapEnable`
-    /// belongs. Returns whether it actually re-enabled.
-    ///
-    /// Rate-limited to `maxReEnablesPerWindow` within `reEnableWindowNanos` so
-    /// a genuinely pathological situation (the machine is pinned and the tap
-    /// times out again immediately) degrades into the old fail-open behavior
-    /// instead of an enable/disable loop. The budget resets once the machine
-    /// recovers and a full quiet window passes.
-    func reEnableAfterSystemDisable() -> Bool {
-        lock.lock()
-        guard running, let tap else {
-            lock.unlock()
-            return false
-        }
-        let now = DispatchTime.now().uptimeNanoseconds
-        if reEnableWindowStartNanos == nil || now &- reEnableWindowStartNanos! > Self.reEnableWindowNanos {
-            reEnableWindowStartNanos = now
-            reEnableCount = 0
-        }
-        guard reEnableCount < Self.maxReEnablesPerWindow else {
-            lock.unlock()
-            return false
-        }
-        reEnableCount += 1
-        lock.unlock()
-
-        CGEvent.tapEnable(tap: tap, enable: true)
+    private func installHandlerIfNeeded() -> Bool {
+        if handlerRef != nil { return true }
+        var eventTypes = [
+            EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed)),
+            EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyReleased)),
+        ]
+        var ref: EventHandlerRef?
+        let status = InstallEventHandler(
+            GetApplicationEventTarget(),
+            Self.eventHandler,
+            eventTypes.count,
+            &eventTypes,
+            Unmanaged.passUnretained(self).toOpaque(),
+            &ref
+        )
+        guard status == noErr, let ref else { return false }
+        handlerRef = ref
         return true
     }
 
-    private static let maxReEnablesPerWindow = 5
-    private static let reEnableWindowNanos: UInt64 = 60_000_000_000 // 60 s
+    private func unregister(_ ref: inout EventHotKeyRef?) {
+        guard let current = ref else { return }
+        UnregisterEventHotKey(current)
+        ref = nil
+    }
 
-    /// Idempotent: a `stop()` with no active thread is a no-op. Blocks the
-    /// calling thread — the main actor, briefly — until the dedicated
-    /// thread has actually finished tearing down (disabled the tap, removed
-    /// its source, exited `CFRunLoopRun()`), so a following `start()` can
-    /// never race with this `stop()`'s cleanup.
-    func stop() {
-        lock.lock()
-        guard let runLoop, let semaphore = doneSemaphore else {
-            lock.unlock()
-            return
+    private func dispatch(id: UInt32, phase: Phase) {
+        switch id {
+        case Self.primaryID:
+            onEvent(phase)
+        case Self.escapeID where phase == .down && shouldRegisterEscape:
+            onEscape()
+        default:
+            break
         }
-        lock.unlock()
-
-        CFRunLoopStop(runLoop)
-        semaphore.wait()
-
-        lock.lock()
-        doneSemaphore = nil
-        lock.unlock()
-    }
-}
-
-/// `INV-015`/`AT-090` counterpart to `EscapeCancellationBox`: whether a
-/// matched hotkey should actually be swallowed by the tap right now.
-/// Defaults to `false` (passthrough) — `AppState.refreshReadiness()` flips
-/// it to `true` only once `readiness.state == .ready`, so an app launched
-/// with Accessibility already trusted but permissions/model still pending
-/// never silently eats the user's chosen combination for no benefit.
-private nonisolated final class SystemSwallowBox: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value = false
-
-    var isEnabled: Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        return value
     }
 
-    func setEnabled(_ isEnabled: Bool) {
-        lock.lock()
-        value = isEnabled
-        lock.unlock()
-    }
-}
-
-private nonisolated final class EscapeCancellationBox: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value = false
-
-    var isEnabled: Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        return value
-    }
-
-    func setEnabled(_ isEnabled: Bool) {
-        lock.lock()
-        value = isEnabled
-        lock.unlock()
-    }
-}
-
-/// Thread-safe holder for the shortcut the CGEventTap's C callback compares
-/// against. Declared `nonisolated`/`@unchecked Sendable` and lock-protected
-/// (like `AudioSampleAccumulator` elsewhere in the app) because the callback
-/// runs synchronously off the main actor from Swift's static point of view
-/// and must decide, in that same call, whether to swallow the event —
-/// there's no time for an actor-isolated `await` hop before returning.
-/// `nonisolated`: under `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` every
-/// declaration in this module defaults to `@MainActor` isolation unless
-/// stated otherwise (see the identical note on `AudioSampleAccumulator` in
-/// `AudioCaptureService.swift`) — without this, `matches(keyCode:flagsRaw:)`
-/// would be `@MainActor`-isolated despite being `Sendable`, and calling it
-/// synchronously from the CGEventTap's C callback (which is not on the main
-/// actor) would not compile.
-private nonisolated final class ShortcutBox: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value: HotkeyShortcut
-
-    init(_ value: HotkeyShortcut) {
-        self.value = value
+    private nonisolated static let eventHandler: EventHandlerUPP = { _, event, userData in
+        guard let event, let userData else { return OSStatus(eventNotHandledErr) }
+        var hotKeyID = EventHotKeyID()
+        let status = GetEventParameter(
+            event,
+            EventParamName(kEventParamDirectObject),
+            EventParamType(typeEventHotKeyID),
+            nil,
+            MemoryLayout<EventHotKeyID>.size,
+            nil,
+            &hotKeyID
+        )
+        guard status == noErr, hotKeyID.signature == signature else {
+            return OSStatus(eventNotHandledErr)
+        }
+        let kind = GetEventKind(event)
+        let phase: Phase = kind == UInt32(kEventHotKeyReleased) ? .up : .down
+        let manager = Unmanaged<HotkeyManager>.fromOpaque(userData).takeUnretainedValue()
+        Task { @MainActor in manager.dispatch(id: hotKeyID.id, phase: phase) }
+        return noErr
     }
 
-    func update(_ newValue: HotkeyShortcut) {
-        lock.lock()
-        value = newValue
-        lock.unlock()
+    nonisolated static func carbonModifiers(for flags: UInt) -> UInt32 {
+        var result: UInt32 = 0
+        if flags & NSEventModifierFlagsCommand != 0 { result |= UInt32(cmdKey) }
+        if flags & NSEventModifierFlagsOption != 0 { result |= UInt32(optionKey) }
+        if flags & NSEventModifierFlagsControl != 0 { result |= UInt32(controlKey) }
+        if flags & NSEventModifierFlagsShift != 0 { result |= UInt32(shiftKey) }
+        return result
     }
 
-    func matches(keyCode: UInt32, flagsRaw: UInt64) -> Bool {
-        lock.lock()
-        let shortcut = value
-        lock.unlock()
-        return HotkeyManager.shortcutMatches(shortcut, keyCode: keyCode, flagsRaw: flagsRaw)
+    /// Kept as a pure display/recorder helper; runtime delivery is performed
+    /// by macOS after registration, not by comparing every key event.
+    nonisolated static func shortcutMatches(
+        _ shortcut: HotkeyShortcut,
+        keyCode: UInt32,
+        flagsRaw: UInt64
+    ) -> Bool {
+        guard keyCode == shortcut.keyCode else { return false }
+        let flags = CGEventFlags(rawValue: flagsRaw)
+        let actual: UInt = (flags.contains(.maskCommand) ? NSEventModifierFlagsCommand : 0)
+            | (flags.contains(.maskAlternate) ? NSEventModifierFlagsOption : 0)
+            | (flags.contains(.maskControl) ? NSEventModifierFlagsControl : 0)
+            | (flags.contains(.maskShift) ? NSEventModifierFlagsShift : 0)
+        return actual == shortcut.modifierFlags
     }
 }

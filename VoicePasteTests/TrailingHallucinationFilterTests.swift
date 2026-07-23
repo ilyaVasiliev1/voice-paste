@@ -17,8 +17,9 @@ final class TrailingHallucinationFilterTests: XCTestCase {
         XCTAssertEqual(result, "Полезный текст.")
     }
 
-    func test_removesExactReservedTerminalFillerWhenTimingIsAmbiguous() {
-        let samples = Array(repeating: Float(0.05), count: 16_000 * 4)
+    func test_removesExactReservedTerminalFillerWhenTimingIsAmbiguousButTailIsSilent() {
+        let samples = Array(repeating: Float(0.05), count: 16_000 * 3)
+            + Array(repeating: Float.zero, count: 16_000)
         let result = TrailingHallucinationFilter.filtering(
             rawText: "На этом всё. Продолжение следует.",
             segments: [
@@ -37,10 +38,32 @@ final class TrailingHallucinationFilterTests: XCTestCase {
             segments: [
                 .init(text: " Save time with this feature. Продолжение следует...", startSeconds: 0),
             ],
-            samples: Array(repeating: Float(0.05), count: 16_000 * 5)
+            samples: Array(repeating: Float(0.05), count: 16_000 * 4)
+                + Array(repeating: Float.zero, count: 16_000)
         )
 
         XCTAssertEqual(result, "Save time with this feature.")
+    }
+
+    func test_preservesLegitimatelySpokenPhraseWithoutSilentTailEvidence() {
+        let result = TrailingHallucinationFilter.filtering(
+            rawText: "Продолжение следует.",
+            segments: [.init(text: "Продолжение следует.", startSeconds: 0)],
+            samples: Array(repeating: Float(0.05), count: 16_000 * 2)
+        )
+
+        XCTAssertEqual(result, "Продолжение следует.")
+    }
+
+    func test_preservesPhraseWhenItIsTheWholeUtteranceEvenAfterNaturalPause() {
+        let result = TrailingHallucinationFilter.filtering(
+            rawText: "Продолжение следует.",
+            segments: [.init(text: "Продолжение следует.", startSeconds: 0)],
+            samples: Array(repeating: Float(0.05), count: 16_000)
+                + Array(repeating: Float.zero, count: 16_000)
+        )
+
+        XCTAssertEqual(result, "Продолжение следует.")
     }
 
     func test_trimsOnlyLongTrailingSilenceBeforeWhisper() {

@@ -11,7 +11,7 @@ import SwiftUI
 ///
 /// Captures the raw virtual key code + modifier mask on the next key press
 /// while recording — the same representation `HotkeyManager`'s
-/// `CGEventTap` compares against, so what you record is exactly what
+/// Carbon's registered-hotkey API receives, so what you record is exactly what
 /// triggers globally. Esc cancels without changing `shortcut`; Delete/
 /// Backspace resets to `HotkeyShortcut.default`. A combination without at
 /// least one modifier is rejected (it would otherwise collide with normal

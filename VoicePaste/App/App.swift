@@ -10,27 +10,62 @@ struct VoicePasteApp: App {
     private let windowRouter = WindowRouter.shared
 
     init() {
-        let settings = AppSettings()
-        let modelDirectory = Self.makeModelDirectory()
+        let isRunningTests = ProcessRuntime.isRunningTests
+        let settings: AppSettings
+        let modelInstallation: ModelInstallation
+        if isRunningTests {
+            let defaults = UserDefaults(suiteName: "VoicePaste-TestHost-\(UUID().uuidString)")!
+            settings = AppSettings(defaults: defaults)
+            modelInstallation = ModelInstallation(
+                directory: FileManager.default.temporaryDirectory
+                    .appendingPathComponent("VoicePaste-TestHost-\(UUID().uuidString)", isDirectory: true),
+                isBundled: false
+            )
+        } else {
+            settings = AppSettings()
+            modelInstallation = Self.resolveModelInstallation()
+        }
         let modelManager = ModelManager(
-            modelDirectory: modelDirectory,
+            modelDirectory: modelInstallation.directory,
             downloadEndpointProvider: { settings.modelDownloadEndpoint },
-            downloadSourceProvider: { settings.modelDownloadSource }
+            downloadSourceProvider: { settings.modelDownloadSource },
+            allowsNetworkDownloads: !modelInstallation.isBundled,
+            isBundledModel: modelInstallation.isBundled
         )
         let store: any HistoryStoring
         let queueStore: any ImportQueueStoring
-        if let pool = try? AppDatabase.makePool() {
-            // `L-008`: must read the *live* setting on every save, not a
-            // value captured once at launch — otherwise toggling history on
-            // mid-session silently keeps failing saves with
-            // `HistoryError.historyDisabled`. `settings.isHistoryEnabledNow`
-            // is a `@Sendable` closure over a lock-protected mirror, safe to
-            // call from `HistoryStore`'s own actor isolation.
-            store = HistoryStore(dbPool: pool, historyEnabled: settings.isHistoryEnabledNow)
-            queueStore = ImportQueueStore(dbPool: pool)
-        } else {
+        let persistenceFailureMessage: String?
+        if isRunningTests {
+            // XCTest loads the product as TEST_HOST. Never touch the user's
+            // database, queue, preferences or Application Support merely by
+            // compiling/running a unit test bundle.
             store = FailingHistoryStore()
             queueStore = InMemoryImportQueueStore()
+            persistenceFailureMessage = nil
+        } else {
+            do {
+                let pool = try AppDatabase.makePool()
+                // `L-008`: must read the *live* setting on every save, not a
+                // value captured once at launch — otherwise toggling history on
+                // mid-session silently keeps failing saves with
+                // `HistoryError.historyDisabled`. `settings.isHistoryEnabledNow`
+                // is a `@Sendable` closure over a lock-protected mirror, safe to
+                // call from `HistoryStore`'s own actor isolation.
+                store = HistoryStore(dbPool: pool, historyEnabled: settings.isHistoryEnabledNow)
+                queueStore = ImportQueueStore(dbPool: pool)
+                persistenceFailureMessage = nil
+            } catch {
+                store = FailingHistoryStore()
+                queueStore = InMemoryImportQueueStore()
+                let failureDetail = String(describing: error)
+                persistenceFailureMessage = failureDetail
+                Task {
+                    await DiagnosticLog.shared.log(
+                        "persistence.openFailed",
+                        detail: failureDetail
+                    )
+                }
+            }
         }
         let importManager = ImportManager(
             modelManager: modelManager,
@@ -42,7 +77,8 @@ struct VoicePasteApp: App {
             settings: settings,
             modelManager: modelManager,
             historyStore: store,
-            importManager: importManager
+            importManager: importManager,
+            persistenceFailureMessage: persistenceFailureMessage
         ))
     }
 
@@ -59,6 +95,7 @@ struct VoicePasteApp: App {
             Image(systemName: appState.menuBarSymbolName)
                 .foregroundStyle(appState.menuBarSymbolColor)
                 .task {
+                    guard !ProcessRuntime.isRunningTests else { return }
                     // `UI-001`: wire the AppKit-side delegate to this
                     // instance's `appState` and its `openWindow`/`openSettings`
                     // actions (captured here since `AppDelegate` itself has no
@@ -121,7 +158,23 @@ struct VoicePasteApp: App {
         .windowResizability(.contentSize)
     }
 
-    private static func makeModelDirectory() -> URL {
+    private struct ModelInstallation {
+        let directory: URL
+        let isBundled: Bool
+    }
+
+    /// A release produced by `build-offline-release.sh` contains the model
+    /// under Resources/VoicePasteModels. Its mere presence selects strict
+    /// offline policy: a corrupt bundle must not fall back to the network.
+    /// Development builds without that resource keep the existing external
+    /// model directory so tests and local iteration remain lightweight.
+    private static func resolveModelInstallation() -> ModelInstallation {
+        if let bundled = Bundle.main.resourceURL?
+            .appendingPathComponent("VoicePasteModels", isDirectory: true),
+           FileManager.default.fileExists(atPath: bundled.path) {
+            return ModelInstallation(directory: bundled, isBundled: true)
+        }
+
         let base = (try? FileManager.default.url(
             for: .applicationSupportDirectory,
             in: .userDomainMask,
@@ -130,6 +183,6 @@ struct VoicePasteApp: App {
         )) ?? FileManager.default.temporaryDirectory
         let directory = base.appendingPathComponent("VoicePaste/Models", isDirectory: true)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        return directory
+        return ModelInstallation(directory: directory, isBundled: false)
     }
 }
