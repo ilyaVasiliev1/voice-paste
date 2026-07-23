@@ -119,9 +119,8 @@ public actor GitHubModelDownloader {
                     resumeData: resumeData,
                     progress: progress
                 )
-                try await extract(zip: downloaded, into: archive.destination)
+                try await installAtomically(zip: downloaded, archive: archive)
                 try? FileManager.default.removeItem(at: downloaded)
-                try verify(archive)
                 return
             } catch let error as DownloadError where error == .cancelled {
                 throw error
@@ -201,11 +200,40 @@ public actor GitHubModelDownloader {
 
     // MARK: - Extraction / verification / cleanup
 
+    /// Extracts into an app-owned staging directory, verifies the expected
+    /// payload there, and only then moves it into the managed model tree.
+    /// Therefore an interrupted unzip can never leave a half-installed model
+    /// or tokenizer where startup discovery might see it.
+    private func installAtomically(zip: URL, archive: Archive) async throws {
+        let staging = workDirectory
+            .appendingPathComponent("extract-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: staging) }
+        try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
+        try await extract(zip: zip, into: staging)
+
+        let stagedChild = staging.appendingPathComponent(archive.expectedChild)
+        guard FileManager.default.fileExists(atPath: stagedChild.path) else {
+            throw DownloadError.verificationFailed
+        }
+
+        let finalChild = archive.destination.appendingPathComponent(archive.expectedChild)
+        let finalParent = finalChild.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: finalParent, withIntermediateDirectories: true)
+
+        // The expected child is absent on a normal first install. Removal is
+        // retained for an explicit reinstall, but only after the staged copy
+        // is complete and verified, so a failed extraction preserves the last
+        // usable installation.
+        if FileManager.default.fileExists(atPath: finalChild.path) {
+            try FileManager.default.removeItem(at: finalChild)
+        }
+        try FileManager.default.moveItem(at: stagedChild, to: finalChild)
+    }
+
     /// Unzips via `/usr/bin/ditto`, which ships on every macOS and handles the
     /// standard zip written by `zip -X` correctly (including nested `.mlmodelc`
     /// bundles). The app is not sandboxed, so spawning it is permitted.
     private func extract(zip: URL, into destination: URL) async throws {
-        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
         process.arguments = ["-x", "-k", zip.path, destination.path]
@@ -235,13 +263,6 @@ public actor GitHubModelDownloader {
         try Task.checkCancellation()
         guard status == 0 else {
             throw DownloadError.extractionFailed
-        }
-    }
-
-    private func verify(_ archive: Archive) throws {
-        let child = archive.destination.appendingPathComponent(archive.expectedChild)
-        guard FileManager.default.fileExists(atPath: child.path) else {
-            throw DownloadError.verificationFailed
         }
     }
 

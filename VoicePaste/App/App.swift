@@ -12,25 +12,20 @@ struct VoicePasteApp: App {
     init() {
         let isRunningTests = ProcessRuntime.isRunningTests
         let settings: AppSettings
-        let modelInstallation: ModelInstallation
+        let modelDirectory: URL
         if isRunningTests {
             let defaults = UserDefaults(suiteName: "VoicePaste-TestHost-\(UUID().uuidString)")!
             settings = AppSettings(defaults: defaults)
-            modelInstallation = ModelInstallation(
-                directory: FileManager.default.temporaryDirectory
-                    .appendingPathComponent("VoicePaste-TestHost-\(UUID().uuidString)", isDirectory: true),
-                isBundled: false
-            )
+            modelDirectory = FileManager.default.temporaryDirectory
+                .appendingPathComponent("VoicePaste-TestHost-\(UUID().uuidString)", isDirectory: true)
         } else {
             settings = AppSettings()
-            modelInstallation = Self.resolveModelInstallation()
+            modelDirectory = Self.resolveModelDirectory()
         }
         let modelManager = ModelManager(
-            modelDirectory: modelInstallation.directory,
+            modelDirectory: modelDirectory,
             downloadEndpointProvider: { settings.modelDownloadEndpoint },
-            downloadSourceProvider: { settings.modelDownloadSource },
-            allowsNetworkDownloads: !modelInstallation.isBundled,
-            isBundledModel: modelInstallation.isBundled
+            downloadSourceProvider: { settings.modelDownloadSource }
         )
         let store: any HistoryStoring
         let queueStore: any ImportQueueStoring
@@ -158,23 +153,10 @@ struct VoicePasteApp: App {
         .windowResizability(.contentSize)
     }
 
-    private struct ModelInstallation {
-        let directory: URL
-        let isBundled: Bool
-    }
-
-    /// A release produced by `build-offline-release.sh` contains the model
-    /// under Resources/VoicePasteModels. Its mere presence selects strict
-    /// offline policy: a corrupt bundle must not fall back to the network.
-    /// Development builds without that resource keep the existing external
-    /// model directory so tests and local iteration remain lightweight.
-    private static func resolveModelInstallation() -> ModelInstallation {
-        if let bundled = Bundle.main.resourceURL?
-            .appendingPathComponent("VoicePasteModels", isDirectory: true),
-           FileManager.default.fileExists(atPath: bundled.path) {
-            return ModelInstallation(directory: bundled, isBundled: true)
-        }
-
+    /// The model deliberately lives outside the app bundle. One explicit
+    /// onboarding download installs it here; app updates preserve it and all
+    /// later recognition opens these local files with downloads disabled.
+    private static func resolveModelDirectory() -> URL {
         let base = (try? FileManager.default.url(
             for: .applicationSupportDirectory,
             in: .userDomainMask,
@@ -183,6 +165,6 @@ struct VoicePasteApp: App {
         )) ?? FileManager.default.temporaryDirectory
         let directory = base.appendingPathComponent("VoicePaste/Models", isDirectory: true)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        return ModelInstallation(directory: directory, isBundled: false)
+        return directory
     }
 }

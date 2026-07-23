@@ -35,11 +35,11 @@ final class ModelManagerTests: XCTestCase {
 
     // MARK: - Fast, deterministic checks
 
-    func test_ensureLoaded_reachesReady_andReturnsTranscriber() async throws {
+    func test_installModel_reachesReady_andReturnsTranscriber() async throws {
         let manager = makeManager()
         XCTAssertEqual(manager.state, .notPrepared)
 
-        _ = try await manager.ensureLoaded()
+        _ = try await manager.installModel()
 
         XCTAssertTrue(manager.isReady)
         XCTAssertEqual(manager.state, .ready)
@@ -61,8 +61,7 @@ final class ModelManagerTests: XCTestCase {
                 try await Task.sleep(for: .milliseconds(100))
                 return MockTranscriber()
             },
-            allowsNetworkDownloads: false,
-            isBundledModel: true
+            allowsNetworkDownloads: false
         )
         await manager.waitForInitialModelDiscoveryForTesting()
         XCTAssertEqual(manager.state, .unloaded)
@@ -76,12 +75,34 @@ final class ModelManagerTests: XCTestCase {
         XCTAssertEqual(invocationCount, 1)
     }
 
+    func test_AT099_runtimeLocalLoadReceivesNonNetworkEndpoint() async throws {
+        let directory = try makeTempModelDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try makePlausibleModelFiles(in: directory)
+        try makeTokenizerFile(in: directory)
+        var receivedEndpoint: String?
+        let manager = ModelManager(
+            modelDirectory: directory,
+            makeTranscriber: { _, endpoint, _ in
+                receivedEndpoint = endpoint
+                return MockTranscriber()
+            },
+            downloadEndpointProvider: { "https://must-not-be-used.example" }
+        )
+        await manager.waitForInitialModelDiscoveryForTesting()
+
+        _ = try await manager.ensureLoaded()
+
+        XCTAssertEqual(receivedEndpoint, ModelCatalog.offlineEndpoint)
+        XCTAssertFalse(receivedEndpoint?.hasPrefix("http") == true)
+    }
+
     /// `AT-026`/quit: `unloadNow()` releases the model synchronously, no
     /// timer required. This is exactly the effect the 60s timer eventually
     /// triggers on its own.
     func test_unloadNow_releasesModel_immediately() async throws {
         let manager = makeManager()
-        _ = try await manager.ensureLoaded()
+        _ = try await manager.installModel()
         XCTAssertTrue(manager.isReady)
 
         manager.unloadNow()
@@ -95,7 +116,7 @@ final class ModelManagerTests: XCTestCase {
     /// harmless.
     func test_beginTask_withNoPendingTimer_isHarmless() async throws {
         let manager = makeManager()
-        _ = try await manager.ensureLoaded()
+        _ = try await manager.installModel()
 
         manager.beginTask()
 
@@ -109,7 +130,7 @@ final class ModelManagerTests: XCTestCase {
     /// this window).
     func test_endTask_zeroMinutes_neverSchedulesUnload() async throws {
         let manager = makeManager()
-        _ = try await manager.ensureLoaded()
+        _ = try await manager.installModel()
 
         manager.endTask(unloadMinutes: 0)
         try await Task.sleep(nanoseconds: 1_500_000_000) // 1.5s
@@ -120,7 +141,7 @@ final class ModelManagerTests: XCTestCase {
 
     func test_endTask_negativeMinutes_alsoNeverSchedulesUnload() async throws {
         let manager = makeManager()
-        _ = try await manager.ensureLoaded()
+        _ = try await manager.installModel()
 
         manager.endTask(unloadMinutes: -1)
         try await Task.sleep(nanoseconds: 500_000_000)
@@ -136,7 +157,7 @@ final class ModelManagerTests: XCTestCase {
     /// disk").
     func test_deleteModel_fromReady_setsNotPrepared() async throws {
         let manager = makeManager()
-        _ = try await manager.ensureLoaded()
+        _ = try await manager.installModel()
         XCTAssertEqual(manager.state, .ready)
 
         await manager.deleteModel()
@@ -153,6 +174,7 @@ final class ModelManagerTests: XCTestCase {
         let directory = try makeTempModelDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         try makePlausibleModelFiles(in: directory)
+        try makeTokenizerFile(in: directory)
 
         let manager = ModelManager(
             modelDirectory: directory,
@@ -174,6 +196,7 @@ final class ModelManagerTests: XCTestCase {
         let directory = try makeTempModelDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         try makePlausibleModelFiles(in: directory)
+        try makeTokenizerFile(in: directory)
         XCTAssertFalse(
             try FileManager.default.contentsOfDirectory(atPath: directory.path).isEmpty,
             "sanity check: the stub model files must exist before deletion"
@@ -229,7 +252,7 @@ final class ModelManagerTests: XCTestCase {
             }
         )
 
-        let loading = Task { try? await manager.ensureLoaded() }
+        let loading = Task { try? await manager.installModel() }
         try await Task.sleep(for: .milliseconds(40))
         await manager.deleteModel()
         _ = await loading.value
@@ -238,7 +261,7 @@ final class ModelManagerTests: XCTestCase {
         XCTAssertFalse(manager.isReady)
     }
 
-    func test_AT099_offlinePolicyNeverInvokesDownloadFactoryWhenArtifactsAreMissing() async throws {
+    func test_AT099_runtimeLoadNeverInvokesFactoryWhenArtifactsAreMissing() async throws {
         let directory = try makeTempModelDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let factoryCalled = ModelFactoryInvocationFlag()
@@ -247,9 +270,7 @@ final class ModelManagerTests: XCTestCase {
             makeTranscriber: { _, _, _ in
                 await factoryCalled.set()
                 return MockTranscriber()
-            },
-            allowsNetworkDownloads: false,
-            isBundledModel: true
+            }
         )
 
         do {
@@ -293,7 +314,7 @@ final class ModelManagerTests: XCTestCase {
             modelDirectory: modelsDirectory,
             makeTranscriber: { _, _, _ in MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil))) }
         )
-        _ = try await manager.ensureLoaded()
+        _ = try await manager.installModel()
 
         await manager.deleteModel()
 
@@ -335,6 +356,7 @@ final class ModelManagerTests: XCTestCase {
         let directory = try makeTempModelDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         try makePlausibleModelFiles(in: directory)
+        try makeTokenizerFile(in: directory)
 
         let manager = ModelManager(
             modelDirectory: directory,
@@ -343,6 +365,20 @@ final class ModelManagerTests: XCTestCase {
 
         await manager.waitForInitialModelDiscoveryForTesting()
         XCTAssertEqual(manager.state, .unloaded)
+    }
+
+    func test_init_withModelButMissingTokenizer_startsNotPrepared() async throws {
+        let directory = try makeTempModelDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try makePlausibleModelFiles(in: directory)
+
+        let manager = ModelManager(
+            modelDirectory: directory,
+            makeTranscriber: { _, _, _ in MockTranscriber() }
+        )
+
+        await manager.waitForInitialModelDiscoveryForTesting()
+        XCTAssertEqual(manager.state, .notPrepared)
     }
 
     /// A partial download (missing one required component) must not be
@@ -413,57 +449,35 @@ final class ModelManagerTests: XCTestCase {
         XCTAssertEqual(manager.state, .notPrepared)
     }
 
-    /// `ensureLoaded()` recovering from a corrupt-but-`LocalModelDetection`-
-    /// verified local model: the load itself fails (mirrors WhisperKit's
-    /// "Failed to parse ML Program" on a subtly-corrupt file), so the stale
-    /// folder must be wiped and a fresh load attempted — landing on `.ready`
-    /// rather than getting stuck in `.failed`.
-    ///
-    /// Adapted for `loadWithAutoRetry()`: a *single* failing attempt is no
-    /// longer enough to reach this wipe path at all, because the blind
-    /// auto-retry (`maxAutoDownloadRetries = 2`) now transparently retries
-    /// the very same (still-corrupt) local folder up to 3 times *before*
-    /// `ensureLoaded()`'s own catch block ever sees an error. To actually
-    /// exercise the wipe-and-redownload branch, the factory must fail on
-    /// *all 3* attempts of that first `loadWithAutoRetry()` session (i.e.
-    /// the corruption is attempt-independent, as real "Failed to parse ML
-    /// Program" corruption would be) — only then does `ensureLoaded()` wipe
-    /// the folder and start a second `loadWithAutoRetry()` session, which
-    /// succeeds on its first attempt against the now-clean directory. This
-    /// makes the test ~3s slower (two 1.5s auto-retry pauses within the
-    /// first session) but honestly exercises the real call path.
-    func test_ensureLoaded_whenExistingLocalModelFailsToLoad_wipesAndRetries() async throws {
+    /// Runtime loading is offline-only. A corrupt local model is removed and
+    /// surfaced for explicit reinstall; it is never silently re-downloaded by
+    /// a pre-warm/dictation path.
+    func test_ensureLoaded_whenExistingLocalModelFails_doesNotRetryOrDownload() async throws {
         let directory = try makeTempModelDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         try makePlausibleModelFiles(in: directory)
+        try makeTokenizerFile(in: directory)
 
         var attempt = 0
         let manager = ModelManager(
             modelDirectory: directory,
             makeTranscriber: { _, _, _ in
                 attempt += 1
-                if attempt <= 3 {
-                    // Mirrors `WhisperKitTranscriber.init` throwing at load
-                    // time (e.g. "Failed to parse ML Program") — the failure
-                    // happens while constructing the engine, not later while
-                    // transcribing. Fails on all 3 attempts of the first
-                    // `loadWithAutoRetry()` session (the corrupt folder is
-                    // still corrupt however many times it's retried), so
-                    // that session's auto-retry budget is fully exhausted
-                    // and `ensureLoaded()`'s wipe-and-redownload branch
-                    // actually runs.
-                    throw TranscribingError.underlying("corrupt model.mil")
-                }
-                return MockTranscriber(result: .success(.init(rawText: "", detectedLanguage: nil)))
+                throw TranscribingError.underlying("corrupt model.mil")
             }
         )
         await manager.waitForInitialModelDiscoveryForTesting()
         XCTAssertEqual(manager.state, .unloaded, "starts detected as verified, exactly like the real regression")
 
-        _ = try await manager.ensureLoaded()
+        do {
+            _ = try await manager.ensureLoaded()
+            XCTFail("corrupt local model must require explicit reinstall")
+        } catch ModelError.verificationFailed {
+            // expected
+        }
 
-        XCTAssertEqual(manager.state, .ready)
-        XCTAssertEqual(attempt, 4, "3 exhausted attempts against the corrupt folder, then 1 successful attempt after the wipe")
+        XCTAssertEqual(manager.state, .failed(.verificationFailed))
+        XCTAssertEqual(attempt, 1, "offline runtime must not retry a local compile as a network install")
         XCTAssertFalse(
             FileManager.default.fileExists(atPath: directory.appendingPathComponent("MelSpectrogram.mlmodelc").path),
             "the invalid folder must have been wiped, not left behind"
@@ -494,18 +508,17 @@ final class ModelManagerTests: XCTestCase {
         }
     }
 
-    /// Completes the offline fixture. `allowsNetworkDownloads == false`
-    /// deliberately rejects a model-only directory because WhisperKit would
-    /// otherwise try to fetch the missing tokenizer at runtime.
+    /// Completes the offline fixture with every file WhisperKit's tokenizer
+    /// loader consumes. A model-only or partial tokenizer directory must be
+    /// rejected before the library can fall through to its Hub downloader.
     private func makeTokenizerFile(in directory: URL) throws {
         let tokenizerDirectory = ModelManager.tokenizerDirectory(in: directory)
             .appendingPathComponent(ModelCatalog.tokenizerRepoPath, isDirectory: true)
         try FileManager.default.createDirectory(at: tokenizerDirectory, withIntermediateDirectories: true)
-        let tokenizerURL = tokenizerDirectory.appendingPathComponent("tokenizer.json")
-        XCTAssertTrue(FileManager.default.createFile(
-            atPath: tokenizerURL.path,
-            contents: Data("{}".utf8)
-        ))
+        for name in ["tokenizer.json", "tokenizer_config.json", "config.json"] {
+            let url = tokenizerDirectory.appendingPathComponent(name)
+            XCTAssertTrue(FileManager.default.createFile(atPath: url.path, contents: Data("{}".utf8)))
+        }
     }
 
     // MARK: - Real-time timer behavior (slow: ~61s total for both assertions)
@@ -515,11 +528,11 @@ final class ModelManagerTests: XCTestCase {
     /// pays the ~61s wall-clock cost once.
     func test_unloadTimer_firesAfterOneMinute_unlessCancelledByNewTask() async throws {
         let firingManager = makeManager()
-        _ = try await firingManager.ensureLoaded()
+        _ = try await firingManager.installModel()
         firingManager.endTask(unloadMinutes: 1)
 
         let cancellingManager = makeManager()
-        _ = try await cancellingManager.ensureLoaded()
+        _ = try await cancellingManager.installModel()
         cancellingManager.endTask(unloadMinutes: 1)
         // A new recording/import starts right away: must cancel the pending
         // unload timer (`L-010`).

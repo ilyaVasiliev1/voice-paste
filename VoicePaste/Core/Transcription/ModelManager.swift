@@ -53,10 +53,9 @@ public final class ModelManager: ObservableObject {
     /// download) from `.mirror`/`.official` (WhisperKit Hub), so the source —
     /// not just its HF endpoint string — is needed here. Defaults to `.mirror`.
     private let downloadSourceProvider: @MainActor () -> ModelDownloadSource
-    /// Public release bundles immutable model assets. In that mode the
-    /// runtime must fail locally instead of silently contacting a host.
+    /// Test/diagnostic policy switch. Production permits network only through
+    /// `installModel()`; ordinary `ensureLoaded()` never authorizes a fetch.
     private let allowsNetworkDownloads: Bool
-    public let isBundledModel: Bool
     /// The in-flight GitHub archive download, kept so `cancelDownload()` can
     /// stop it (producing resume data) without cancelling the whole app.
     private var activeDownloader: GitHubModelDownloader?
@@ -66,15 +65,13 @@ public final class ModelManager: ObservableObject {
         makeTranscriber: @escaping (URL, String, @escaping @Sendable (Double) -> Void) async throws -> Transcribing = ModelManager.defaultTranscriberFactory,
         downloadEndpointProvider: @escaping @MainActor () -> String = { ModelCatalog.downloadEndpoint },
         downloadSourceProvider: @escaping @MainActor () -> ModelDownloadSource = { .mirror },
-        allowsNetworkDownloads: Bool = true,
-        isBundledModel: Bool = false
+        allowsNetworkDownloads: Bool = true
     ) {
         self.modelDirectory = modelDirectory
         self.makeTranscriber = makeTranscriber
         self.downloadEndpointProvider = downloadEndpointProvider
         self.downloadSourceProvider = downloadSourceProvider
         self.allowsNetworkDownloads = allowsNetworkDownloads
-        self.isBundledModel = isBundledModel
         startMemoryPressureMonitoring()
         // `L-001`/`AT-004`: a previous run may have already downloaded and
         // compiled the model into `modelDirectory`. Detect it up front so a
@@ -104,6 +101,7 @@ public final class ModelManager: ObservableObject {
     /// rather than placing it flatly at the root.
     nonisolated private static func hasVerifiedLocalModel(in directory: URL) -> Bool {
         LocalModelDetection.discoverModelFolder(in: directory) != nil
+            && tokenizerPresent(in: directory)
     }
 
     /// Finishes the background startup check exactly once. A deletion or a
@@ -163,15 +161,22 @@ public final class ModelManager: ObservableObject {
     /// Loads/compiles the model if needed and cancels any pending unload timer.
     /// Called before every dictation/import transcription (`L-010`).
     ///
-    /// If a local model folder was already on disk and passed
-    /// `LocalModelDetection`'s check, but the actual load still fails (e.g.
-    /// WhisperKit's "Failed to parse ML Program … model.mil cannot be read"
-    /// on a subtly-corrupt file that the plausible-size heuristic didn't
-    /// catch), the on-disk folder is treated as invalid: it's deleted and a
-    /// single clean re-download is attempted automatically, rather than
-    /// leaving the app stuck in `.failed`/"ошибка готовности" until the user
-    /// manually clears `~/Library/Application Support`.
+    /// This operation is deliberately network-ineligible. A subtly corrupt
+    /// local model is removed and surfaced to onboarding for an explicit
+    /// reinstall instead of silently downloading during dictation/pre-warm.
     public func ensureLoaded() async throws -> Transcribing {
+        try await ensureLoaded(allowNetworkInstall: false)
+    }
+
+    /// The only product API allowed to contact a model host. It is called by
+    /// an explicit onboarding/Settings action with visible progress. Once the
+    /// complete local model is installed, every other path uses
+    /// `ensureLoaded()` and is therefore network-ineligible by construction.
+    public func installModel() async throws -> Transcribing {
+        try await ensureLoaded(allowNetworkInstall: true)
+    }
+
+    private func ensureLoaded(allowNetworkInstall: Bool) async throws -> Transcribing {
         beginTask()
         await waitForInitialModelDiscovery()
         if let transcriber, isReady {
@@ -194,7 +199,10 @@ public final class ModelManager: ObservableObject {
         let task = Task<Transcribing, Error> { [weak self] in
             guard let self else { throw ModelError.downloadFailed }
             do {
-                let engine = try await self.performLoad(generation: generation)
+                let engine = try await self.performLoad(
+                    generation: generation,
+                    allowNetworkInstall: allowNetworkInstall
+                )
                 self.finishLoad(generation: generation)
                 return engine
             } catch {
@@ -230,9 +238,10 @@ public final class ModelManager: ObservableObject {
         }
     }
 
-    private func performLoad(generation: UInt64) async throws -> Transcribing {
+    private func performLoad(generation: UInt64, allowNetworkInstall: Bool) async throws -> Transcribing {
         try requireCurrentLoad(generation)
-        if allowsNetworkDownloads, let storageError = checkStorage(), state == .notPrepared {
+        if allowNetworkInstall, allowsNetworkDownloads,
+           let storageError = checkStorage(), state == .notPrepared {
             state = .failed(storageError)
             throw storageError
         }
@@ -243,7 +252,10 @@ public final class ModelManager: ObservableObject {
         // of the user's disk gets deleted, so it must reflect reality.
         let hadExistingLocalModel = LocalModelDetection.discoverModelFolder(in: modelDirectory) != nil
         do {
-            return try await loadWithAutoRetry(generation: generation)
+            return try await loadWithAutoRetry(
+                generation: generation,
+                allowNetworkInstall: allowNetworkInstall
+            )
         } catch {
             Task { await DiagnosticLog.shared.log("model.load.failed", detail: String(describing: error)) }
 
@@ -275,24 +287,23 @@ public final class ModelManager: ObservableObject {
                 throw error
             }
 
-            // The folder that `LocalModelDetection` trusted turned out to be
-            // unloadable — corrupt/truncated rather than merely "not yet
-            // downloaded". Wipe the model payload so the next attempt can't
-            // find it and falls through to a clean download. The tokenizer is
-            // deliberately kept: it is a separate 640 KB artifact that has
-            // nothing to do with a corrupt Core ML bundle, and re-fetching it
-            // is exactly what the network failure above cannot do.
+            // The folder that local discovery trusted turned out to be
+            // unloadable. Remove only the corrupt payload. A runtime-only
+            // call stops here; an explicit install action may repair it in
+            // the same visible session because the user already authorized
+            // that network operation.
             Task { await DiagnosticLog.shared.log("model.local.invalid", detail: String(describing: error)) }
             await Self.removeModelPayload(at: corruptFolder, keepingTokenizersUnder: modelDirectory)
-            do {
-                Task { await DiagnosticLog.shared.log("model.redownload") }
+            if allowNetworkInstall, allowsNetworkDownloads {
+                Task { await DiagnosticLog.shared.log("model.reinstall.explicit") }
                 try requireCurrentLoad(generation)
-                return try await loadWithAutoRetry(generation: generation)
-            } catch {
-                if loadGeneration == generation { state = .failed(.downloadFailed) }
-                Task { await DiagnosticLog.shared.log("model.load.failed", detail: String(describing: error)) }
-                throw error
+                return try await loadWithAutoRetry(
+                    generation: generation,
+                    allowNetworkInstall: true
+                )
             }
+            if loadGeneration == generation { state = .failed(.verificationFailed) }
+            throw ModelError.verificationFailed
         }
     }
 
@@ -342,20 +353,26 @@ public final class ModelManager: ObservableObject {
     /// simpler and safe: a retry after a transient disconnect resumes the
     /// already-downloaded parts, and a retry after a genuinely fatal error
     /// (e.g. disk full) just fails again and is bounded by the retry cap, so
-    /// this stays deterministic and testable. This is a distinct, earlier
-    /// layer from the wipe+redownload fallback in `ensureLoaded()` — that one
-    /// handles a corrupt *existing* local folder; this one handles a flaky
-    /// *first* download attempt and never touches the filesystem itself.
-    private func loadWithAutoRetry(generation: UInt64) async throws -> Transcribing {
+    /// this stays deterministic and testable. Local-only loads are attempted
+    /// once: repeating the same Core ML compile cannot repair local bytes and
+    /// would only waste CPU.
+    private func loadWithAutoRetry(
+        generation: UInt64,
+        allowNetworkInstall: Bool
+    ) async throws -> Transcribing {
         var lastError: Error?
-        for attempt in 0...Self.maxAutoDownloadRetries {
+        let retryCount = allowNetworkInstall ? Self.maxAutoDownloadRetries : 0
+        for attempt in 0...retryCount {
             do {
                 try requireCurrentLoad(generation)
-                return try await load(generation: generation)
+                return try await load(
+                    generation: generation,
+                    allowNetworkInstall: allowNetworkInstall
+                )
             } catch {
                 if error is CancellationError { throw error }
                 lastError = error
-                guard attempt < Self.maxAutoDownloadRetries else { break }
+                guard attempt < retryCount else { break }
                 Task { await DiagnosticLog.shared.log("model.load.retry", detail: "attempt \(attempt + 1)") }
                 try? await Task.sleep(nanoseconds: Self.autoRetryPauseNanos)
             }
@@ -372,13 +389,15 @@ public final class ModelManager: ObservableObject {
     /// frozen screen before either success or the next attempt's progress.
     private static let autoRetryPauseNanos: UInt64 = 1_500_000_000
 
-    private func load(generation: UInt64) async throws -> Transcribing {
+    private func load(generation: UInt64, allowNetworkInstall: Bool) async throws -> Transcribing {
         try requireCurrentLoad(generation)
         resetDownloadProgressTracking()
+        let needsModel = LocalModelDetection.discoverModelFolder(in: modelDirectory) == nil
+        let needsTokenizer = !Self.tokenizerPresent(in: modelDirectory)
         // Only a genuinely absent model means a network download. An on-disk
         // model is just being brought into memory — report `.preparing`, which
         // keeps the app `ready` and doesn't claim a 626 MB fetch is happening.
-        if LocalModelDetection.discoverModelFolder(in: modelDirectory) == nil {
+        if needsModel || needsTokenizer {
             state = .downloading(ModelDownloadProgress(
                 completedBytes: 0,
                 totalBytes: ModelCatalog.approximateSizeBytes,
@@ -388,8 +407,15 @@ public final class ModelManager: ObservableObject {
             state = .preparing
         }
         Task { await DiagnosticLog.shared.log("model.load.start") }
-        let endpoint = downloadEndpointProvider()
-        let source = downloadSourceProvider()
+        // Runtime/pre-warm gets a non-network URL scheme. WhisperKit's local
+        // tokenizer loader otherwise falls back to its Hub if parsing fails,
+        // even when `download: false`; this makes such corruption an honest
+        // local error without opening any external socket. HTTPS endpoints
+        // exist only inside the explicit installer action.
+        let endpoint = allowNetworkInstall
+            ? downloadEndpointProvider()
+            : ModelCatalog.offlineEndpoint
+        let source = allowNetworkInstall ? downloadSourceProvider() : .official
 
         // `.github` (`L-010`): lay the model + tokenizer down from the project's
         // own GitHub release before handing off to WhisperKit, which then loads
@@ -403,9 +429,8 @@ public final class ModelManager: ObservableObject {
         // previously left in `~/Documents/huggingface` still needs the ~640 KB
         // tokenizer laid down here, or the local load would fall back to
         // fetching it from an unreachable HuggingFace.
-        let needsModel = LocalModelDetection.discoverModelFolder(in: modelDirectory) == nil
-        let needsTokenizer = !Self.tokenizerPresent(in: modelDirectory)
-        if !allowsNetworkDownloads, needsModel || needsTokenizer {
+        if needsModel || needsTokenizer,
+           (!allowNetworkInstall || !allowsNetworkDownloads) {
             state = .failed(.verificationFailed)
             throw ModelError.verificationFailed
         }
@@ -771,11 +796,6 @@ public final class ModelManager: ObservableObject {
         let downloader = activeDownloader
         activeDownloader = nil
         await downloader?.cancel()
-        if isBundledModel {
-            state = .unloaded
-            Task { await DiagnosticLog.shared.log("model.delete.skipped", detail: "bundledReadOnly") }
-            return
-        }
         // A discovery that started before deletion can otherwise report an
         // old positive result after the directory has already been emptied.
         initialModelDiscoveryTask?.cancel()
@@ -815,14 +835,20 @@ public final class ModelManager: ObservableObject {
         modelDirectory.appendingPathComponent("tokenizers", isDirectory: true)
     }
 
-    /// Whether the tokenizer is already laid down in the app's own directory
-    /// (so no HuggingFace fetch is needed on load). Checks the concrete
-    /// `tokenizer.json`, not just the folder, so a half-extracted archive
-    /// doesn't read as present.
+    /// Whether the tokenizer is complete in the app's own directory (so
+    /// WhisperKit's local loader cannot fall through to its Hub downloader).
+    /// All files consumed by `AutoTokenizerWrapper.from(modelFolder:)` must
+    /// exist and be non-empty; checking only `tokenizer.json` would accept a
+    /// torn installation and could trigger an unexpected network fallback.
     nonisolated static func tokenizerPresent(in modelDirectory: URL) -> Bool {
-        let tokenizerJSON = tokenizerDirectory(in: modelDirectory)
+        let folder = tokenizerDirectory(in: modelDirectory)
             .appendingPathComponent(ModelCatalog.tokenizerRepoPath, isDirectory: true)
-            .appendingPathComponent("tokenizer.json")
-        return FileManager.default.fileExists(atPath: tokenizerJSON.path)
+        return ["tokenizer.json", "tokenizer_config.json", "config.json"].allSatisfy { name in
+            let file = folder.appendingPathComponent(name)
+            guard let size = try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize else {
+                return false
+            }
+            return size > 0
+        }
     }
 }

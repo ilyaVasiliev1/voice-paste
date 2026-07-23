@@ -47,13 +47,17 @@ final class ImportManagerTests: XCTestCase {
         return url
     }
 
-    private func makeManager(transcriber: some Transcribing) -> ImportManager {
+    private func makeManager(transcriber: some Transcribing) async throws -> ImportManager {
         let settings = AppSettings(defaults: UserDefaults(suiteName: defaultsSuite)!)
         settings.modelUnloadMinutes = 0
         let modelManager = ModelManager(
             modelDirectory: scratchDirectory,
             makeTranscriber: { _, _, _ in transcriber }
         )
+        // Product imports are enabled only after onboarding installed the
+        // model. The deterministic factory stands in for that explicit step;
+        // ImportManager itself must use the network-ineligible local loader.
+        _ = try await modelManager.installModel()
         return ImportManager(
             modelManager: modelManager,
             historyStore: FailingHistoryStore(),
@@ -75,7 +79,7 @@ final class ImportManagerTests: XCTestCase {
 
     func test_AT021_importsSupportedWAV_producesCompletionAndCleansOwnedCache() async throws {
         let url = try makeSilentWAV()
-        let manager = makeManager(
+        let manager = try await makeManager(
             transcriber: MockTranscriber(result: .success(.init(rawText: "Тестовая расшифровка.", detectedLanguage: "ru")))
         )
 
@@ -94,7 +98,7 @@ final class ImportManagerTests: XCTestCase {
     func test_AT022_unsupportedFile_remainsVisibleAsFailedWithoutCompletion() async throws {
         let url = scratchDirectory.appendingPathComponent("broken.xyz")
         try Data("not a media file".utf8).write(to: url)
-        let manager = makeManager(transcriber: MockTranscriber())
+        let manager = try await makeManager(transcriber: MockTranscriber())
 
         let jobID = manager.enqueue(url: url)
         try await waitUntil { manager.jobs.first(where: { $0.id == jobID })?.state == .failed }
@@ -105,7 +109,7 @@ final class ImportManagerTests: XCTestCase {
 
     func test_AT025_cancelledStaging_removesJobAndCache() async throws {
         let url = try makeSilentWAV(seconds: 0.5, name: "cancel.wav")
-        let manager = makeManager(transcriber: MockTranscriber())
+        let manager = try await makeManager(transcriber: MockTranscriber())
         let jobID = manager.enqueue(url: url)
 
         manager.cancel(id: jobID)
@@ -143,7 +147,7 @@ final class ImportManagerTests: XCTestCase {
     func test_AT100_longImportIsTranscribedInBoundedSequentialWindows() async throws {
         let url = try makeSilentWAV(seconds: 65, name: "long.wav")
         let transcriber = RecordingImportTranscriber()
-        let manager = makeManager(transcriber: transcriber)
+        let manager = try await makeManager(transcriber: transcriber)
 
         let jobID = manager.enqueue(url: url)
         try await waitUntil(timeout: 15) { manager.lastCompletion?.jobID == jobID }

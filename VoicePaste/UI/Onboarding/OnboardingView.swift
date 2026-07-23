@@ -44,6 +44,7 @@ struct OnboardingView: View {
                     goNext()
                 }
                 .buttonStyle(.borderedProminent)
+                .disabled(step == .model && !canFinishModelStep)
             }
         }
         .padding(24)
@@ -202,20 +203,14 @@ struct OnboardingView: View {
             Text("onboarding.model.verifying")
         case .failed:
             Text("onboarding.model.failed").foregroundStyle(.red)
-            if !appState.modelManager.isBundledModel {
-                ModelSourcePicker(settings: appState.settings)
-                Button("onboarding.model.retry") {
-                    Task { _ = try? await appState.modelManager.ensureLoaded() }
-                }
+            ModelSourcePicker(settings: appState.settings)
+            Button("onboarding.model.retry") {
+                Task { _ = try? await appState.modelManager.installModel() }
             }
         case .notPrepared:
-            if appState.modelManager.isBundledModel {
-                Text("onboarding.model.failed").foregroundStyle(.red)
-            } else {
-                ModelSourcePicker(settings: appState.settings)
-                Button("onboarding.model.download") {
-                    Task { _ = try? await appState.modelManager.ensureLoaded() }
-                }
+            ModelSourcePicker(settings: appState.settings)
+            Button("onboarding.model.download") {
+                Task { _ = try? await appState.modelManager.installModel() }
             }
         }
     }
@@ -289,6 +284,19 @@ struct OnboardingView: View {
         formatter.maximumFractionDigits = 0
         return formatter
     }()
+
+    /// The wizard cannot be dismissed while the model is absent, failed, or
+    /// still downloading. `.unloaded` means the verified files are installed
+    /// locally but the engine is not resident, so it is a valid completed
+    /// onboarding state just like `.ready`/`.preparing`.
+    private var canFinishModelStep: Bool {
+        switch appState.modelManager.state {
+        case .ready, .unloaded, .preparing:
+            return true
+        case .notPrepared, .downloading, .verifying, .failed:
+            return false
+        }
+    }
 
     private func goNext() {
         appState.refreshReadiness()

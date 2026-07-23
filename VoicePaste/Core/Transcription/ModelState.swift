@@ -83,6 +83,12 @@ nonisolated public enum ModelCatalog {
     /// `WhisperKitConfig(modelEndpoint:)` honour this. Swap back to
     /// `https://huggingface.co` if the mirror is ever unavailable.
     public static let downloadEndpoint = "https://hf-mirror.com"
+    /// Endpoint injected into WhisperKit for every runtime-only local load.
+    /// WhisperKit falls back to its Hub when local tokenizer parsing fails;
+    /// this valid but unsupported URL scheme makes that fallback fail before
+    /// URLSession can open a socket. Only the explicit onboarding installer
+    /// ever receives an HTTPS endpoint.
+    public static let offlineEndpoint = "voicepaste-offline://local"
 
     /// Direct GitHub-Release download for the `.github` source (`L-010`). Used
     /// from mainland China where both HuggingFace hosts are unreachable but

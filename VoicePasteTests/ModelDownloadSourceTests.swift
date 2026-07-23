@@ -31,7 +31,7 @@ final class ModelDownloadSourceTests: XCTestCase {
     /// загрузчиком". A `downloadEndpointProvider` returning `.official`'s
     /// endpoint must result in the transcriber factory being invoked with
     /// exactly that URL — not silently falling back to the mirror.
-    func test_ensureLoaded_withOfficialProvider_passesOfficialEndpointToFactory() async throws {
+    func test_installModel_withOfficialProvider_passesOfficialEndpointToFactory() async throws {
         var capturedEndpoint: String?
         let manager = ModelManager(
             modelDirectory: FileManager.default.temporaryDirectory,
@@ -42,7 +42,7 @@ final class ModelDownloadSourceTests: XCTestCase {
             downloadEndpointProvider: { ModelDownloadSource.official.endpoint }
         )
 
-        _ = try await manager.ensureLoaded()
+        _ = try await manager.installModel()
 
         XCTAssertEqual(capturedEndpoint, "https://huggingface.co")
     }
@@ -50,7 +50,7 @@ final class ModelDownloadSourceTests: XCTestCase {
     /// Symmetric case: an explicit `.mirror` provider reaches the factory
     /// too, not just the implicit default — proves the plumbing is a real
     /// pass-through, not a hardcoded mirror constant.
-    func test_ensureLoaded_withMirrorProvider_passesMirrorEndpointToFactory() async throws {
+    func test_installModel_withMirrorProvider_passesMirrorEndpointToFactory() async throws {
         var capturedEndpoint: String?
         let manager = ModelManager(
             modelDirectory: FileManager.default.temporaryDirectory,
@@ -61,7 +61,7 @@ final class ModelDownloadSourceTests: XCTestCase {
             downloadEndpointProvider: { ModelDownloadSource.mirror.endpoint }
         )
 
-        _ = try await manager.ensureLoaded()
+        _ = try await manager.installModel()
 
         XCTAssertEqual(capturedEndpoint, "https://hf-mirror.com")
     }
@@ -70,7 +70,7 @@ final class ModelDownloadSourceTests: XCTestCase {
     /// omitting `downloadEndpointProvider` entirely (the real production
     /// default) must still resolve to the mirror URL, without any Settings
     /// object involved.
-    func test_ensureLoaded_withDefaultProvider_passesMirrorEndpoint() async throws {
+    func test_installModel_withDefaultProvider_passesMirrorEndpoint() async throws {
         var capturedEndpoint: String?
         let manager = ModelManager(
             modelDirectory: FileManager.default.temporaryDirectory,
@@ -80,14 +80,14 @@ final class ModelDownloadSourceTests: XCTestCase {
             }
         )
 
-        _ = try await manager.ensureLoaded()
+        _ = try await manager.installModel()
 
         XCTAssertEqual(capturedEndpoint, "https://hf-mirror.com")
     }
 
     /// `L-010`: "Смена применяется к следующей загрузке" — a provider backed
     /// by a mutable box, switched *after* construction but *before* the
-    /// first `ensureLoaded()` call, must be read live at load time, not
+    /// first `installModel()` call, must be read live at load time, not
     /// captured once at `ModelManager.init`. This is the closest an `auto`
     /// test can get to "смена источника применяется к следующей загрузке"
     /// without a real second download (unloading and reloading the *same*
@@ -112,7 +112,7 @@ final class ModelDownloadSourceTests: XCTestCase {
         // (and its ModelManager) already started, before any download ran.
         box.source = .official
 
-        _ = try await manager.ensureLoaded()
+        _ = try await manager.installModel()
 
         XCTAssertEqual(capturedEndpoint, "https://huggingface.co")
     }

@@ -126,17 +126,17 @@ private struct SettingsBody: View {
                 countStyle: .file
             ))
             LabeledContent("settings.model.status", value: modelStatusDescription)
-            if !appState.modelManager.isBundledModel {
-                Picker("settings.model.downloadSource", selection: $settings.modelDownloadSource) {
-                    Text("settings.model.downloadSource.github").tag(ModelDownloadSource.github)
-                    Text("settings.model.downloadSource.mirror").tag(ModelDownloadSource.mirror)
-                    Text("settings.model.downloadSource.official").tag(ModelDownloadSource.official)
-                }
-                Text("settings.model.downloadSource.explanation")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            Picker("settings.model.downloadSource", selection: $settings.modelDownloadSource) {
+                Text("settings.model.downloadSource.github").tag(ModelDownloadSource.github)
+                Text("settings.model.downloadSource.mirror").tag(ModelDownloadSource.mirror)
+                Text("settings.model.downloadSource.official").tag(ModelDownloadSource.official)
+            }
+            Text("settings.model.downloadSource.explanation")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if !isModelPresentOnDisk {
                 Button("settings.model.loadOrRetry") {
-                    Task { _ = try? await appState.modelManager.ensureLoaded() }
+                    Task { _ = try? await appState.modelManager.installModel() }
                 }
             }
             Stepper(value: $settings.modelUnloadMinutes, in: 0...60) {
@@ -148,22 +148,20 @@ private struct SettingsBody: View {
             Text("settings.model.unloadNow.explanation")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            if !appState.modelManager.isBundledModel {
-                Button(role: .destructive) {
-                    showingDeleteModelConfirmation = true
-                } label: {
-                    Text("settings.model.delete")
-                }
-                .disabled(!isModelPresentOnDisk)
-                .confirmationDialog(
-                    "settings.model.deleteConfirmTitle",
-                    isPresented: $showingDeleteModelConfirmation
-                ) {
-                    Button("settings.model.deleteConfirmAction", role: .destructive) {
-                        Task {
-                            await appState.modelManager.deleteModel()
-                            appState.refreshReadiness()
-                        }
+            Button(role: .destructive) {
+                showingDeleteModelConfirmation = true
+            } label: {
+                Text("settings.model.delete")
+            }
+            .disabled(!isModelPresentOnDisk)
+            .confirmationDialog(
+                "settings.model.deleteConfirmTitle",
+                isPresented: $showingDeleteModelConfirmation
+            ) {
+                Button("settings.model.deleteConfirmAction", role: .destructive) {
+                    Task {
+                        await appState.modelManager.deleteModel()
+                        appState.refreshReadiness()
                     }
                 }
             }

@@ -39,7 +39,7 @@ final class ModelDownloadProgressTests: XCTestCase {
     /// on the caller's (`ModelManager`'s `@MainActor`) executor without
     /// hitting a suspension point, a purely synchronous burst of
     /// `progress(...)` calls would queue every `handleDownloadProgress` hop
-    /// *behind* the whole `ensureLoaded()` call — by the time they ran,
+    /// *behind* the whole `installModel()` call — by the time they ran,
     /// `state` would already be `.ready`/`.failed` and every hop would be a
     /// no-op (`guard case .downloading = state else { return }`). The sleep
     /// gives each queued hop a real chance to run before the next sample.
@@ -107,7 +107,7 @@ final class ModelDownloadProgressTests: XCTestCase {
         )
         let recorder = StateRecorder(manager)
 
-        _ = try await manager.ensureLoaded()
+        _ = try await manager.installModel()
 
         let fractions = recorder.downloadingProgress.map(\.fraction)
         XCTAssertEqual(fractions.count, 5, "expected the initial placeholder plus all 4 fed samples to be individually published")
@@ -130,7 +130,7 @@ final class ModelDownloadProgressTests: XCTestCase {
         let manager = makeManager(samples: [0.3, 0.6, 1.0])
         let recorder = StateRecorder(manager)
 
-        _ = try await manager.ensureLoaded()
+        _ = try await manager.installModel()
 
         for progress in recorder.downloadingProgress {
             XCTAssertLessThan(progress.fraction, 1.0, "no .downloading update may report 100%")
@@ -160,7 +160,7 @@ final class ModelDownloadProgressTests: XCTestCase {
         )
         let recorder = StateRecorder(manager)
 
-        _ = try await manager.ensureLoaded()
+        _ = try await manager.installModel()
 
         let progressUpdates = recorder.downloadingProgress
         XCTAssertEqual(progressUpdates.first?.completedBytes, 0)
@@ -190,7 +190,7 @@ final class ModelDownloadProgressTests: XCTestCase {
         let manager = makeManager(samples: [0.001, 0.4, 0.9])
         let recorder = StateRecorder(manager)
 
-        _ = try await manager.ensureLoaded()
+        _ = try await manager.installModel()
 
         for update in recorder.downloadingProgress {
             XCTAssertEqual(update.totalBytes, ModelCatalog.approximateSizeBytes)
@@ -216,7 +216,7 @@ final class ModelDownloadProgressTests: XCTestCase {
         )
         let recorder = StateRecorder(manager)
 
-        _ = try await manager.ensureLoaded()
+        _ = try await manager.installModel()
 
         let updates = recorder.downloadingProgress
         XCTAssertGreaterThanOrEqual(updates.count, 4, "expected all 4 samples to pass the ≥250ms UI throttle")
@@ -250,7 +250,7 @@ final class ModelDownloadProgressTests: XCTestCase {
         )
         let recorder = StateRecorder(manager)
 
-        _ = try await manager.ensureLoaded()
+        _ = try await manager.installModel()
 
         let updates = recorder.downloadingProgress
         let speeds = updates.compactMap(\.speedBytesPerSecond)
@@ -280,7 +280,7 @@ final class ModelDownloadProgressTests: XCTestCase {
         let manager = makeManager(samples: samples, interSampleDelayNanos: 30_000_000)
         let recorder = StateRecorder(manager)
 
-        _ = try await manager.ensureLoaded()
+        _ = try await manager.installModel()
 
         let publishedCount = recorder.downloadingProgress.count
         XCTAssertLessThan(
@@ -339,7 +339,7 @@ final class ModelDownloadProgressTests: XCTestCase {
         let recorder = StateRecorder(manager)
 
         do {
-            _ = try await manager.ensureLoaded()
+            _ = try await manager.installModel()
             XCTFail("expected the simulated network drop to throw after exhausting auto-retries")
         } catch {
             // expected
@@ -354,10 +354,10 @@ final class ModelDownloadProgressTests: XCTestCase {
     }
 
     /// `AT-086`: a transient failure on the *first* auto-retry attempt must
-    /// be transparently repaired within a single `ensureLoaded()` call — no
+    /// be transparently repaired within a single `installModel()` call — no
     /// user-visible failure, no manual "Повторить" needed. This is the core
     /// promise of `loadWithAutoRetry()`: the factory throws once, then
-    /// succeeds on the very next attempt, entirely inside one `ensureLoaded()`.
+    /// succeeds on the very next attempt, entirely inside one `installModel()`.
     func test_autoRetry_repairsATransientFirstAttempt_withinASingleEnsureLoaded() async throws {
         var callCount = 0
         let directory = FileManager.default.temporaryDirectory
@@ -375,16 +375,16 @@ final class ModelDownloadProgressTests: XCTestCase {
             }
         )
 
-        let result = try await manager.ensureLoaded()
+        let result = try await manager.installModel()
 
         XCTAssertNotNil(result)
         XCTAssertEqual(manager.state, .ready)
-        XCTAssertEqual(callCount, 2, "one failed attempt, one successful retry — both inside the single ensureLoaded() call")
+        XCTAssertEqual(callCount, 2, "one failed attempt, one successful retry — both inside the single installModel() call")
     }
 
-    /// `AT-086`: after a first `ensureLoaded()` session whose auto-retry
+    /// `AT-086`: after a first `installModel()` session whose auto-retry
     /// budget is *fully exhausted* (fails on all 3 attempts of that
-    /// session), the user's "Повторить" (a second, separate `ensureLoaded()`
+    /// session), the user's "Повторить" (a second, separate `installModel()`
     /// call) must start from a clean tracker — no inherited speed/percentage
     /// from the previous session — and this time reach `.ready` immediately.
     func test_retryAfterExhaustedSession_resetsTracking_andCanSucceed() async throws {
@@ -396,7 +396,7 @@ final class ModelDownloadProgressTests: XCTestCase {
             makeTranscriber: { _, _, progress in
                 callCount += 1
                 if callCount <= 3 {
-                    // All 3 attempts of the first ensureLoaded() session
+                    // All 3 attempts of the first installModel() session
                     // (1 + maxAutoDownloadRetries = 2) fail, fully exhausting
                     // that session's auto-retry budget.
                     progress(0.096) // ≈ 60MB / 626MB
@@ -405,7 +405,7 @@ final class ModelDownloadProgressTests: XCTestCase {
                     throw RetriableDownloadFailure()
                 } else {
                     // The user's manual retry (second, separate
-                    // ensureLoaded() call) succeeds on its very first
+                    // installModel() call) succeeds on its very first
                     // attempt.
                     progress(0.008)
                     try? await Task.sleep(nanoseconds: 30_000_000)
@@ -416,7 +416,7 @@ final class ModelDownloadProgressTests: XCTestCase {
         )
 
         do {
-            _ = try await manager.ensureLoaded()
+            _ = try await manager.installModel()
             XCTFail("expected the first session to fail after exhausting its auto-retry budget")
         } catch {
             // expected
@@ -425,7 +425,7 @@ final class ModelDownloadProgressTests: XCTestCase {
         XCTAssertEqual(callCount, 3, "first session must have exhausted all 3 attempts before failing")
 
         let retryRecorder = StateRecorder(manager)
-        _ = try await manager.ensureLoaded()
+        _ = try await manager.installModel()
 
         XCTAssertEqual(manager.state, .ready)
         XCTAssertEqual(callCount, 4, "the manual retry succeeds on its first attempt")

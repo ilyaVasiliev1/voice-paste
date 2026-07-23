@@ -43,7 +43,7 @@ final class ReadinessModelStateObservationTests: XCTestCase {
         }
         defer { cancellable.cancel() }
 
-        _ = try await manager.ensureLoaded()
+        _ = try await manager.installModel()
 
         XCTAssertEqual(deliveredValues.last, "ready", "the publisher does deliver the new value")
         XCTAssertNotEqual(
@@ -72,7 +72,7 @@ final class ReadinessModelStateObservationTests: XCTestCase {
             "test host lacks Microphone/Accessibility grants; readiness never reaches the model branch"
         )
 
-        _ = try await manager.ensureLoaded()
+        _ = try await manager.installModel()
         // One turn for the sink to run. No `refresh()` — that is the point.
         try await Task.sleep(nanoseconds: 50_000_000)
 
@@ -96,6 +96,7 @@ final class ReadinessModelStateObservationTests: XCTestCase {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         try Self.makePlausibleModelFiles(in: directory)
+        try Self.makeTokenizerFile(in: directory)
 
         let manager = ModelManager(
             modelDirectory: directory,
@@ -135,6 +136,15 @@ final class ReadinessModelStateObservationTests: XCTestCase {
             let handle = try FileHandle(forWritingTo: URL(fileURLWithPath: modelMilPath))
             try handle.truncate(atOffset: UInt64(perComponentBytes))
             try handle.close()
+        }
+    }
+
+    private static func makeTokenizerFile(in directory: URL) throws {
+        let tokenizerDirectory = ModelManager.tokenizerDirectory(in: directory)
+            .appendingPathComponent(ModelCatalog.tokenizerRepoPath, isDirectory: true)
+        try FileManager.default.createDirectory(at: tokenizerDirectory, withIntermediateDirectories: true)
+        for name in ["tokenizer.json", "tokenizer_config.json", "config.json"] {
+            try Data("{}".utf8).write(to: tokenizerDirectory.appendingPathComponent(name))
         }
     }
 }
