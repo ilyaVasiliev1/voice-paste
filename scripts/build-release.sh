@@ -92,12 +92,73 @@ codesign --verify --deep --strict --verbose=2 "$APP_PATH"
 
 DMG_ROOT="$DERIVED_DATA/dmg-root"
 rm -rf "$DMG_ROOT"
-mkdir -p "$DMG_ROOT"
+mkdir -p "$DMG_ROOT/.background"
 ditto "$APP_PATH" "$DMG_ROOT/VoicePaste.app"
 ln -s /Applications "$DMG_ROOT/Applications"
+swift "$PROJECT_ROOT/scripts/make-dmg-background.swift" \
+  "$DMG_ROOT/.background/background.tiff" >/dev/null
+
+# The installer window is laid out explicitly. `hdiutil create` alone produces
+# an unstyled Finder window — whatever list/icon view and window size the
+# person happens to have as their default — which is the difference between an
+# installer that looks made and one that looks emitted.
+#
+# Layout can only be applied to a *writable*, mounted image, so the DMG is
+# built read/write, dressed through Finder, then converted to the compressed
+# read-only artifact that ships.
+VOLUME_NAME="VoicePaste"
+RW_DMG="$DERIVED_DATA/VoicePaste-rw.dmg"
+APP_MEGABYTES=$(du -sm "$APP_PATH" | cut -f1)
+rm -f "$RW_DMG"
+hdiutil create -quiet -volname "$VOLUME_NAME" -srcfolder "$DMG_ROOT" \
+  -fs HFS+ -format UDRW -size $((APP_MEGABYTES + 48))m -ov "$RW_DMG"
+
+# Must live under /Volumes: Finder addresses a disk by name and cannot see one
+# mounted anywhere else, which is why a custom mountpoint fails with -1728.
+MOUNT_POINT="/Volumes/$VOLUME_NAME"
+if [[ -d "$MOUNT_POINT" ]]; then
+  hdiutil detach "$MOUNT_POINT" -quiet -force || true
+fi
+hdiutil attach "$RW_DMG" -mountpoint "$MOUNT_POINT" -quiet
+
+# Icon centres must match `make-dmg-background.swift`, which draws the arrow
+# between exactly these two points.
+# Ordering here is not stylistic, and the missing `close` is deliberate.
+# Closing the window makes Finder rewrite `.DS_Store` with defaults: measured
+# directly, the styled record shrank from 10244 bytes to 6148 on unmount, and
+# the shipped installer opened with default icon size and no background even
+# though every option had been applied. The window is therefore left open and
+# the volume detached under it, after `update` plus a pause long enough for the
+# record to reach the image.
+osascript <<APPLESCRIPT
+tell application "Finder"
+  tell disk "$VOLUME_NAME"
+    open
+    set current view of container window to icon view
+    set toolbar visible of container window to false
+    set statusbar visible of container window to false
+    set the bounds of container window to {240, 140, 880, 560}
+    set viewOptions to the icon view options of container window
+    set arrangement of viewOptions to not arranged
+    set icon size of viewOptions to 128
+    set text size of viewOptions to 13
+    set background picture of viewOptions to POSIX file "$MOUNT_POINT/.background/background.tiff"
+    set position of item "VoicePaste.app" of container window to {160, 200}
+    set position of item "Applications" of container window to {480, 200}
+    update without registering applications
+    delay 3
+  end tell
+end tell
+APPLESCRIPT
+
+sync
+sleep 3
+hdiutil detach "$MOUNT_POINT" -quiet -force
+
 rm -f "$OUTPUT_DIR/$ARTIFACT_NAME"
-hdiutil create -quiet -volname VoicePaste -srcfolder "$DMG_ROOT" \
-  -ov -format UDZO "$OUTPUT_DIR/$ARTIFACT_NAME"
+hdiutil convert -quiet "$RW_DMG" -format UDZO -imagekey zlib-level=9 \
+  -o "$OUTPUT_DIR/$ARTIFACT_NAME"
+rm -f "$RW_DMG"
 
 if [[ -n "$NOTARY_PROFILE" && "$SIGN_IDENTITY" != "-" ]]; then
   xcrun notarytool submit "$OUTPUT_DIR/$ARTIFACT_NAME" \
