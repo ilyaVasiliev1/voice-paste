@@ -38,6 +38,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var appState: AppState?
     var windowRouter: WindowRouter?
 
+    /// The unit gate runs VoicePaste as its own XCTest host. A `.regular` host
+    /// takes a Dock icon and foregrounds itself the instant it finishes
+    /// launching — before any test runs — turning a headless `xcodebuild test`
+    /// into a GUI pop that steals focus. Under the test runtime *only*, adopt
+    /// the non-activating `.prohibited` policy so the gate runs headless. This
+    /// is the same "never do X merely because a unit bundle loaded us" guard the
+    /// app already applies to its database, queue and preferences
+    /// (`ProcessRuntime.isRunningTests`). Production launch keeps `.regular` and
+    /// the readiness-driven Dock visibility (`AppState.applyDockVisibility`)
+    /// entirely untouched — this method returns immediately when not testing.
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        guard ProcessRuntime.isRunningTests else { return }
+        NSApp.setActivationPolicy(.prohibited)
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
     }
