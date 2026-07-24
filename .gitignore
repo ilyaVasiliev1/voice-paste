@@ -22,6 +22,10 @@ build/
 .tmp/
 .playwright-mcp/
 
+# Engineering OS: рабочая зона платформы (worktree задач, proofs, журнал, run-state).
+# Не код продукта — генерируется пайплайном под корнем репозитория.
+.engineering-os/
+
 # Секреты — никогда не коммитить
 *.p8
 *.p12
@@ -36,10 +40,14 @@ Models/
 # Прочее локальное
 .mcp.json
 
-# Внутренняя «кухня» метода — в публичный репозиторий НЕ выгружать.
-# Файлы остаются локально, но GitHub видит только собираемый продукт.
+# Внутренняя «кухня» метода (Engineering-OS контрол-слой) — в публичный
+# репозиторий НЕ выгружать. GitHub видит только собираемый продукт.
 /spec/
-/knowledge/
+/docs/
+/changes/
+/tasks/
+/runbook.yaml
+/project.yaml
 /PROJECT_IDEA.md
 /WORKING_CONTRACT.md
 /CLAUDE.md
