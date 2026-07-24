@@ -10,6 +10,14 @@ struct VoicePasteApp: App {
     private let windowRouter = WindowRouter.shared
 
     init() {
+        // `VP-BUG-001`: hand off to an already-running instance before this
+        // process creates anything. This must be the first statement of the app
+        // value's init — SwiftUI runs it before `applicationWillFinishLaunching`
+        // and before `AppDatabase.makePool()` below, so a second, soon-to-be
+        // deferred launch never opens the SQLite pool. No-op under the test
+        // runtime.
+        SingleInstanceGuard.enforce()
+
         let isRunningTests = ProcessRuntime.isRunningTests
         let settings: AppSettings
         let modelDirectory: URL

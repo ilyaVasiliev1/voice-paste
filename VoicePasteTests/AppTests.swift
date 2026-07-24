@@ -35,3 +35,45 @@ final class HeadlessTestHostTests: XCTestCase {
         )
     }
 }
+
+/// `VP-BUG-001`: the single-instance decision, proven on the pure
+/// `SingleInstanceGuard.decide` so it needs no second real process. The guard
+/// defers to an already-running instance of the same bundle id and otherwise
+/// proceeds; a decision it gets wrong is either a duplicate app or a launch that
+/// never starts.
+final class SingleInstanceGuardTests: XCTestCase {
+    private func instance(_ bundleID: String?, _ pid: pid_t) -> SingleInstanceGuard.RunningInstance {
+        SingleInstanceGuard.RunningInstance(bundleIdentifier: bundleID, processIdentifier: pid)
+    }
+
+    func testDefersToExistingInstance() {
+        let running = [
+            instance("app.voicepaste", 100),   // an older instance already running
+            instance("app.voicepaste", 640),   // this process
+            instance("com.apple.finder", 42),  // unrelated app, must be ignored
+        ]
+        XCTAssertEqual(
+            SingleInstanceGuard.decide(running: running, bundleIdentifier: "app.voicepaste", currentPID: 640),
+            .deferToExisting(pid: 100)
+        )
+    }
+
+    func testProceedsWhenSoleInstance() {
+        let running = [
+            instance("app.voicepaste", 640),   // only this process owns the bundle id
+            instance("com.apple.finder", 42),
+        ]
+        XCTAssertEqual(
+            SingleInstanceGuard.decide(running: running, bundleIdentifier: "app.voicepaste", currentPID: 640),
+            .proceed
+        )
+    }
+
+    func testIgnoresOtherBundleIdentifiers() {
+        let running = [instance("com.other.app", 100), instance(nil, 7)]
+        XCTAssertEqual(
+            SingleInstanceGuard.decide(running: running, bundleIdentifier: "app.voicepaste", currentPID: 640),
+            .proceed
+        )
+    }
+}
