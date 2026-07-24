@@ -22,6 +22,10 @@ build/
 .tmp/
 .playwright-mcp/
 
+# Engineering OS: рабочая зона платформы (worktree задач, proofs, журнал, run-state).
+# Не код продукта — генерируется пайплайном под корнем репозитория.
+.engineering-os/
+
 # Секреты — никогда не коммитить
 *.p8
 *.p12
@@ -40,6 +44,9 @@ Models/
 # Файлы остаются локально, но GitHub видит только собираемый продукт.
 /spec/
 /knowledge/
+# Манифест Engineering OS: привязка продукта к платформе (архетип, layout,
+# команды). Инструмент метода, не код продукта — в публичный репозиторий не идёт.
+/project.yaml
 /PROJECT_IDEA.md
 /WORKING_CONTRACT.md
 /CLAUDE.md
