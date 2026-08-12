@@ -1,94 +1,150 @@
-# Модель данных и хранение — VoicePaste
+# Модель данных
 
-## Принцип
+Хранилище — локальная база `history.sqlite` в `~/Library/Application Support/VoicePaste/`,
+доступ через GRDB `DatabasePool`, WAL-журнал и миграции. Файл существует только в
+учётной записи macOS пользователя.
 
-История — локальная versioned SQLite-база `history.sqlite` в `Application Support/VoicePaste/`, доступ к ней идёт через GRDB `DatabasePool`. Включены WAL-журнал и миграции схемы. Это не облачная БД: файл существует только в учётной записи macOS пользователя и штатно попадает в его локальные резервные копии macOS.
+## Что обеспечивает хранилище, а что код
 
-Настройки малого объёма хранятся в `UserDefaults`. Оригинальные аудиозаписи и импортированные файлы после завершения задачи не сохраняются. Пока импорт ждёт или обрабатывается, VoicePaste держит только свою временную копию в кэше конкретной задачи: это даёт очереди работать после закрытия главного окна и не оставляет файлы в исходных папках пользователя.
+SQLite держит первичные ключи, индексы и триггеры синхронизации поискового
+индекса — это проверено миграциями проекта. Порядок и целостность составных
+операций держит код: один актор сериализует изменения истории и очереди, и
+частично сохранённой расшифровки не существует.
 
-## Карта файлов VoicePaste
+---
 
-| Место | Содержимое | Правило |
-|---|---|---|
-| `~/Library/Application Support/VoicePaste/history.sqlite` | история и словарь | Рядом только штатные `-wal` и `-shm` SQLite. |
-| `~/Library/Application Support/VoicePaste/Models/` | скачанная Core ML-модель и токенизатор | WhisperKit получает явный `downloadBase`/local model path; модель не уезжает в случайные пользовательские папки. |
-| `~/Library/Caches/VoicePaste/ImportQueue/<job-id>/source.<ext>` | временная копия выбранного аудио/видео | Создаётся асинхронно до постановки в очередь. Нужна лишь для активной/ожидающей задачи и удаляется при успехе, отмене или ошибке. |
-| `~/Library/Caches/VoicePaste/Transcoding/<job-id>/` | временно декодированный поток импорта | Создаётся только на время задачи и удаляется при успехе, отмене или ошибке. |
-| `~/Library/Application Support/VoicePaste/Logs/` | короткие диагностические логи без аудио и текста | Ротация по размеру; не является историей. |
+## DM-settings — Настройки приложения
 
-Экспорт `.txt` создаётся только в месте, которое пользователь явно выбрал в системном диалоге. Никаких скрытых копий аудио на Desktop, Downloads или рядом с исходным файлом нет.
-
-## DM-001 `AppSettings` (`UserDefaults`, одна запись)
+Одна запись в `UserDefaults`; в базе не хранится.
 
 | Поле | Тип | Правило |
 |---|---|---|
-| `hotkey` | serializable shortcut | Глобальная комбинация; по умолчанию `⌥Space`. |
+| `hotkey` | сериализуемое сочетание | Глобальное; по умолчанию `⌥Space`. |
 | `recordingMode` | `toggle \| hold` | По умолчанию `toggle`. |
-| `modelID` | string | Ровно `large-v3-v20240930_626MB` в v1. |
-| `modelUnloadMinutes` | integer | 1–60, по умолчанию 10; `0` означает «держать загруженной». |
-| `historyEnabled` | boolean | По умолчанию `true`. |
-| `autoInsertEnabled` | boolean | По умолчанию `true`. |
-| `autoCorrectSafeTypos` | boolean | По умолчанию `true`. |
+| `modelID` | строка | Ровно `large-v3-v20240930_626MB`. |
+| `modelUnloadMinutes` | целое | От 1 до 60, по умолчанию 10; `0` означает «держать загруженной». |
+| `historyEnabled` | булево | По умолчанию `true`. |
+| `autoInsertEnabled` | булево | По умолчанию `true`. |
+| `autoCorrectSafeTypos` | булево | По умолчанию `true`. |
 | `languageMode` | `auto \| ru \| en` | По умолчанию `auto`. |
 
-## DM-002 `transcripts` (SQLite)
+Хранилище ограничений не держит: `UserDefaults` их не умеет. Диапазоны и значения
+по умолчанию держит код при чтении.
 
-| Поле | Тип | Индекс / правило |
+- links: TERM-settings
+- impl: app:VoicePaste/Core/Settings/AppSettings.swift
+
+## DM-transcript — Расшифровка
+
+Таблица `transcripts`.
+
+| Поле | Тип | Индекс и правило |
 |---|---|---|
 | `id` | UUID / TEXT | Первичный ключ. |
-| `createdAt` | epoch milliseconds | Индекс `createdAt DESC, id DESC`; стабильная пагинация. |
-| `updatedAt` | epoch milliseconds | Меняется только при редактировании текста. |
-| `source` | `dictation \| file` | Фильтр в истории. |
-| `sourceFileName` | nullable TEXT | Только имя файла, без пути и копии оригинала. |
+| `createdAt` | epoch ms | Индекс `createdAt DESC, id DESC` — стабильная страничная выборка. |
+| `updatedAt` | epoch ms | Меняется только при правке текста. |
+| `source` | `dictation \| file` | Фильтр истории. |
+| `sourceFileName` | TEXT, необязательное | Только имя файла: ни пути, ни копии оригинала. |
 | `durationMilliseconds` | INTEGER | Длительность входного аудио. |
-| `language` | nullable BCP-47 TEXT | Определённый или заданный язык. |
-| `rawText` | TEXT | Вывод распознавания до нормализации; не выводится в списке. |
+| `language` | BCP-47 TEXT, необязательное | Определённый или заданный язык. |
+| `rawText` | TEXT | Вывод распознавания до нормализации; в списке не показывается. |
 | `text` | TEXT | Текущая редактируемая версия. |
-| `preview` | TEXT | Первые 240 символов текущего текста для строки списка; обновляется транзакционно. |
-| `wordCount` | INTEGER | Число слов текущего `text`; пересчитывается в той же транзакции при создании и редактировании. Используется только локальными агрегатами обзора. |
-| `status` | `completed \| failed` | Ошибка не содержит аудио. |
-| `insertionOutcome` | `inserted \| copied \| notRequested` | Результат для диктовки. |
+| `preview` | TEXT | Начало текущего текста для строки списка; длина — `INV-006`. |
+| `wordCount` | INTEGER | Число слов текущего текста; пересчитывается в той же транзакции. |
+| `status` | `completed \| failed` | Отказ не содержит аудио. |
+| `insertionOutcome` | `inserted \| copied \| notRequested` | Итог доставки для диктовки. |
 
-Вставка/редактирование транскрипта, `preview` и поисковый индекс происходят в одной SQLite-транзакции: не допускается частично сохранённая история.
+Система ОБЯЗАНА записывать расшифровку, её `preview` и строку поискового индекса
+в одной транзакции.
 
-## DM-003 `transcripts_fts` (SQLite FTS5)
+- links: TERM-transcript, TERM-insertion
+- impl: app:VoicePaste/Domain/Transcript.swift, app:VoicePaste/Domain/TranscriptListItem.swift, app:VoicePaste/Data/PersistenceRecords.swift, app:VoicePaste/Data/Migrations.swift
 
-Полнотекстовый индекс по `text` и `sourceFileName`; синхронизирован с `transcripts` через миграции/триггеры. Он нужен только для поиска внутри VoicePaste и не содержит ничего сверх уже локально сохранённого текста.
+## DM-search-index — Поисковый индекс
 
-## DM-004 `vocabulary_entries` (SQLite)
+Таблица `transcripts_fts` — FTS5 по `text` и `sourceFileName`, синхронизируется
+триггерами миграций. Ничего сверх уже сохранённого текста не содержит.
+
+- links: TERM-search-index, TERM-transcript
+- impl: app:VoicePaste/Data/Migrations.swift, app:VoicePaste/Data/HistoryStore.swift
+
+## DM-vocabulary-entry — Запись словаря
+
+Таблица `vocabulary_entries`.
 
 | Поле | Тип | Правило |
 |---|---|---|
 | `id` | UUID / TEXT | Первичный ключ. |
-| `spokenForm` | TEXT | Фраза для поиска без учёта регистра. |
-| `replacement` | nullable TEXT | Явная локальная замена; пусто означает «не исправлять это слово». |
+| `spokenForm` | TEXT | Поиск без учёта регистра. |
+| `replacement` | TEXT, необязательное | Пусто означает «это слово не исправлять». |
 | `isEnabled` | BOOLEAN | По умолчанию `true`. |
-| `createdAt` | epoch milliseconds | Для сортировки. |
-| `updatedAt` | epoch milliseconds | Для корректного обновления. |
+| `createdAt` | epoch ms | Для сортировки. |
+| `updatedAt` | epoch ms | Для корректного обновления. |
 
-## DM-005 `import_jobs` (SQLite, только активная и прерванная очередь)
+- links: TERM-vocabulary-entry
+- impl: app:VoicePaste/Domain/VocabularyEntry.swift, app:VoicePaste/Data/HistoryStore.swift
+
+## DM-import-job — Задача импорта
+
+Таблица `import_jobs` — только активная и прерванная очередь.
 
 | Поле | Тип | Правило |
 |---|---|---|
 | `id` | UUID / TEXT | Первичный ключ и имя временного каталога. |
-| `createdAt` | epoch milliseconds | Очередь FIFO, стабильное второе поле — `id`. |
-| `sourceFileName` | TEXT | Только отображаемое имя без исходного пути. Всегда выводится в одну строку с truncation middle/tail. |
-| `mediaKind` | `audio \| video` | Для понятной иконки и диагностики, не меняет движок. |
-| `durationMilliseconds` | nullable INTEGER | Появляется после чтения аудиодорожки. |
-| `state` | `staging \| queued \| preparing \| transcribing \| paused \| failed` | `staging` ещё копирует файл; готовые задачи удаляются из таблицы после сохранения `Transcript`, ошибка остаётся только до показа пользователю/закрытия detail. |
-| `progress` | REAL 0…1 | Основан на фактически обработанной длительности и весах подготовки, не на искусственном таймере. |
-| `stageStartedAt` | epoch milliseconds | Для elapsed/ETA. |
-| `lastErrorCode` | nullable TEXT | Короткая диагностическая причина без пути и содержимого файла. |
+| `createdAt` | epoch ms | Очередь FIFO; второе поле сортировки — `id`. |
+| `sourceFileName` | TEXT | Только отображаемое имя, в одну строку с усечением. |
+| `mediaKind` | `audio \| video` | Для иконки и диагностики; на движок не влияет. |
+| `durationMilliseconds` | INTEGER, необязательное | Появляется после чтения аудиодорожки. |
+| `state` | `staging \| queued \| preparing \| transcribing \| paused \| failed` | Готовая задача удаляется из таблицы после сохранения расшифровки. |
+| `progress` | REAL 0…1 | Считается по обработанной длительности, а не по таймеру. |
+| `stageStartedAt` | epoch ms | Для прошедшего времени и оценки остатка. |
+| `lastErrorCode` | TEXT, необязательное | Короткая причина без пути и содержимого файла. |
 
-Полный исходный URL, security-scoped bookmark и текст транскрипта в таблице не сохраняются. Во время выбора файла доступ нужен только для асинхронного копирования в `Caches/VoicePaste/ImportQueue/<job-id>/`; сразу после него security scope закрывается. Один SQLite-actor сериализует изменения jobs и истории. `transcribing`-задача после неожиданного завершения процесса при следующем запуске становится `queued` и начинает обработку заново из временного source; неполный результат не сохраняется.
+Система ОБЯЗАНА НЕ сохранять в таблице полный URL источника, security-scoped
+bookmark и текст расшифровки.
+
+- links: TERM-import-job
+- impl: app:VoicePaste/Core/Import/ImportJob.swift, app:VoicePaste/Data/ImportQueueStore.swift, app:VoicePaste/Core/Import/ImportQueueStoring.swift
+
+## DM-usage-stats — Сводка использования
+
+Результат одного агрегатного запроса по `createdAt`, `wordCount` и
+`durationMilliseconds` за выбранный период. Тексты расшифровок агрегат НЕ читает.
+Отсутствующие календарные точки периода добавляются со значением `0`.
+
+- links: TERM-transcript
+- impl: app:VoicePaste/Domain/UsageStats.swift, app:VoicePaste/Data/HistoryStore.swift
+
+## DM-model-state — Состояние модели
+
+Состояние локального комплекта распознавания: отсутствует, загружается,
+проверяется, готова, повреждена. Хранится в памяти процесса, на диске отражается
+наличием проверенных артефактов в `Application Support/VoicePaste/Models/`.
+
+- links: TERM-model
+- impl: app:VoicePaste/Core/Transcription/ModelState.swift, app:VoicePaste/Core/Transcription/LocalModelDetection.swift
+
+## Карта файлов на диске
+
+| Место | Содержимое | Правило |
+|---|---|---|
+| `Application Support/VoicePaste/history.sqlite` | история и словарь | Рядом только штатные `-wal` и `-shm`. |
+| `Application Support/VoicePaste/Models/` | модель и токенизатор | Библиотека распознавания получает явный локальный путь. |
+| `Caches/VoicePaste/ImportQueue/<job-id>/` | временная копия выбранного файла | Удаляется при успехе, отмене или отказе. |
+| `Caches/VoicePaste/Transcoding/<job-id>/` | временно декодированный поток | Удаляется при успехе, отмене или отказе. |
+| `Application Support/VoicePaste/Logs/` | короткие диагностические записи | Без аудио и без текста; ротация по размеру. |
+
+Экспорт текста создаётся только там, где пользователь явно указал в системном
+диалоге.
 
 ## Загрузка истории
 
-- При открытии окна выполняется keyset-запрос только за первыми 100 строками, отсортированными по `createdAt DESC, id DESC`. Следующая страница запрашивается при прокрутке, используя последний ключ, без `OFFSET` и без загрузки `rawText`.
-- Полный `text` и `rawText` запрашиваются только при выборе конкретной записи в detail-pane.
-- Поиск выполняется через FTS5 и также возвращает страницы по 100 результатов. В памяти UI держит только текущие страницы и выбранный detail.
-- Удаление одной записи удаляет её и строку FTS в одной транзакции; «Очистить историю» — одна подтверждённая транзакция.
-- Если миграция или открытие базы не прошло, VoicePaste не удаляет файл автоматически: показывает ошибку, сохраняет текущий готовый текст в clipboard и предлагает экспорт/восстановление после диагностики.
-- Все SQLite-операции выполняет отдельный `HistoryStore` actor поверх `DatabasePool`, не MainActor. В UI нет периодического опроса базы: обновление приходит только после изменения данных или поискового запроса.
-- Поисковый ввод debounce 250 ms; новый запрос отменяет предыдущий до обращения к базе. Один запрос всегда ограничен страницей в 100 строк.
-- Статистика периода не читает `text`: один индексированный запрос по `createdAt` и `wordCount` группирует дни выбранного периода, суммирует слова, длительность и число транскриптов. Для графика создаются также отсутствующие календарные дни со значением `0`; это исключает неясные «перемычки» между датами.
+- Открытие окна выполняет keyset-запрос за первой страницей по `createdAt DESC, id DESC`,
+  без `OFFSET` и без `rawText`. Размер страницы — `INV-007`.
+- Полный `text` и `rawText` читаются только для выбранной записи.
+- Удаление записи удаляет её и строку индекса в одной транзакции; очистка
+  истории — одна подтверждённая транзакция.
+- Если открытие или миграция не прошли, система ОБЯЗАНА НЕ удалять файл базы
+  автоматически: показывается отказ, готовый текст сохраняется в буфер обмена.
+- Все операции с базой выполняет отдельный актор поверх `DatabasePool`, не
+  MainActor. Периодического опроса базы в интерфейсе нет.
