@@ -62,7 +62,7 @@
 Как пользователь, хочу, чтобы приложение после запуска почти не расходовало
 ресурсы и оставалось доступным из menu bar.
 
-- links: UI-menubar.menu, API-model.ensure, L-011, INV-001, INV-005
+- links: UI-menubar.menu, API-model.ensure, L-011, L-017, L-018, INV-001, INV-005
 
 ## US-009 — Личная статистика
 
