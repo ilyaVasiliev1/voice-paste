@@ -3,6 +3,6 @@
   "what": "VoicePaste — приложение macOS в menu bar: офлайн-диктовка по горячей клавише и транскрипция аудио- и видеофайлов на Apple Silicon",
   "spec": "spec",
   "repos": {
-    "app": { "dir": ".", "stack": "macos-swift", "capabilities": [] }
+    "app": { "dir": ".", "stack": "macos-xcode-swift", "capabilities": [] }
   }
 }
