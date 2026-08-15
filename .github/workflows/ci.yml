@@ -1,7 +1,12 @@
 name: VoicePaste CI
 
 on:
+  # Только основная ветка: на ветках ботов и предложений тот же прогон
+  # уже идёт по pull_request, а по push у него нет ни прав, ни смысла —
+  # 15 августа такой двойник упал на ветке Dependabot, хотя проверка
+  # предложения была зелёной.
   push:
+    branches: [main, master]
   pull_request:
   workflow_dispatch:
 
