@@ -25,6 +25,7 @@ VoicePaste, статистика, скрыть из Dock или показать
 возвращает обычное присутствие в Dock.
 
 - links: L-001, L-015
+- none: TOK — постоянные поверхности собраны из системных компонентов macOS без своих фонов и рамок; собственные величины есть только у накладки HUD (L-015)
 - impl: app:VoicePaste/UI/MenuBar/MenuBarContentView.swift
 
 ## UI-onboarding.flow — Онбординг
@@ -56,6 +57,7 @@ VoicePaste, статистика, скрыть из Dock или показать
 настоящий запрет.
 
 - links: L-001, L-010, EC-001, EC-002, INV-002
+- none: TOK — постоянные поверхности собраны из системных компонентов macOS без своих фонов и рамок; собственные величины есть только у накладки HUD (L-015)
 - impl: app:VoicePaste/UI/Onboarding/OnboardingView.swift
 
 ## UI-onboarding.model-step — Шаг установки модели
@@ -72,6 +74,7 @@ VoicePaste, статистика, скрыть из Dock или показать
 установки.
 
 - links: L-010, EC-007, EC-008, API-model.ensure
+- none: TOK — постоянные поверхности собраны из системных компонентов macOS без своих фонов и рамок; собственные величины есть только у накладки HUD (L-015)
 - impl: app:VoicePaste/UI/Onboarding/OnboardingView.swift
 
 ## UI-hud.recording — HUD записи
@@ -130,6 +133,7 @@ VoicePaste, статистика, скрыть из Dock или показать
 скруглённых контейнеров и нарисованных рамок окна.
 
 - links: L-015, L-008, UI-history.sidebar, UI-history.detail
+- none: TOK — постоянные поверхности собраны из системных компонентов macOS без своих фонов и рамок; собственные величины есть только у накладки HUD (L-015)
 - impl: app:VoicePaste/UI/Main/MainWindowView.swift
 
 ## UI-history.sidebar — Список расшифровок
@@ -150,6 +154,7 @@ VoicePaste, статистика, скрыть из Dock или показать
 Пустая история показывает системный символ и короткую подпись.
 
 - links: L-008, DM-transcript, DM-search-index, INV-006, INV-007
+- none: TOK — постоянные поверхности собраны из системных компонентов macOS без своих фонов и рамок; собственные величины есть только у накладки HUD (L-015)
 - impl: app:VoicePaste/UI/History/HistoryView.swift, app:VoicePaste/Domain/TranscriptListItem.swift
 
 ## UI-history.detail — Расшифровка
@@ -161,6 +166,7 @@ VoicePaste, статистика, скрыть из Dock или показать
 выбранной записи читается только здесь.
 
 - links: L-008, API-history.query, DM-transcript
+- none: TOK — постоянные поверхности собраны из системных компонентов macOS без своих фонов и рамок; собственные величины есть только у накладки HUD (L-015)
 - impl: app:VoicePaste/UI/History/DetailEditor.swift
 
 ## UI-import.dropzone — Приём файла в главном окне
@@ -194,6 +200,7 @@ VoicePaste, статистика, скрыть из Dock или показать
 записью истории. Закрытие окна очередь НЕ останавливает.
 
 - links: L-009, API-import.queue, DM-import-job, INV-004, INV-010, EC-015, EC-016, EC-017
+- none: TOK — постоянные поверхности собраны из системных компонентов macOS без своих фонов и рамок; собственные величины есть только у накладки HUD (L-015)
 - impl: app:VoicePaste/UI/Import/ImportQueueView.swift, app:VoicePaste/Core/Import/ImportQueueStoring.swift
 
 ## UI-stats.panel — Статистика
@@ -217,6 +224,7 @@ VoicePaste, статистика, скрыть из Dock или показать
 Внизу второстепенная подпись о числе активных часов или дней.
 
 - links: L-013, API-history.stats, DM-usage-stats
+- none: TOK — постоянные поверхности собраны из системных компонентов macOS без своих фонов и рамок; собственные величины есть только у накладки HUD (L-015)
 - impl: app:VoicePaste/UI/Dashboard/DashboardView.swift
 
 ## UI-settings.dictation — Настройки диктовки
@@ -227,6 +235,7 @@ VoicePaste, статистика, скрыть из Dock или показать
 Назначенное сочетание видно в menu bar, настройках и метке доступности HUD.
 
 - links: L-002, L-003, DM-settings
+- none: TOK — постоянные поверхности собраны из системных компонентов macOS без своих фонов и рамок; собственные величины есть только у накладки HUD (L-015)
 - impl: app:VoicePaste/UI/Settings/SettingsView.swift, app:VoicePaste/UI/Settings/HotkeyRecorderView.swift
 
 ## UI-settings.text — Настройки текста
@@ -237,6 +246,7 @@ VoicePaste, статистика, скрыть из Dock или показать
 задаются здесь.
 
 - links: L-006, L-007, DM-settings
+- none: TOK — постоянные поверхности собраны из системных компонентов macOS без своих фонов и рамок; собственные величины есть только у накладки HUD (L-015)
 - impl: app:VoicePaste/UI/Settings/SettingsView.swift
 
 ## UI-settings.vocabulary — Личный словарь
@@ -249,6 +259,7 @@ VoicePaste, статистика, скрыть из Dock или показать
 НЕ прячется.
 
 - links: L-006, DM-vocabulary-entry, US-005
+- none: TOK — постоянные поверхности собраны из системных компонентов macOS без своих фонов и рамок; собственные величины есть только у накладки HUD (L-015)
 - impl: app:VoicePaste/UI/Settings/SettingsView.swift
 
 ## UI-settings.tabs — Состав настроек
@@ -261,4 +272,5 @@ VoicePaste, статистика, скрыть из Dock или показать
 показываться как отдельный полноэкранный раздел главного окна.
 
 - links: L-015, L-001, DM-settings
+- none: TOK — постоянные поверхности собраны из системных компонентов macOS без своих фонов и рамок; собственные величины есть только у накладки HUD (L-015)
 - impl: app:VoicePaste/UI/Settings/SettingsView.swift

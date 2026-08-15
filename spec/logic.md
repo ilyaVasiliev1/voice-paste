@@ -24,7 +24,7 @@
 доступны в любом состоянии.
 
 - links: EC-001, EC-002, EC-008, API-readiness.observe, UI-onboarding.flow, INV-002
-- impl: app:VoicePaste/Core/Readiness/ReadinessCoordinator.swift, app:VoicePaste/App/AppState.swift, app:VoicePaste/App/AppDelegate.swift, app:VoicePaste/App/App.swift
+- impl: app:VoicePaste/Core/Readiness/ReadinessCoordinator.swift, app:VoicePaste/App/AppState.swift, app:VoicePaste/App/AppDelegate.swift, app:VoicePaste/App/App.swift, app:VoicePasteTests/AppTests.swift, app:VoicePasteTests/AppStateRoutingTests.swift, app:VoicePasteTests/ReadinessCoordinatorMicrophoneAccessActionTests.swift, app:VoicePasteTests/ReadinessModelStateObservationTests.swift
 
 ## L-002 — Диктовка переключением
 
@@ -34,7 +34,7 @@
 игнорировать, сообщив, что расшифровка уже идёт.
 
 - links: EC-003, API-dictation.start, API-dictation.stop
-- impl: app:VoicePaste/Core/Dictation/DictationStateMachine.swift
+- impl: app:VoicePaste/Core/Dictation/DictationStateMachine.swift, app:VoicePasteTests/DictationStateMachineTests.swift
 
 ## L-003 — Диктовка удержанием
 
@@ -54,7 +54,7 @@
 HUD показывает таймер и уровень.
 
 - links: EC-004, UI-hud.recording, TOK-hud.baseline, INV-003, DEP-avfoundation
-- impl: app:VoicePaste/Core/Audio/AudioCaptureService.swift, app:VoicePaste/Core/HUD/HUDWindowController.swift, app:VoicePaste/Core/HUD/HUDState.swift
+- impl: app:VoicePaste/Core/Audio/AudioCaptureService.swift, app:VoicePaste/Core/HUD/HUDWindowController.swift, app:VoicePaste/Core/HUD/HUDState.swift, app:VoicePasteTests/AudioCaptureServiceTests.swift
 
 ## L-005 — Обработка речи
 
@@ -69,7 +69,7 @@ HUD показывает таймер и уровень.
 диктовку, сохраняются.
 
 - links: EC-005, API-dictation.stop, INV-008, DM-settings
-- impl: app:VoicePaste/Core/Transcription/WhisperKitTranscriber.swift, app:VoicePaste/Core/Transcription/TrailingHallucinationFilter.swift, app:VoicePaste/Core/Transcription/Transcribing.swift
+- impl: app:VoicePaste/Core/Transcription/WhisperKitTranscriber.swift, app:VoicePaste/Core/Transcription/TrailingHallucinationFilter.swift, app:VoicePaste/Core/Transcription/Transcribing.swift, app:VoicePasteTests/TrailingHallucinationFilterTests.swift, app:VoicePasteTests/WhisperDecodingPlanTests.swift
 
 ## L-006 — Нормализация и орфография
 
@@ -84,7 +84,7 @@ HUD показывает таймер и уровень.
 фразы и ОБЯЗАНА НЕ переписывать стиль.
 
 - links: EC-011, EC-012, API-text.normalize, DM-vocabulary-entry, DEP-spellchecker
-- impl: app:VoicePaste/Core/Normalizer/TextNormalizer.swift
+- impl: app:VoicePaste/Core/Normalizer/TextNormalizer.swift, app:VoicePasteTests/TextNormalizerTests.swift
 
 ## L-007 — Доставка текста
 
@@ -105,7 +105,7 @@ HUD показывает таймер и уровень.
 и результат показывается как копирование, а не как вставка.
 
 - links: EC-002, EC-006, API-insertion.insert, INV-009, DEP-accessibility
-- impl: app:VoicePaste/Core/Insertion/TextInserter.swift
+- impl: app:VoicePaste/Core/Insertion/TextInserter.swift, app:VoicePasteTests/TextInserterTests.swift
 
 ## L-008 — История
 
@@ -123,7 +123,7 @@ HUD показывает таймер и уровень.
 ОБЯЗАН НЕ записываться.
 
 - links: EC-014, API-history.query, DM-transcript, DM-search-index, INV-007, DEP-grdb
-- impl: app:VoicePaste/Data/HistoryStore.swift, app:VoicePaste/Data/AppDatabase.swift, app:VoicePaste/Domain/HistoryStoring.swift, app:VoicePaste/Core/History/FailingHistoryStore.swift
+- impl: app:VoicePaste/Data/HistoryStore.swift, app:VoicePaste/Data/AppDatabase.swift, app:VoicePaste/Domain/HistoryStoring.swift, app:VoicePaste/Core/History/FailingHistoryStore.swift, app:VoicePasteTests/HistoryStoreTests.swift
 
 ## L-009 — Импорт и фоновая очередь
 
@@ -154,7 +154,7 @@ HUD показывает таймер и уровень.
 Декодирование OGG/Opus выполняется системными средствами, без сторонних библиотек.
 
 - links: EC-009, EC-010, EC-013, EC-015, EC-016, EC-017, EC-018, EC-019, API-import.enqueue, API-import.queue, DM-import-job, INV-004, INV-010, DEP-opus
-- impl: app:VoicePaste/Core/Import/ImportManager.swift, app:VoicePaste/Core/Import/AudioDecoder.swift, app:VoicePaste/Core/Import/ImportJob.swift, app:VoicePaste/Data/ImportQueueStore.swift
+- impl: app:VoicePaste/Core/Import/ImportManager.swift, app:VoicePaste/Core/Import/AudioDecoder.swift, app:VoicePaste/Core/Import/ImportJob.swift, app:VoicePaste/Data/ImportQueueStore.swift, app:VoicePasteTests/ImportManagerTests.swift, app:VoicePasteTests/AudioDecoderOggTests.swift
 
 ## L-010 — Жизненный цикл модели
 
@@ -182,7 +182,7 @@ GitHub, зеркало Hugging Face и официальный Hugging Face. Вы
 диске остаются.
 
 - links: EC-007, EC-008, API-model.ensure, DM-model-state, INV-005, DEP-whisperkit
-- impl: app:VoicePaste/Core/Transcription/ModelManager.swift, app:VoicePaste/Core/Transcription/GitHubModelDownloader.swift, app:VoicePaste/Core/Transcription/LocalModelDetection.swift, app:VoicePaste/Core/Transcription/ModelState.swift
+- impl: app:VoicePaste/Core/Transcription/ModelManager.swift, app:VoicePaste/Core/Transcription/GitHubModelDownloader.swift, app:VoicePaste/Core/Transcription/LocalModelDetection.swift, app:VoicePaste/Core/Transcription/ModelState.swift, app:VoicePasteTests/ModelManagerTests.swift, app:VoicePasteTests/LocalModelDetectionTests.swift, app:VoicePasteTests/ModelDownloadProgressTests.swift, app:VoicePasteTests/ModelDownloadSourceTests.swift, app:VoicePasteTests/AppSettingsModelDownloadSourceTests.swift, app:VoicePasteTests/ModelLoadFailureClassificationTests.swift
 
 ## L-011 — Локальность работы
 
@@ -221,6 +221,7 @@ GitHub, зеркало Hugging Face и официальный Hugging Face. Вы
 именем, стадией и прогрессом; нажатие открывает страницу импорта.
 
 - links: API-history.stats, DM-usage-stats, UI-stats.panel
+- none: EC — сводка считается по накопленной истории; пустая история даёт пустой график, и отказа у неё нет
 - impl: app:VoicePaste/UI/Dashboard/DashboardView.swift, app:VoicePaste/Domain/UsageStats.swift
 
 ## L-014 — Регистрация сочетания и системный ввод
@@ -235,7 +236,7 @@ GitHub, зеркало Hugging Face и официальный Hugging Face. Вы
 остановленный отладчик ОБЯЗАНЫ НЕ замораживать системный ввод.
 
 - links: EC-003, API-dictation.start, INV-009
-- impl: app:VoicePaste/Core/Hotkey/HotkeyManager.swift, app:VoicePaste/Core/Hotkey/HotkeyShortcut.swift
+- impl: app:VoicePaste/Core/Hotkey/HotkeyManager.swift, app:VoicePaste/Core/Hotkey/HotkeyShortcut.swift, app:VoicePasteTests/HotkeyManagerTests.swift
 
 ## L-015 — Состав поверхностей
 
@@ -243,6 +244,7 @@ GitHub, зеркало Hugging Face и официальный Hugging Face. Вы
 оформление ограничено HUD. Интерфейс русский, все строки локализуемы.
 
 - links: UI-main.window, UI-hud.recording, UI-settings.tabs, INV-002, DEP-swiftui
+- none: EC — правило о составе поверхностей: они либо системные, либо нет, и это видно снимком
 - impl: app:VoicePaste/UI/Main/MainWindowView.swift, app:VoicePaste/UI/MenuBar/MenuBarContentView.swift, app:VoicePaste/Core/HUD/HUDContentView.swift
 
 ## L-017 — Единственный экземпляр
@@ -286,4 +288,5 @@ GitHub, зеркало Hugging Face и официальный Hugging Face. Вы
 находит её внутри.
 
 - links: INV-012, DEP-swift
-- impl: app:scripts/build-release.sh, app:VoicePaste/Resources/VoicePaste.entitlements
+- none: EC — отказ сборки принадлежит выпуску, а не работе продукта у человека
+- impl: app:scripts/build-release.sh, app:VoicePaste/Resources/VoicePaste.entitlements, app:scripts/make-dmg-background.swift
