@@ -350,6 +350,7 @@ public final class AppState: ObservableObject {
         elapsedTimerTask = Task { [weak self] in
             while let self, self.dictationStateMachine.phase == .recording, !Task.isCancelled {
                 self.refreshRecordingHUD()
+                // TOK-hud.recording-updates — не более десяти обновлений в секунду.
                 try? await Task.sleep(nanoseconds: 200_000_000)
             }
         }

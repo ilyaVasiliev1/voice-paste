@@ -34,7 +34,7 @@ struct HUDContentView: View {
         }
         .frame(width: HUDLayout.hostWidth, height: HUDLayout.hostHeight, alignment: .bottom)
         .compositingGroup()
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: layout)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: layout)  // TOK-motion.surface
     }
 
     /// Fixed-geometry capsule used by every state whose child controls have a
@@ -250,7 +250,7 @@ struct HUDContentView: View {
             .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .padding(HUDLayout.contentInset)
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: isImportTargeted)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: isImportTargeted)  // TOK-motion.drop-target
         .onDrop(of: [.fileURL], isTargeted: $isImportTargeted, perform: loadDroppedFile)
     }
 
@@ -360,19 +360,22 @@ private struct HUDIconButton: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            withAnimation(.easeOut(duration: 0.10)) { isHovered = hovering }
+            withAnimation(.easeOut(duration: 0.10)) { isHovered = hovering }  // TOK-motion.hover
         }
         .accessibilityLabel(Text(labelKey))
     }
 }
 
 private struct HUDLayout: Equatable {
+    /// TOK-hud.container — размер контейнера панели.
     static let hostWidth: CGFloat = 360
     static let hostHeight: CGFloat = 144
+    /// TOK-hud.icon-size — размер кнопки-иконки.
     static let controlSize: CGFloat = 28
     /// Applied by every HUD state on every edge. This is the one source of
     /// truth for capsule interiors; state-specific views never add a second
     /// horizontal or vertical inset.
+    /// TOK-hud.inset — внутренний отступ капсулы.
     static let contentInset: CGFloat = 10
 
     let width: CGFloat
@@ -386,6 +389,8 @@ private struct HUDLayout: Equatable {
         // plus exactly 10 pt on each edge. The old round-number widths left
         // spare horizontal space, which SwiftUI centered as visibly larger
         // left/right margins than the 10 pt top/bottom margins.
+        // TOK-hud.row-height — высота базового ряда; TOK-hud.capsule-width — ширина
+        // капсулы; TOK-hud.import-width — поверхность приёма файла.
         case .recording: return HUDLayout(width: 252, height: 48, cornerRadius: 24)
         case .processing: return HUDLayout(width: 176, height: 48, cornerRadius: 24)
         case .inserted: return HUDLayout(width: 120, height: 48, cornerRadius: 24)

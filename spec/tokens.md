@@ -12,6 +12,7 @@
 ## TOK-hud.baseline — Базовая линия HUD
 
 - value: 28 pt над нижней доступной границей главного экрана
+- impl: app:VoicePaste/Core/HUD/HUDWindowController.swift
 - nearest: —
 - reason: единая нижняя линия для всех состояний; поверхность выше базовой линии
   раскрывается только вверх, поэтому окно не прыгает между состояниями
@@ -19,12 +20,14 @@
 ## TOK-hud.row-height — Высота базового ряда
 
 - value: 48 pt
+- impl: app:VoicePaste/Core/HUD/HUDContentView.swift
 - nearest: TOK-hud.icon-size
 - reason: один ряд контролов для записи, обработки и итога — одна высота
 
 ## TOK-hud.capsule-width — Ширина капсулы
 
 - value: от 240 до 280 pt
+- impl: app:VoicePaste/Core/HUD/HUDContentView.swift
 - nearest: TOK-hud.import-width
 - reason: ширина равна ширине ряда контролов плюс внутренние отступы; свободная
   площадь не растягивает капсулу
@@ -32,6 +35,7 @@
 ## TOK-hud.inset — Внутренний отступ капсулы
 
 - value: 10 pt с каждой стороны
+- impl: app:VoicePaste/Core/HUD/HUDContentView.swift
 - nearest: —
 - reason: симметрия отступов делает ряд контролов оптически центрированным без
   ручного выравнивания
@@ -39,6 +43,7 @@
 ## TOK-hud.icon-size — Размер кнопки-иконки
 
 - value: от 28 до 32 pt
+- impl: app:VoicePaste/Core/HUD/HUDContentView.swift
 - nearest: TOK-hud.row-height
 - reason: круглая область нажатия одинакова во всех состояниях; наведение меняет
   только контраст подложки
@@ -46,6 +51,7 @@
 ## TOK-hud.import-width — Размер поверхности приёма файла
 
 - value: 320 × 144 pt
+- impl: app:VoicePaste/Core/HUD/HUDContentView.swift
 - nearest: TOK-hud.container
 - reason: область перетаскивания видна и нажимаема до начала перетаскивания, а её
   размер не меняется при наведении
@@ -53,6 +59,7 @@
 ## TOK-hud.container — Размер контейнера панели
 
 - value: 360 × 144 pt
+- impl: app:VoicePaste/Core/HUD/HUDContentView.swift
 - nearest: TOK-hud.import-width
 - reason: постоянный прозрачный контейнер вмещает самое большое состояние, поэтому
   системное окно не пересоздаётся и не переезжает
@@ -60,6 +67,7 @@
 ## TOK-motion.surface — Смена размеров поверхности
 
 - value: 180 мс
+- impl: app:VoicePaste/Core/HUD/HUDContentView.swift
 - nearest: TOK-motion.drop-target
 - reason: ширина, высота и радиус меняются у одной внутренней поверхности; при
   включённом уменьшении движения смена мгновенная
@@ -67,18 +75,21 @@
 ## TOK-motion.drop-target — Подсветка цели перетаскивания
 
 - value: 140 мс, замедление к концу
+- impl: app:VoicePaste/Core/HUD/HUDContentView.swift
 - nearest: TOK-motion.hover
 - reason: отклик заметен, геометрия не меняется
 
 ## TOK-motion.hover — Подложка при наведении
 
 - value: 120 мс, плавное появление
+- impl: app:VoicePaste/Core/HUD/HUDContentView.swift
 - nearest: TOK-motion.drop-target
 - reason: наведение не меняет размер, отступ, радиус и положение текста
 
 ## TOK-motion.undo-window — Окно возврата к записи
 
 - value: 4 с
+- impl: app:VoicePaste/Core/HUD/HUDState.swift
 - nearest: TOK-motion.surface
 - reason: накопленный до отмены буфер сохраняется на это время; шкала по нижней
   грани показывает остаток, наведение ставит её на паузу
@@ -86,6 +97,7 @@
 ## TOK-hud.recording-updates — Частота обновлений записи
 
 - value: не более 10 обновлений в секунду
+- impl: app:VoicePaste/App/AppState.swift
 - nearest: —
 - reason: таймер и уровень обновляются достаточно для восприятия, не занимая
   главный поток

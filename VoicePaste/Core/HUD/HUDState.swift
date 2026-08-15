@@ -71,6 +71,7 @@ public nonisolated enum HUDState: Equatable, Sendable {
     public var autoDismissDelay: TimeInterval? {
         switch self {
         case .inserted, .copied, .cancelled, .importOpened: return 1.5
+        // TOK-motion.undo-window — окно возврата к записи.
         case .cancelledWithUndo: return 4.0
         case .error, .importFinished: return 4.0
         default: return nil

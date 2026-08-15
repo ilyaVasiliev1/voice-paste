@@ -218,6 +218,7 @@ public final class HUDWindowController {
         // Raised well clear of the Dock/screen edge (`UI-003`'s "не у самого
         // низа" — the HUD must stay comfortably readable above the Dock
         // while recording/importing/showing a result), not flush against it.
+        // TOK-hud.baseline — единая нижняя линия для всех состояний.
         let bottomInset: CGFloat = 28
         let originX = screen.visibleFrame.midX - panelSize.width / 2
         let originY = screen.visibleFrame.minY + bottomInset
