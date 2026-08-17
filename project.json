@@ -1,8 +1,23 @@
 {
   "project": "voice-paste",
   "what": "VoicePaste — приложение macOS в menu bar: офлайн-диктовка по горячей клавише и транскрипция аудио- и видеофайлов на Apple Silicon",
+  "client": {
+    "who": "Engineering OS — свой продукт компании",
+    "jurisdiction": "ru",
+    "data_subjects": [
+      "владелец продукта — его речь и расшифровки; продукт офлайновый, наружу не отдаёт"
+    ],
+    "must_not_export": [
+      "записи речи и расшифровки: продукт работает офлайн и наружу их не отдаёт"
+    ],
+    "deliver_to": "локальная установка на машине владельца: menu bar macOS"
+  },
   "spec": "spec",
   "repos": {
-    "app": { "dir": ".", "stack": "macos-xcode-swift", "capabilities": [] }
+    "app": {
+      "dir": ".",
+      "stack": "macos-xcode-swift",
+      "capabilities": []
+    }
   }
 }
