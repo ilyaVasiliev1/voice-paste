@@ -27,8 +27,8 @@
       "file": "ops/environments/local.json",
       "deploy": "zsh scripts/install-local.sh",
       "production": false,
-      "verify": "",
-      "rollback": "",
+      "verify": "zsh scripts/verify-local.sh {revision}",
+      "rollback": "zsh scripts/rollback-local.sh",
       "settleSeconds": 0
     }
   },
