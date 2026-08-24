@@ -137,7 +137,7 @@ bookmark и текст расшифровки.
 Экспорт текста создаётся только там, где пользователь явно указал в системном
 диалоге.
 
-## Загрузка истории
+## DM-history-loading — Загрузка истории
 
 - Открытие окна выполняет keyset-запрос за первой страницей по `createdAt DESC, id DESC`,
   без `OFFSET` и без `rawText`. Размер страницы — `INV-007`.
@@ -148,3 +148,6 @@ bookmark и текст расшифровки.
   автоматически: показывается отказ, готовый текст сохраняется в буфер обмена.
 - Все операции с базой выполняет отдельный актор поверх `DatabasePool`, не
   MainActor. Периодического опроса базы в интерфейсе нет.
+
+- links: L-008, INV-007, DM-transcript, DM-search-index
+- impl: app:VoicePaste/Data/HistoryStore.swift, app:VoicePaste/Data/AppDatabase.swift
