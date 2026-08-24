@@ -27,8 +27,8 @@
       "file": "ops/environments/local.json",
       "deploy": "zsh scripts/install-local.sh",
       "production": false,
-      "verify": "",
-      "rollback": "",
+      "verify": "zsh scripts/verify-local.sh {revision}",
+      "rollback": "zsh scripts/rollback-local.sh",
       "settleSeconds": 0
     }
   },
@@ -47,17 +47,44 @@
         "build"
       ],
       "gaps": {
-        "coverage": "покрытие меряется каждым прогоном (39,44 % на 24 августа 2026), но порог не объявлен: цифра без порога никого ни к чему не обязывает. Объявляется файлом coverage-min.txt",
-        "ui-proof": "экран проверяет человек: ни один инструмент стека не открывает приложение и не смотрит на него (SWIFT-09)"
+        "coverage": {
+          "why": "покрытие меряется каждым прогоном (39,44 % на 24 августа 2026), но порог не объявлен: цифра без порога никого ни к чему не обязывает. Объявляется файлом coverage-min.txt",
+          "revisit": "когда объявим порог файлом coverage-min.txt — предложено 39 %, решение за человеком"
+        },
+        "ui-proof": {
+          "why": "экран проверяет человек: ни один инструмент стека не открывает приложение и не смотрит на него (SWIFT-09)",
+          "revisit": "когда появится способ снять кадр окна macOS из командной строки и сравнить его с эталоном"
+        }
       }
     }
   ],
   "spec": {
-    "atoms": true,
+    "atoms": false,
     "dir": "spec"
   },
   "contoursNotApplicable": {
     "право": "данные людей не покидают устройство и оператору не передаются: обработки в смысле 152-ФЗ не возникает",
     "данные": "хранилище локальное и принадлежит самому пользователю; чужих данных продукт не собирает"
-  }
+  },
+  "agent": {
+    "extraTools": [
+      "Bash(pgrep *)",
+      "Bash(pkill *)",
+      "Bash(osascript *)",
+      "Bash(ditto *)",
+      "Bash(codesign *)",
+      "Bash(open *)",
+      "Bash(/usr/libexec/PlistBuddy *)",
+      "Bash(defaults read *)",
+      "Bash(plutil *)",
+      "Bash(mv *)",
+      "Bash(rm *)",
+      "Bash(mkdir *)",
+      "Bash(date *)",
+      "Bash(ls *)",
+      "Bash(sh scripts/*)",
+      "Bash(zsh scripts/*)"
+    ]
+  },
+  "decisions": "memory/decisions.md"
 }
