@@ -1,0 +1,63 @@
+{
+  "name": "voice-paste",
+  "title": "VoicePaste — офлайн-диктовка для macOS",
+  "what": "приложение macOS в menu bar: диктовка по горячей клавише и расшифровка аудио- и видеофайлов локальной моделью, без учётной записи и без сети",
+  "tasksDir": "queue/voice-paste",
+  "runner": "sdk",
+  "port": 4128,
+  "vcs": {
+    "kind": "github",
+    "baseBranch": "main",
+    "branchPrefix": "task/",
+    "requireChecks": false
+  },
+  "client": {
+    "who": "Engineering OS — свой продукт компании, один пользователь: владелец Mac",
+    "jurisdiction": "ru",
+    "dataSubjects": [
+      "владелец продукта: его речь, расшифровки и личный словарь"
+    ],
+    "mustNotExport": [
+      "аудио, расшифровки, журналы и метаданные: продукт офлайновый и наружу их не отдаёт (L-011, INV-011)"
+    ],
+    "deliverTo": "локальная установка на машине владельца: menu bar macOS"
+  },
+  "environments": {
+    "local": {
+      "file": "ops/environments/local.json",
+      "deploy": "zsh scripts/install-local.sh",
+      "production": false,
+      "verify": "",
+      "rollback": "",
+      "settleSeconds": 0
+    }
+  },
+  "surfaces": [
+    {
+      "id": "app",
+      "title": "Приложение macOS",
+      "stack": "macos-swift-app",
+      "root": ".",
+      "capabilities": [
+        "types",
+        "format",
+        "layers",
+        "deadcode",
+        "tests",
+        "build"
+      ],
+      "gaps": {
+        "coverage": "покрытие меряется каждым прогоном (39,44 % на 24 августа 2026), но порог не объявлен: цифра без порога никого ни к чему не обязывает. Объявляется файлом coverage-min.txt",
+        "ui-proof": "экран проверяет человек: ни один инструмент стека не открывает приложение и не смотрит на него (SWIFT-09)"
+      }
+    }
+  ],
+  "spec": {
+    "atoms": true,
+    "dir": "spec"
+  },
+  "contoursNotApplicable": {
+    "право": "данные людей не покидают устройство и оператору не передаются: обработки в смысле 152-ФЗ не возникает",
+    "данные": "хранилище локальное и принадлежит самому пользователю; чужих данных продукт не собирает"
+  }
+}

@@ -1,0 +1,95 @@
+# Правила стека macos-swift-app.
+#
+# Отступ и длина строки здесь не описываются: этим занимается swift format,
+# и два инструмента, спорящих об одном, — это не строгость, а качели.
+# SwiftLint здесь отвечает за то, чего форматировщик не видит: за приёмы,
+# которые роняют приложение, и за границы слоёв.
+
+# Чужое и машинное не проверяется.
+#
+# Без этого списка проверка на живом продукте нашла нарушения в исходниках
+# GRDB и в песочницах документации внутри каталога сборки: инструмент честно
+# прошёл по всему, до чего дотянулся, и выдал сотни находок про чужой код.
+# Каталог зависимостей — не наш код, и правила у него свои.
+excluded:
+  - .tmp
+  - .build
+  - build
+  - DerivedData
+  - Pods
+  - Carthage
+
+disabled_rules:
+  - line_length          # длину держит swift format, см. .swift-format
+  - trailing_comma       # то же самое
+  - opening_brace        # то же самое
+  - statement_position   # то же самое
+
+opt_in_rules:
+  # Три способа уронить приложение одной строкой. Все три по умолчанию
+  # выключены, и это первое, что нужно включить в проекте на Swift:
+  # проверено на живом коде — без них `raw!` проходит гейт молча.
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  - empty_count
+  - first_where
+  - private_outlet
+  - overridden_super_call
+
+# Правила, которым нужен журнал компиляции: они работают только под
+# `swiftlint analyze`, а под обычным `lint` инструмент о них предупреждает.
+analyzer_rules:
+  - unused_declaration
+  - unused_import
+
+identifier_name:
+  min_length: 1          # `x`, `dx`, `id` — законные имена в математике и в моделях
+  max_length: 60
+
+# Имя тестового класса — это предложение о том, что он доказывает,
+# и длинное имя здесь достоинство, а не запах.
+type_name:
+  min_length: 3
+  max_length: 60
+
+type_body_length:
+  warning: 400
+  error: 800
+
+file_length:
+  warning: 600
+  error: 1200
+
+function_body_length:
+  warning: 80
+  error: 200
+
+custom_rules:
+  # Слои без модулей.
+  #
+  # В приложении из одного модуля границы слоёв не держит компилятор:
+  # любой файл видит любой. Что остаётся проверяемым — ввоз рамок:
+  # предметная область и данные не имеют права знать о рисовании.
+  #
+  # Проверено на живом продукте: Domain ввозит только Foundation,
+  # Data — Foundation и драйвер базы. Правило молчит там, где порядок,
+  # и ловит подложенный `import SwiftUI` в Domain.
+  domain_without_ui:
+    name: "Слой предметной области не знает об интерфейсе"
+    included: ".*/Domain/.*\\.swift"
+    regex: "^import (SwiftUI|AppKit|Cocoa)"
+    message: "Domain не должен ввозить интерфейсные рамки: перенеси представление в UI"
+    severity: error
+  data_without_ui:
+    name: "Слой данных не знает об интерфейсе"
+    included: ".*/Data/.*\\.swift"
+    regex: "^import (SwiftUI|AppKit|Cocoa)"
+    message: "Data не должен ввозить интерфейсные рамки: данные не рисуют"
+    severity: error
+  no_print_in_product:
+    name: "Печать в консоль вместо журнала"
+    included: ".*\\.swift"
+    excluded: ".*(Tests|scripts)/.*"
+    regex: "(^|\\s)print\\("
+    message: "print() не виден в собранном приложении: пиши в объявленный журнал"
+    severity: warning

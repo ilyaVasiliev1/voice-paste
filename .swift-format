@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "indentation": { "spaces": 4 },
+  "lineLength": 120,
+  "respectsExistingLineBreaks": true,
+  "lineBreakBeforeEachArgument": false,
+  "maximumBlankLines": 1,
+  "rules": {
+    "AlwaysUseLowerCamelCase": true,
+    "DoNotUseSemicolons": true,
+    "OneCasePerLine": true,
+    "OrderedImports": true,
+    "UseLetInEveryBoundCaseVariable": true,
+    "NoBlockComments": false,
+    "AllPublicDeclarationsHaveDocumentation": false
+  }
+}

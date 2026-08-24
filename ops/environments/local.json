@@ -1,0 +1,9 @@
+{
+  "environment": "local",
+  "repo": "app",
+  "adapter": "local-install",
+  "target": "/Applications/VoicePaste.app",
+  "url": "",
+  "what": "рабочая копия на машине владельца: новые сборки он испытывает на ней же, отдельной беты нет",
+  "viewer": "владелец"
+}
