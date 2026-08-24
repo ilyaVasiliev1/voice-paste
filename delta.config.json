@@ -59,7 +59,7 @@
     }
   ],
   "spec": {
-    "atoms": false,
+    "atoms": true,
     "dir": "spec"
   },
   "contoursNotApplicable": {
