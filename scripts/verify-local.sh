@@ -21,6 +21,15 @@ if [[ -z "$EXPECTED_FINGERPRINT" ]]; then
     exit 2
 fi
 
+# T-0004, INV-015: слишком короткое ожидание совпало бы почти с чем угодно при
+# сравнении по началу — это ошибка довода вызывающего, а не факт несовпадения,
+# поэтому у неё свой код выхода (2, как у отсутствующего довода), не 1.
+if (( $(fingerprint_hash_length "$EXPECTED_FINGERPRINT") < MIN_FINGERPRINT_LEN )); then
+    print -u2 "Ожидание «$EXPECTED_FINGERPRINT» короче ${MIN_FINGERPRINT_LEN} знаков — это ошибка довода, а не отпечаток, с которым есть смысл сравнивать."
+    print -u2 "FIX: узнай отпечаток текущего дерева — git rev-parse --short=12 HEAD (не короче ${MIN_FINGERPRINT_LEN} знаков)."
+    exit 2
+fi
+
 TARGET_APP="/Applications/VoicePaste.app"
 
 if [[ ! -d "$TARGET_APP" ]]; then
@@ -30,8 +39,9 @@ if [[ ! -d "$TARGET_APP" ]]; then
 fi
 
 ACTUAL_FINGERPRINT=$(read_fingerprint "$TARGET_APP")
-if [[ "$ACTUAL_FINGERPRINT" != "$EXPECTED_FINGERPRINT" ]]; then
+if ! fingerprints_match "$ACTUAL_FINGERPRINT" "$EXPECTED_FINGERPRINT"; then
     print -u2 "Отпечаток не совпадает: установлен «${ACTUAL_FINGERPRINT:-нет}», ожидался «$EXPECTED_FINGERPRINT»."
+    print -u2 "Сравнение идёт по началу (короче — это начало длиннее) и по метке -dirty отдельно; разошлось хотя бы одно из двух, не обязательно строка целиком."
     print -u2 "FIX: собери и поставь заново — scripts/install-local.sh — либо сверь отпечаток нужного коммита."
     exit 1
 fi
