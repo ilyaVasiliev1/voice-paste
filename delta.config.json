@@ -65,5 +65,20 @@
   "contoursNotApplicable": {
     "право": "данные людей не покидают устройство и оператору не передаются: обработки в смысле 152-ФЗ не возникает",
     "данные": "хранилище локальное и принадлежит самому пользователю; чужих данных продукт не собирает"
+  },
+  "agent": {
+    "extraTools": [
+      "Bash(pgrep *)",
+      "Bash(pkill -x VoicePaste)",
+      "Bash(osascript *)",
+      "Bash(ditto *)",
+      "Bash(codesign *)",
+      "Bash(open *)",
+      "Bash(/usr/libexec/PlistBuddy *)",
+      "Bash(defaults read *)",
+      "Bash(plutil *)",
+      "Bash(sh scripts/*)",
+      "Bash(zsh scripts/*)"
+    ]
   }
 }
