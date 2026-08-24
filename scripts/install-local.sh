@@ -39,6 +39,7 @@ quit_and_wait
 if [[ -n "$SOURCE_APP" ]]; then
     if [[ ! -d "$SOURCE_APP" ]]; then
         print -u2 "Нет сборки по пути: $SOURCE_APP"
+        print -u2 "FIX: проверь путь доводом — либо запусти без аргумента, чтобы собрать самому."
         exit 2
     fi
     print "2/5 Использую готовую сборку: $SOURCE_APP"

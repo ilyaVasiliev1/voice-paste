@@ -16,6 +16,25 @@ PROCESS_NAME="voicepaste"
 MAX_BACKUPS=3   # INV-014
 QUIT_BUDGET=15  # INV-013, секунд
 
+# T-0003: сеть на непредвиденный отказ. Места, где неудача команды ожидаема,
+# допускают её явно рядом с местом, где она случается (`|| true`, проверка
+# файла заранее, ветки `if`) — до этой ловушки они не доходят. Сюда попадает
+# то, что заранее не предвидено: `set -e` в таком случае молча останавливает
+# скрипт с кодом упавшей команды и без единого слова, а человек видит только
+# остановку на шаге и не знает, продолжать ли (`spec/logic.md#L-019`).
+# Файл подключается через `source`, поэтому ловушка, поставленная здесь,
+# действует в самом вызывающем скрипте — ставить её в каждом из трёх отдельно
+# не нужно.
+fail_loudly() {
+    local exit_code=$?
+    local line="${1:-?}"
+    print -u2 ""
+    print -u2 "${ZSH_ARGZERO:t}: отказ на строке ${line} (код ${exit_code}), скрипт остановлен."
+    print -u2 "FIX: причину обычно уже назвала команда в выводе выше; почини её и запусти скрипт заново."
+    exit "$exit_code"
+}
+trap 'fail_loudly $LINENO' ERR
+
 # Гасит работающую копию и не возвращает управление, пока процесс не исчез или
 # не истёк бюджет ожидания. Пробует по нарастающей: штатный quit через Apple
 # Event, затем SIGTERM, затем SIGKILL. По истечении бюджета — явный отказ:
@@ -80,14 +99,27 @@ stamp_fingerprint() {
 # Под `set -e` вызывающих скриптов `var=$(read_fingerprint …)` иначе прервал бы
 # скрипт при первой же копии без отпечатка, не дав коду ниже решить, что
 # с этим делать.
+#
+# T-0003: отдельный `return 0` строкой ниже эту защиту не давал — `set -e`
+# прерывает функцию на неудачном `PlistBuddy` до того, как управление дойдёт
+# до `return`, и делает это молча (`2>/dev/null` гасит только текст, не код
+# возврата). Отказ обязан быть допущен явно там же, где случается, — прямо на
+# самой команде через `||`, а не отдельной строкой после неё.
+#
+# Отсутствующий файл проверяется отдельно, до вызова PlistBuddy: на
+# несуществующем пути он не просто отказывает — на стандартный вывод (не на
+# stderr, `2>/dev/null` его не гасит) идёт «File Doesn't Exist, Will Create: …»,
+# и это предупреждение попало бы в переменную вместо пустой строки.
 read_fingerprint() {
-    /usr/libexec/PlistBuddy -c "Print :VoicePasteBuildFingerprint" "$1/Contents/Info.plist" 2>/dev/null
-    return 0
+    local plist="$1/Contents/Info.plist"
+    [[ -f "$plist" ]] || return 0
+    /usr/libexec/PlistBuddy -c "Print :VoicePasteBuildFingerprint" "$plist" 2>/dev/null || true
 }
 
 read_bundle_id() {
-    /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$1/Contents/Info.plist" 2>/dev/null
-    return 0
+    local plist="$1/Contents/Info.plist"
+    [[ -f "$plist" ]] || return 0
+    /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$plist" 2>/dev/null || true
 }
 
 # Копирует установленную копию рядом с собой, под именем с её отпечатком и
