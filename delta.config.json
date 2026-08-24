@@ -69,7 +69,7 @@
   "agent": {
     "extraTools": [
       "Bash(pgrep *)",
-      "Bash(pkill -x VoicePaste)",
+      "Bash(pkill *)",
       "Bash(osascript *)",
       "Bash(ditto *)",
       "Bash(codesign *)",
@@ -77,8 +77,14 @@
       "Bash(/usr/libexec/PlistBuddy *)",
       "Bash(defaults read *)",
       "Bash(plutil *)",
+      "Bash(mv *)",
+      "Bash(rm *)",
+      "Bash(mkdir *)",
+      "Bash(date *)",
+      "Bash(ls *)",
       "Bash(sh scripts/*)",
       "Bash(zsh scripts/*)"
     ]
-  }
+  },
+  "decisions": "memory/decisions.md"
 }
