@@ -13,8 +13,9 @@
 
 BUNDLE_ID="com.ilyavasiliev.voicepaste"
 PROCESS_NAME="voicepaste"
-MAX_BACKUPS=3   # INV-014
-QUIT_BUDGET=15  # INV-013, секунд
+MAX_BACKUPS=3            # INV-014
+QUIT_BUDGET=15           # INV-013, секунд
+MIN_FINGERPRINT_LEN=7    # INV-015
 
 # T-0003: сеть на непредвиденный отказ. Места, где неудача команды ожидаема,
 # допускают её явно рядом с местом, где она случается (`|| true`, проверка
@@ -120,6 +121,56 @@ read_bundle_id() {
     local plist="$1/Contents/Info.plist"
     [[ -f "$plist" ]] || return 0
     /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$plist" 2>/dev/null || true
+}
+
+# Отделяет метку -dirty от хэша отпечатка. Печатает "хэш метка" одной строкой
+# через пробел, метка — "1" при незакоммиченных правках, иначе "0". Единственное
+# место, где известен формат "<хэш>[-dirty]" — остальной код сравнения им не
+# интересуется напрямую (T-0004).
+_fingerprint_parts() {
+    local fp="$1"
+    if [[ "$fp" == *-dirty ]]; then
+        print -r -- "${fp%-dirty} 1"
+    else
+        print -r -- "$fp 0"
+    fi
+}
+
+# Число знаков хэша в отпечатке, без учёта метки -dirty. Используется отдельно
+# от сравнения — вызывающий отвергает слишком короткое ожидание сам, до того,
+# как дело дойдёт до самого сравнения (spec/_invariants.md#INV-015).
+fingerprint_hash_length() {
+    local hash
+    hash="${1%-dirty}"
+    print -r -- ${#hash}
+}
+
+# Совпадают ли два отпечатка сборки — по началу, а не побуквенно
+# (T-0004, spec/logic.md#L-019): у Git короткий хэш не имеет единственной
+# длины, её выбирает вызывающий, поэтому более короткий из двух хэшей обязан
+# быть началом более длинного. Метка -dirty сравнивается отдельно от хэша и
+# обязана совпадать всегда, независимо от того, чей хэш короче. Пустой хэш
+# (нет ключа в Info.plist, компоновка ещё не поставила отпечаток) ни с чем не
+# совпадает — иначе отсутствие всякого значения проходило бы проверку при
+# любом ожидании, а это не «установлено», а отсутствие ответа.
+#
+# Возвращает 0 при совпадении, 1 иначе — обычное условие вызывающего скрипта,
+# не отдельная проверка ошибки довода: за отпечаток короче нижнего предела
+# отвечает fingerprint_hash_length, вызванный до этой функции.
+fingerprints_match() {
+    local actual="$1" expected="$2"
+    local actual_hash actual_dirty expected_hash expected_dirty
+    read -r actual_hash actual_dirty <<< "$(_fingerprint_parts "$actual")"
+    read -r expected_hash expected_dirty <<< "$(_fingerprint_parts "$expected")"
+
+    [[ -n "$actual_hash" && -n "$expected_hash" ]] || return 1
+    [[ "$actual_dirty" == "$expected_dirty" ]] || return 1
+
+    if (( ${#actual_hash} <= ${#expected_hash} )); then
+        [[ "$expected_hash" == "$actual_hash"* ]]
+    else
+        [[ "$actual_hash" == "$expected_hash"* ]]
+    fi
 }
 
 # Копирует установленную копию рядом с собой, под именем с её отпечатком и
