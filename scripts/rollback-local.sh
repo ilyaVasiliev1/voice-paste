@@ -1,45 +1,84 @@
 #!/bin/zsh
 set -euo pipefail
 
-# Возвращает последнюю сохранённую копию VoicePaste на машине владельца тем же
-# порядком, что и обновление (spec/logic.md#L-019): погасить → вернуть →
-# запустить. Между шагами работающей копии нет ни секунды.
+# Откатывает установленную копию VoicePaste на машине владельца на заданный
+# отпечаток тем же порядком, что и обновление (spec/logic.md#L-019): погасить
+# → собрать отпечаток → поставить → запустить. Между шагами работающей копии
+# нет ни секунды.
 #
-#   scripts/rollback-local.sh
+#   scripts/rollback-local.sh <отпечаток>
 #
-# Сохранённые копии оставляет scripts/install-local.sh при каждом обновлении,
-# рядом с установленным приложением, под именем с отпечатком и временем.
-# Без сохранённой копии откатывать нечего — команда откажет явно, а не
-# погасит рабочую копию просто так.
+# T-0007: резервной копии на диске больше нет — на устройстве живёт ровно одна
+# установленная копия (L-019), и откат не подменяет файлы, а собирает
+# указанный отпечаток заново из истории git, во временном рабочем дереве, тем
+# же порядком, что и обычная установка. Это точнее, чем скопированный бандл:
+# копия стареет и молча расходится с историей, а отпечаток — нет.
+#
+# Отпечаток — то, что называет `git log --oneline` (полный или короткий хэш
+# коммита, ветка, тег). Метка -dirty из вывода verify-local.sh к самому
+# коммиту не относится и в доводе не нужна: незакоммиченные правки вне истории
+# git этот откат не восстановит — он воспроизводит только то, что закоммичено.
+#
+# Без довода команда отказывает явно, не трогая и не гася работающую копию
+# понапрасну. Временное рабочее дерево убирается за собой при любом исходе —
+# удачной сборке, неудачной сборке или отказе где-либо между ними.
 #
 # Отдельной беты у продукта нет: испытуемая и рабочая копия — одна и та же,
-# поэтому у обновления обязан быть путь назад именно на прежнюю установленную
-# копию, а не на исходники или сборку заново.
+# поэтому у обновления обязан быть путь назад — на воспроизводимый отпечаток,
+# а не на угадывание, что где-то рядом лежит старая копия.
 
+PROJECT_ROOT="${0:A:h:h}"
 source "${0:A:h}/lib/update-common.sh"
 
 TARGET_APP="/Applications/VoicePaste.app"
-APP_DIR="${TARGET_APP:h}"
+DERIVED_DATA="${DELTA_DERIVED_DATA:-$PROJECT_ROOT/.tmp/delta-verify}"
+REQUESTED="${1:-}"
 
-BACKUP=$(latest_backup "$APP_DIR")
-if [[ -z "$BACKUP" ]]; then
-    print -u2 "Нет сохранённых копий для отката в $APP_DIR."
-    print -u2 "FIX: откат возможен только после хотя бы одного обновления — scripts/install-local.sh."
+if [[ -z "$REQUESTED" ]]; then
+    print -u2 "Нужен отпечаток: scripts/rollback-local.sh <отпечаток>"
+    print -u2 "FIX: узнай доступные отпечатки — git log --oneline."
     exit 2
 fi
 
-print "1/3 Гашу работающую копию…"
+# Метка -dirty (если её скопировали прямо из вывода verify-local.sh) относится
+# не к коммиту, а к состоянию рабочего дерева на момент той сборки — у самого
+# отпечатка-коммита её нет, и git её не знает.
+COMMITISH="${REQUESTED%-dirty}"
+COMMIT=$(git -C "$PROJECT_ROOT" rev-parse --verify "${COMMITISH}^{commit}" 2>/dev/null) || {
+    print -u2 "Отпечаток «$REQUESTED» не найден в истории git."
+    print -u2 "FIX: узнай доступные отпечатки — git log --oneline."
+    exit 2
+}
+
+print "1/5 Убираю резервные копии прежней реализации обновления…"
+cleanup_legacy_backups "${TARGET_APP:h}"
+
+print "2/5 Гашу работающую копию…"
 quit_and_wait
 
-print "2/3 Возвращаю $BACKUP…"
-rm -rf "$TARGET_APP"
-mv "$BACKUP" "$TARGET_APP"
+WORKTREE=$(mktemp -d "${TMPDIR:-/tmp}/voicepaste-rollback.XXXXXX")
+cleanup_worktree() {
+    git -C "$PROJECT_ROOT" worktree remove --force "$WORKTREE" >/dev/null 2>&1 || true
+    rm -rf "$WORKTREE"
+}
+trap cleanup_worktree EXIT INT TERM
 
-print "3/3 Запускаю…"
+print "3/5 Собираю отпечаток $COMMIT во временном рабочем дереве…"
+git -C "$PROJECT_ROOT" worktree add --detach "$WORKTREE" "$COMMIT" >/dev/null
+SOURCE_APP=$(build_debug "$WORKTREE" "$DERIVED_DATA")
+if [[ ! -d "$SOURCE_APP" ]]; then
+    print -u2 "Сборка отпечатка $REQUESTED прошла, но не оставила $SOURCE_APP."
+    print -u2 "FIX: тот же отпечаток собирает scripts/install-local.sh — проверь схему и конфигурацию Debug там же."
+    exit 2
+fi
+
+FINGERPRINT=$(compute_fingerprint "$WORKTREE")
+
+print "4/5 Ставлю собранную копию…"
+install_app "$SOURCE_APP" "$TARGET_APP" "$FINGERPRINT"
+
+print "5/5 Запускаю…"
 open "$TARGET_APP"
 
-FINGERPRINT=$(read_fingerprint "$TARGET_APP")
-print "Откачено: $TARGET_APP (${FINGERPRINT:-неизвестный отпечаток})"
-if [[ -n "$FINGERPRINT" ]]; then
-    print "Проверка: scripts/verify-local.sh $FINGERPRINT"
-fi
+print "Откачено: $TARGET_APP ($FINGERPRINT)"
+print "Проверка: scripts/verify-local.sh $FINGERPRINT"
