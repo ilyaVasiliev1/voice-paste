@@ -1,0 +1,97 @@
+# Базовая линия ссылок из кода в спеку.
+#
+# Строка — «файл<таб>атом» и, если есть, «<таб>причина». Без причины это
+# долг: упоминание указывает в пустоту и однажды будет исправлено.
+# С причиной — законное исключение, которое исправлять не надо.
+#
+# Новое упоминание несуществующего атома сюда само не попадёт — оно
+# станет находкой гейта. Причины переживают перезапись.
+#
+# Переписать: npx tsx src/cli.ts spec-refs --write
+VoicePaste/App/App.swift	UI-001
+VoicePaste/App/App.swift	UI-002
+VoicePaste/App/App.swift	UI-004
+VoicePaste/App/App.swift	UI-007
+VoicePaste/App/AppDelegate.swift	UI-001
+VoicePaste/App/AppDelegate.swift	UI-004
+VoicePaste/App/AppState.swift	DEP-003
+VoicePaste/App/AppState.swift	DM-005
+VoicePaste/App/AppState.swift	UI-001
+VoicePaste/App/AppState.swift	UI-002
+VoicePaste/App/AppState.swift	UI-003
+VoicePaste/App/AppState.swift	UI-006
+VoicePaste/Core/Audio/AudioCaptureService.swift	DEP-003
+VoicePaste/Core/Audio/AudioCaptureService.swift	DEP-008
+VoicePaste/Core/Dictation/DictationStateMachine.swift	DM-001.recordingMode
+VoicePaste/Core/Dictation/DictationStateMachine.swift	UI-003
+VoicePaste/Core/Hotkey/HotkeyShortcut.swift	DM-001
+VoicePaste/Core/Hotkey/HotkeyShortcut.swift	DM-001.hotkey
+VoicePaste/Core/HUD/HUDState.swift	DM-005
+VoicePaste/Core/HUD/HUDState.swift	EC-005-style
+VoicePaste/Core/HUD/HUDState.swift	UI-003
+VoicePaste/Core/HUD/HUDState.swift	UI-006
+VoicePaste/Core/HUD/HUDWindowController.swift	UI-003
+VoicePaste/Core/Import/AudioDecoder.swift	DEP-008
+VoicePaste/Core/Import/AudioDecoder.swift	INV-018
+VoicePaste/Core/Import/AudioDecoder.swift	UI-006
+VoicePaste/Core/Import/ImportManager.swift	INV-018
+VoicePaste/Core/Normalizer/TextNormalizer.swift	API-local-normalizeText
+VoicePaste/Core/Normalizer/TextNormalizer.swift	DEP-007
+VoicePaste/Core/Readiness/ReadinessCoordinator.swift	API-local-readiness
+VoicePaste/Core/Readiness/ReadinessState.swift	API-local-readiness
+VoicePaste/Core/Readiness/ReadinessState.swift	UI-001
+VoicePaste/Core/Readiness/ReadinessState.swift	UI-002
+VoicePaste/Core/Settings/AppSettings.swift	DM-001
+VoicePaste/Core/Settings/AppSettings.swift	UI-005
+VoicePaste/Core/Transcription/ModelManager.swift	API-local-model
+VoicePaste/Core/Transcription/ModelManager.swift	DM-001.modelUnloadMinutes
+VoicePaste/Core/Transcription/ModelManager.swift	UI-002
+VoicePaste/Core/Transcription/ModelState.swift	API-local-model
+VoicePaste/Core/Transcription/ModelState.swift	DM-001
+VoicePaste/Core/Transcription/ModelState.swift	UI-002
+VoicePaste/Core/Transcription/Transcribing.swift	DEP-008
+VoicePaste/Core/Transcription/Transcribing.swift	DM-001.languageMode
+VoicePaste/Core/Transcription/WhisperKitTranscriber.swift	DEP-006
+VoicePaste/Core/Transcription/WhisperKitTranscriber.swift	UI-002
+VoicePaste/Data/HistoryStore.swift	DM-002
+VoicePaste/Data/HistoryStore.swift	DM-003
+VoicePaste/Data/HistoryStore.swift	DM-004
+VoicePaste/Data/HistoryStore.swift	DM-006
+VoicePaste/Data/ImportQueueStore.swift	DM-005
+VoicePaste/Data/Migrations.swift	DM-002
+VoicePaste/Data/Migrations.swift	DM-003
+VoicePaste/Data/Migrations.swift	DM-004
+VoicePaste/Data/Migrations.swift	DM-005
+VoicePaste/Data/Migrations.swift	DM-006
+VoicePaste/Data/Migrations.swift	UI-007
+VoicePaste/Data/PersistenceRecords.swift	DM-002
+VoicePaste/Data/PersistenceRecords.swift	DM-004
+VoicePaste/Data/PersistenceRecords.swift	DM-006
+VoicePaste/Domain/HistoryStoring.swift	API-local-history
+VoicePaste/Domain/HistoryStoring.swift	DM-002
+VoicePaste/Domain/HistoryStoring.swift	DM-003
+VoicePaste/Domain/HistoryStoring.swift	DM-004
+VoicePaste/Domain/HistoryStoring.swift	UI-004
+VoicePaste/Domain/Transcript.swift	DM-002
+VoicePaste/Domain/TranscriptListItem.swift	DM-002
+VoicePaste/Domain/TranscriptListItem.swift	DM-003
+VoicePaste/Domain/VocabularyEntry.swift	DM-004
+VoicePaste/UI/History/DetailEditor.swift	UI-004
+VoicePaste/UI/History/HistoryView.swift	DM-002
+VoicePaste/UI/History/HistoryView.swift	DM-003
+VoicePaste/UI/History/HistoryView.swift	UI-004
+VoicePaste/UI/MenuBar/MenuBarContentView.swift	UI-001
+VoicePaste/UI/Onboarding/OnboardingView.swift	UI-002
+VoicePaste/UI/Onboarding/OnboardingView.swift	UI-008
+VoicePaste/UI/Settings/HotkeyRecorderView.swift	UI-005
+VoicePaste/UI/Settings/SettingsView.swift	DM-001
+VoicePaste/UI/Settings/SettingsView.swift	UI-003
+VoicePaste/UI/Settings/SettingsView.swift	UI-005
+VoicePasteTests/AudioDecoderOggTests.swift	DEP-008
+VoicePasteTests/DictationStateMachineTests.swift	UI-003
+VoicePasteTests/HistoryStoreTests.swift	DM-002
+VoicePasteTests/HistoryStoreTests.swift	DM-003
+VoicePasteTests/HistoryStoreTests.swift	DM-004
+VoicePasteTests/HistoryStoreTests.swift	DM-006
+VoicePasteTests/HistoryStoreTests.swift	UI-007
+VoicePasteTests/ModelDownloadProgressTests.swift	UI-002

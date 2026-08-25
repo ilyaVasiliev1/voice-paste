@@ -1,19 +1,19 @@
 #!/bin/zsh
 #
 # Общие приёмы обновления и отката установленной копии VoicePaste на машине
-# владельца: наблюдаемое погашение процесса, отпечаток сборки в Info.plist,
-# сохранение и обрезка резервных копий. Источник для install-local.sh,
+# владельца: наблюдаемое погашение процесса, сборка Debug-копии, установка и
+# отпечаток сборки в Info.plist. Источник для install-local.sh,
 # rollback-local.sh и verify-local.sh — величины и порядок написаны один раз
 # и больше нигде не повторяются.
 #
-# Правило: spec/logic.md#L-019. Величины: spec/_invariants.md#INV-013 (сколько
-# ждать погашения), #INV-014 (сколько копий хранить).
+# Правило: spec/logic.md#L-019 — на устройстве живёт ровно одна установленная
+# копия, резервные копии рядом с ней не заводятся (T-0007). Величина:
+# spec/_invariants.md#INV-013 (сколько ждать погашения).
 #
 # Не исполняемый файл сам по себе — подключается через `source`.
 
 BUNDLE_ID="com.ilyavasiliev.voicepaste"
 PROCESS_NAME="voicepaste"
-MAX_BACKUPS=3            # INV-014
 QUIT_BUDGET=15           # INV-013, секунд
 MIN_FINGERPRINT_LEN=7    # INV-015
 
@@ -173,59 +173,64 @@ fingerprints_match() {
     fi
 }
 
-# Копирует установленную копию рядом с собой, под именем с её отпечатком и
-# временем, и обрезает список сохранённых копий до предела (INV-014, не
-# больше трёх). Копирует `ditto`, затем убирает исходник `rm -rf` — не
-# переименовывает `mv`: решение и его цена — memory/decisions.md, 2026-08-24
-# («Резервная копия в backup_previous: ditto+rm вместо mv»). Исходник убирается
-# только после того, как `ditto` завершился успешно — `set -e` вызывающих
-# скриптов останавливает выполнение на неудачном `ditto` раньше, чем дойдёт до
-# `rm`, поэтому сбой копирования не трогает реальную установленную копию;
-# рискует остаться неполной только сама резервная копия.
-backup_previous() {
-    local target="$1"
-    [[ -d "$target" ]] || return 0
+# T-0007: решение человека — копий не заводить вовсе (spec/logic.md#L-019).
+# Прежние версии install-local.sh/rollback-local.sh (T-0001…T-0004) оставляли
+# рядом с установленной копией резервные `VoicePaste-<отпечаток>-<время>.app` —
+# система обходит /Applications и показывает каждую как отдельное приложение,
+# о котором человек не знает и не заводил. Эта функция убирает уже
+# накопившийся мусор один раз, при первом запуске обновлённых скриптов, и
+# молчать об удалении нельзя — человек должен видеть, что чужой мусор убран.
+# Глоб-квалификатор `(N)` даёт пустой список вместо ошибки zsh «no matches
+# found», когда копий уже нет, — штатный случай на второй и последующий
+# запуск.
+cleanup_legacy_backups() {
+    local dir="$1"
+    local -a stray
+    stray=("$dir"/VoicePaste-*.app(N))
+    local app
+    for app in "${stray[@]}"; do
+        rm -rf "$app"
+        print "Удалена резервная копия прежней реализации обновления: $app"
+    done
+}
 
-    local old_fingerprint
-    old_fingerprint=$(read_fingerprint "$target")
-    [[ -n "$old_fingerprint" ]] || old_fingerprint="unknown"
+# Собирает Debug-сборку продукта из указанного корня дерева (обычного или
+# временного рабочего дерева отката) и печатает путь до собранного .app на
+# stdout. Вывод самой сборки идёт в stderr — не в перехват `$(...)`, которым
+# вызывающий забирает путь.
+#
+# derived data передаётся отдельно от корня дерева и по умолчанию у install
+# и rollback общий (каталог гейта Delta OS): рабочее дерево отката получает
+# другой исходный код, но уже разрешённые SPM-зависимости (SourcePackages) от
+# дерева исходников не зависят, и разрешать их заново незачем.
+build_debug() {
+    local project_root="$1" derived_data="$2"
+    xcodebuild \
+        -project "$project_root/VoicePaste.xcodeproj" -scheme VoicePaste \
+        -destination 'platform=macOS,arch=arm64' \
+        -derivedDataPath "$derived_data" \
+        -disableAutomaticPackageResolution -jobs 2 \
+        build CODE_SIGNING_ALLOWED=NO >&2
+    print -r -- "$derived_data/Build/Products/Debug/VoicePaste.app"
+}
 
-    local stamp
-    stamp=$(date +%Y%m%d-%H%M%S)
-    local dir="${target:h}"
-    local backup="$dir/VoicePaste-${old_fingerprint}-${stamp}.app"
-
-    ditto "$target" "$backup"
+# Ставит собранную копию в целевое место, штампует отпечаток и подписывает
+# ad-hoc — общий хвост install-local.sh и rollback-local.sh после того, как
+# каждый из них получил свою сборку (готовую или собранную из отпечатка).
+#
+# Прежняя копия по целевому пути убирается перед установкой, не
+# перезаписывается копированием поверх: копирование поверх существующего
+# бандла оставляет файлы, которых в новой сборке уже нет.
+#
+# Подпись ad-hoc: без неё macOS отказывает приложению в правах доступности и
+# микрофона, а без них продукт не работает вовсе. Подписывается после
+# стемпинга отпечатка — печать в Info.plist меняет бандл и обязана произойти
+# до подписи, иначе подпись окажется недействительной для изменённого
+# содержимого.
+install_app() {
+    local source="$1" target="$2" fingerprint="$3"
     rm -rf "$target"
-    print "Прежняя копия сохранена: $backup"
-    prune_backups "$dir"
-}
-
-# Оставляет не больше MAX_BACKUPS каталогов вида VoicePaste-*.app, удаляя
-# самые старые по времени изменения. Глоб-квалификатор `(N)` даёт пустой
-# список вместо ошибки zsh «no matches found», когда копий ещё нет — это
-# штатный случай (первая установка), а не повод падать; `(Om)` сортирует по
-# времени изменения от нового к старому.
-prune_backups() {
-    local dir="$1"
-    local -a backups
-    backups=("$dir"/VoicePaste-*.app(NOm))
-    local count=${#backups[@]}
-    if (( count > MAX_BACKUPS )); then
-        local i
-        for (( i = MAX_BACKUPS + 1; i <= count; i++ )); do
-            print "Удалена старая копия сверх предела в $MAX_BACKUPS (INV-014): ${backups[$i]}"
-            rm -rf "${backups[$i]}"
-        done
-    fi
-}
-
-# Самая свежая сохранённая копия рядом с установленным приложением; пустая
-# строка, если сохранённых копий нет.
-latest_backup() {
-    local dir="$1"
-    local -a backups
-    backups=("$dir"/VoicePaste-*.app(NOm))
-    (( ${#backups[@]} > 0 )) && print -r -- "${backups[1]}"
-    return 0
+    ditto "$source" "$target"
+    stamp_fingerprint "$target" "$fingerprint"
+    codesign --force --deep --sign - "$target" >/dev/null 2>&1 || true
 }
