@@ -50,6 +50,26 @@ COMMIT=$(git -C "$PROJECT_ROOT" rev-parse --verify "${COMMITISH}^{commit}" 2>/de
     exit 2
 }
 
+# T-0010: удостоверение подписи проверяется до того, как погашена работающая
+# копия и до того, как заведено временное рабочее дерево — отказ здесь не
+# должен стоить владельцу ни работающего приложения, ни лишней сборки.
+print "Проверяю удостоверение подписи…"
+IDENTITY=$(resolve_codesign_identity "$PROJECT_ROOT") || {
+    print -u2 "Не задано удостоверение для подписи локальной установки."
+    print -u2 "Настройка: переменная среды $CODESIGN_IDENTITY_ENV_VAR — либо поле \"$CODESIGN_IDENTITY_JSON_KEY\" окружения local в $CODESIGN_IDENTITY_ENV_FILE."
+    print -u2 "Сейчас не задано ни одно из двух."
+    print -u2 "FIX: задай одно из двух и запусти откат заново. Работающая копия не тронута."
+    exit 2
+}
+if ! codesign_identity_available "$IDENTITY"; then
+    print -u2 "Удостоверение «$IDENTITY» не найдено среди действующих на этой машине."
+    print -u2 "Настройка: переменная среды $CODESIGN_IDENTITY_ENV_VAR — либо поле \"$CODESIGN_IDENTITY_JSON_KEY\" окружения local в $CODESIGN_IDENTITY_ENV_FILE — сейчас даёт «$IDENTITY»."
+    print_available_identities
+    print -u2 "FIX: заведи нужный сертификат в связке ключей либо поправь настройку — и запусти откат заново. Работающая копия не тронута."
+    exit 1
+fi
+print "    удостоверение: $IDENTITY"
+
 print "1/5 Убираю резервные копии прежней реализации обновления…"
 cleanup_legacy_backups "${TARGET_APP:h}"
 
@@ -75,7 +95,7 @@ fi
 FINGERPRINT=$(compute_fingerprint "$WORKTREE")
 
 print "4/5 Ставлю собранную копию…"
-install_app "$SOURCE_APP" "$TARGET_APP" "$FINGERPRINT"
+install_app "$SOURCE_APP" "$TARGET_APP" "$FINGERPRINT" "$IDENTITY"
 
 print "5/5 Запускаю…"
 open "$TARGET_APP"
