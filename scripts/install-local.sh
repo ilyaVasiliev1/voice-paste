@@ -14,6 +14,12 @@ set -euo pipefail
 # глобальную горячую клавишу и пишет в чужие окна, и две живые копии — это два
 # слушателя одной клавиши и два писателя в одно хранилище.
 #
+# T-0010: перед шагом 1 идёт проверка удостоверения подписи — она не входит в
+# эти пять шагов (их порядок и состав не менялись), а предшествует им целиком.
+# Отсутствующее или недействующее на этой машине удостоверение отказывает
+# установку до того, как погашена работающая копия: копия остаётся работающей,
+# /Applications/VoicePaste.app остаётся прежним, новая копия не ставится.
+#
 # T-0007: на устройстве живёт ровно одна установленная копия — резервные копии
 # рядом с ней не заводятся. Прежняя реализация (T-0001…T-0004) сохраняла их
 # под именем с отпечатком и временем, а система обходит /Applications и
@@ -36,6 +42,27 @@ source "${0:A:h}/lib/update-common.sh"
 TARGET_APP="/Applications/VoicePaste.app"
 DERIVED_DATA="${DELTA_DERIVED_DATA:-$PROJECT_ROOT/.tmp/delta-verify}"
 SOURCE_APP="${1:-}"
+
+# T-0010: удостоверение подписи проверяется до того, как погашена работающая
+# копия — отказ здесь не должен стоить владельцу работающего приложения.
+# Настройка: переменная среды $CODESIGN_IDENTITY_ENV_VAR, а без неё поле
+# $CODESIGN_IDENTITY_JSON_KEY окружения `local` в $CODESIGN_IDENTITY_ENV_FILE.
+print "Проверяю удостоверение подписи…"
+IDENTITY=$(resolve_codesign_identity "$PROJECT_ROOT") || {
+    print -u2 "Не задано удостоверение для подписи локальной установки."
+    print -u2 "Настройка: переменная среды $CODESIGN_IDENTITY_ENV_VAR — либо поле \"$CODESIGN_IDENTITY_JSON_KEY\" окружения local в $CODESIGN_IDENTITY_ENV_FILE."
+    print -u2 "Сейчас не задано ни одно из двух."
+    print -u2 "FIX: задай одно из двух и запусти установку заново. Работающая копия не тронута."
+    exit 2
+}
+if ! codesign_identity_available "$IDENTITY"; then
+    print -u2 "Удостоверение «$IDENTITY» не найдено среди действующих на этой машине."
+    print -u2 "Настройка: переменная среды $CODESIGN_IDENTITY_ENV_VAR — либо поле \"$CODESIGN_IDENTITY_JSON_KEY\" окружения local в $CODESIGN_IDENTITY_ENV_FILE — сейчас даёт «$IDENTITY»."
+    print_available_identities
+    print -u2 "FIX: заведи нужный сертификат в связке ключей либо поправь настройку — и запусти установку заново. Работающая копия не тронута."
+    exit 1
+fi
+print "    удостоверение: $IDENTITY"
 
 print "1/5 Убираю резервные копии прежней реализации обновления…"
 cleanup_legacy_backups "${TARGET_APP:h}"
@@ -67,7 +94,7 @@ print "4/5 Ставлю новую копию…"
 # install_app убирает прежнюю копию перед установкой, не перезаписывает
 # копированием поверх: копирование поверх существующего бандла оставляет
 # файлы, которых в новой сборке уже нет.
-install_app "$SOURCE_APP" "$TARGET_APP" "$FINGERPRINT"
+install_app "$SOURCE_APP" "$TARGET_APP" "$FINGERPRINT" "$IDENTITY"
 
 print "5/5 Запускаю…"
 open "$TARGET_APP"

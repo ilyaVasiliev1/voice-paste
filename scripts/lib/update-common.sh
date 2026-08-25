@@ -17,6 +17,15 @@ PROCESS_NAME="voicepaste"
 QUIT_BUDGET=15           # INV-013, секунд
 MIN_FINGERPRINT_LEN=7    # INV-015
 
+# T-0010: имя удостоверения не хранится литералом ни в одном файле scripts/.
+# Настройка — переменная среды CODESIGN_IDENTITY_ENV_VAR, а без неё поле
+# CODESIGN_IDENTITY_JSON_KEY окружения `local` в CODESIGN_IDENTITY_ENV_FILE.
+# Здесь называются только имена настройки, не её значение (spec/logic.md#L-019).
+CODESIGN_IDENTITY_ENV_VAR="VOICEPASTE_CODESIGN_IDENTITY"
+CODESIGN_IDENTITY_ENV_FILE="ops/environments/local.json"
+CODESIGN_IDENTITY_JSON_KEY="codesignIdentity"
+CODESIGN_BASELINE_FILE=".codesign-requirement-baseline.txt"
+
 # T-0003: сеть на непредвиденный отказ. Места, где неудача команды ожидаема,
 # допускают её явно рядом с местом, где она случается (`|| true`, проверка
 # файла заранее, ветки `if`) — до этой ловушки они не доходят. Сюда попадает
@@ -173,6 +182,68 @@ fingerprints_match() {
     fi
 }
 
+# Настроенное удостоверение подписи — переменная среды CODESIGN_IDENTITY_ENV_VAR,
+# а без неё поле CODESIGN_IDENTITY_JSON_KEY окружения `local` в
+# CODESIGN_IDENTITY_ENV_FILE (T-0010, spec/logic.md#L-019). Замена
+# удостоверения — правка настройки, не правка скрипта: само имя нигде в
+# scripts/ не встречается литералом.
+#
+# Пустой возврат при отсутствии обеих — не отказ самой функции, тем же
+# приёмом, что и read_fingerprint: вызывающий решает, что с этим делать, по
+# коду возврата (`||`), а не по перехваченному выводу под `set -e`.
+#
+# `plutil -extract … raw` читает JSON без нового внешнего инструмента —
+# PlistBuddy умеет только plist, а plutil на этой машине понимает оба формата.
+resolve_codesign_identity() {
+    local project_root="$1"
+    if [[ -n "${VOICEPASTE_CODESIGN_IDENTITY:-}" ]]; then
+        print -r -- "$VOICEPASTE_CODESIGN_IDENTITY"
+        return 0
+    fi
+    local env_file="$project_root/$CODESIGN_IDENTITY_ENV_FILE"
+    [[ -f "$env_file" ]] || return 1
+    local value
+    value=$(plutil -extract "$CODESIGN_IDENTITY_JSON_KEY" raw -o - "$env_file" 2>/dev/null) || return 1
+    [[ -n "$value" ]] || return 1
+    print -r -- "$value"
+}
+
+# Действует ли удостоверение среди тех, что видит codesign на этой машине —
+# «действующее» означает то же, что и для человека в Keychain Access: не
+# просроченное и с закрытым ключом в связке.
+codesign_identity_available() {
+    local identity="$1"
+    security find-identity -v -p codesigning 2>/dev/null | grep -qF "\"$identity\""
+}
+
+# Печатает действующие удостоверения в stderr — диагностика человеку, когда
+# настроенное не нашлось среди них. Сама ничего не решает и не отказывает:
+# `security` без действующих удостоверений просто напечатает "0 valid
+# identities found", и это не ошибка данной функции.
+print_available_identities() {
+    print -u2 "Действующие удостоверения на этой машине (security find-identity -v -p codesigning):"
+    security find-identity -v -p codesigning >&2
+}
+
+# Назначенное требование установленной копии, как печатает `codesign -d -r-`
+# (строка "designated => …"), без завершающего перевода строки. Пустая
+# строка, если бандла или подписи нет, — не отказ самой функции, тем же
+# приёмом, что и read_fingerprint. `codesign -d` пишет свой вывод в stderr —
+# `2>&1` подмешивает его к stdout, откуда его и забирает `$(...)`.
+read_codesign_requirement() {
+    local app="$1"
+    codesign -d -r- "$app" 2>&1 | grep '^designated => ' || true
+}
+
+# Ad-hoc ли назначенное требование — то есть составлено из отпечатка кода
+# (`cdhash`), а не из сертификата и якоря Apple. У ad-hoc отпечаток меняется
+# на каждой сборке, и вместе с ним слетают выданные системой разрешения
+# приватности (T-0010, spec/logic.md#L-019).
+codesign_requirement_is_adhoc() {
+    local requirement="$1"
+    [[ "$requirement" == *cdhash* ]]
+}
+
 # T-0007: решение человека — копий не заводить вовсе (spec/logic.md#L-019).
 # Прежние версии install-local.sh/rollback-local.sh (T-0001…T-0004) оставляли
 # рядом с установленной копией резервные `VoicePaste-<отпечаток>-<время>.app` —
@@ -214,23 +285,37 @@ build_debug() {
     print -r -- "$derived_data/Build/Products/Debug/VoicePaste.app"
 }
 
-# Ставит собранную копию в целевое место, штампует отпечаток и подписывает
-# ad-hoc — общий хвост install-local.sh и rollback-local.sh после того, как
-# каждый из них получил свою сборку (готовую или собранную из отпечатка).
+# Ставит собранную копию в целевое место, штампует отпечаток и подписывает её
+# удостоверением разработчика — общий хвост install-local.sh и
+# rollback-local.sh после того, как каждый из них получил свою сборку (готовую
+# или собранную из отпечатка) и проверил, что удостоверение задано и
+# действует (T-0010) — вызывающий обязан это сделать раньше, эта функция
+# принимает его готовым доводом и подписью больше не решает, чем подписывать.
 #
 # Прежняя копия по целевому пути убирается перед установкой, не
 # перезаписывается копированием поверх: копирование поверх существующего
 # бандла оставляет файлы, которых в новой сборке уже нет.
 #
-# Подпись ad-hoc: без неё macOS отказывает приложению в правах доступности и
-# микрофона, а без них продукт не работает вовсе. Подписывается после
-# стемпинга отпечатка — печать в Info.plist меняет бандл и обязана произойти
-# до подписи, иначе подпись окажется недействительной для изменённого
-# содержимого.
+# Подпись — последний шаг, после ditto и после стемпинга отпечатка: печать в
+# Info.plist меняет бандл, и это обязано произойти до подписи, иначе подпись
+# окажется недействительной для итогового содержимого (spec/logic.md#L-019).
+#
+# Удостоверением разработчика, не ad-hoc (`--sign -`): у ad-hoc назначенное
+# требование — это отпечаток кода, который меняется на каждой сборке, а
+# система хранит выданные разрешения приватности вместе с этим требованием —
+# они слетают при каждой пересборке (T-0010, память 2026-07-20 и 2026-08-25).
+#
+# Неудача codesign не гасится (`|| true` здесь нет): она обязана остановить
+# установку ненулевым кодом, а не оставить неподписанный или частично
+# подписанный бандл молча.
 install_app() {
-    local source="$1" target="$2" fingerprint="$3"
+    local source="$1" target="$2" fingerprint="$3" identity="$4"
     rm -rf "$target"
     ditto "$source" "$target"
     stamp_fingerprint "$target" "$fingerprint"
-    codesign --force --deep --sign - "$target" >/dev/null 2>&1 || true
+    if ! codesign --force --deep --sign "$identity" "$target"; then
+        print -u2 "Не удалось подписать $target удостоверением «$identity»."
+        print -u2 "FIX: причину печатает codesign выше; проверь, что сертификат действителен и связка ключей разблокирована."
+        exit 1
+    fi
 }
