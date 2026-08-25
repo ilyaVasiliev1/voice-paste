@@ -39,8 +39,25 @@ XCPROJ_BASE=$(basename "$XCPROJ" .xcodeproj)
 SCHEME="${DELTA_SCHEME:-$XCPROJ_BASE}"
 DERIVED="${DELTA_DERIVED_DATA:-.tmp/delta-verify}"
 
+# Сколько потоков компиляции. Было зашито «2», и причина этого числа не была
+# записана нигде — ни в правилах стека, ни в источниках.
+#
+# Замерено 25 августа 2026 на машине с 4 быстрыми и 6 экономичными ядрами:
+# три пары прогонов вперемешку, кэш модулей прогрет одинаково.
+#
+#   jobs=2   58 с · 201 с · 32 с    медиана 58
+#   jobs=8   38 с ·  75 с · 22 с    медиана 38
+#
+# Разброс велик, и одному числу верить нельзя — но направление одинаково во
+# всех трёх парах, а это и есть сигнал. Медиана короче на треть.
+#
+# Считаем от машины, а не пишем восьмёрку: два ядра оставляем человеку, чтобы
+# гейт не отбирал у него весь процессор, пока он работает.
+JOBS="${DELTA_BUILD_JOBS:-$(( $(sysctl -n hw.ncpu 2>/dev/null || echo 4) - 2 ))}"
+[ "$JOBS" -lt 1 ] && JOBS=1
+
 XCB_COMMON="-project $XCPROJ -scheme $SCHEME -destination platform=macOS,arch=arm64 \
- -derivedDataPath $DERIVED -disableAutomaticPackageResolution -jobs 2 CODE_SIGNING_ALLOWED=NO"
+ -derivedDataPath $DERIVED -disableAutomaticPackageResolution -jobs $JOBS CODE_SIGNING_ALLOWED=NO"
 
 # Исходники ищутся от корня, а не по перечню каталогов. Перечень однажды
 # уже оказался тихим дефектом в соседнем стеке: на проекте без объявленного
