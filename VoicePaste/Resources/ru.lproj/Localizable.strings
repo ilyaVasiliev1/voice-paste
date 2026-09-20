@@ -187,6 +187,7 @@
 "history.empty.title" = "Здесь появятся ваши расшифровки";
 "history.empty.description" = "Начните диктовку или транскрибируйте файл, чтобы увидеть историю.";
 "history.detail.empty" = "Выберите запись, чтобы увидеть текст";
+"history.detail.saveFailed" = "Правка не сохранена";
 "history.source.dictation" = "Диктовка";
 "history.source.file" = "Файл";
 "history.toolbar.copy" = "Копировать";

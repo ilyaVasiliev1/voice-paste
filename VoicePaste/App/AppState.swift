@@ -730,7 +730,23 @@ public final class AppState: ObservableObject {
             )
 
             if settings.historyEnabled {
-                try? await historyStore.save(transcript)
+                do {
+                    try await historyStore.save(transcript)
+                } catch {
+                    // Текст уже вставлен или лежит в буфере, поэтому отказ
+                    // хранилища не отменяет удачную диктовку и HUD остаётся
+                    // прежним. Но молчать о нём нельзя: прежде здесь стоял
+                    // `try?`, и потерянная запись не оставляла ни следа в
+                    // журнале — при том что тот же вызов в `ImportManager`
+                    // разбирается. Причина отказа сохраняется без текста
+                    // расшифровки.
+                    Task {
+                        await DiagnosticLog.shared.log(
+                            "dictation.historySaveFailed",
+                            detail: String(describing: error)
+                        )
+                    }
+                }
             }
             modelManager.endTask(unloadMinutes: settings.modelUnloadMinutes)
 

@@ -12,6 +12,9 @@ struct DetailEditor: View {
 
     @State private var editedText: String = ""
     @State private var saveTask: Task<Void, Never>?
+    /// Правка не записалась. Поднято, чтобы отказ не выглядел успехом: без
+    /// него экран показывал сохранённый текст, а в базе оставался прежний.
+    @State private var didFailToSave = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -32,6 +35,15 @@ struct DetailEditor: View {
             Text(durationString)
             if let language = transcript.language {
                 Text(language.uppercased())
+            }
+            if didFailToSave {
+                Spacer()
+                Label(
+                    NSLocalizedString("history.detail.saveFailed", comment: ""),
+                    systemImage: "exclamationmark.triangle.fill"
+                )
+                .foregroundStyle(.orange)
+                .accessibilityIdentifier("detail-save-failed")
             }
         }
         .font(.caption)
@@ -56,7 +68,21 @@ struct DetailEditor: View {
             try? await Task.sleep(nanoseconds: 500_000_000)
             guard !Task.isCancelled else { return }
             let now = Int64(Date().timeIntervalSince1970 * 1_000)
-            try? await appState.historyStore.edit(id: transcript.id, text: newText, updatedAt: now)
+            do {
+                try await appState.historyStore.edit(id: transcript.id, text: newText, updatedAt: now)
+            } catch {
+                // Раньше запись шла через `try?`, а обновление модели вызывалось
+                // следом безусловно: список и деталь показывали новый текст,
+                // которого в базе нет, и до перезапуска это было незаметно.
+                // Теперь правка не расходится с хранилищем — и отказ виден.
+                didFailToSave = true
+                await DiagnosticLog.shared.log(
+                    "history.editFailed",
+                    detail: String(describing: error)
+                )
+                return
+            }
+            didFailToSave = false
             var updated = transcript
             updated.text = newText
             updated.preview = Transcript.makePreview(from: newText)

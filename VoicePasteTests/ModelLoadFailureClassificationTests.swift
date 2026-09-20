@@ -87,4 +87,40 @@ final class ModelLoadFailureClassificationTests: XCTestCase {
         let message = "connection lost while reading model.mil"
         XCTAssertFalse(ModelManager.indicatesUnreadableLocalModel(TranscribingError.underlying(message)))
     }
+
+    // MARK: - Принадлежность к домену Core ML ничего не доказывает
+
+    /// Домен говорит, кто сообщил об ошибке, а не что байты на диске негодны.
+    /// Core ML поднимает ошибки своего домена и тогда, когда файлы целы:
+    /// приложение само отдаёт модель по сигналу нехватки памяти и грузит её
+    /// заново по требованию, так что транзиентный отказ на этом пути —
+    /// ожидаемое событие, а не повод снести 626 МБ.
+    func test_unrecognisedCoreMLError_failsClosed_andKeepsTheModel() {
+        let error = NSError(domain: "com.apple.CoreML", code: 1, userInfo: [
+            NSLocalizedDescriptionKey: "Error computing NN outputs."
+        ])
+        XCTAssertFalse(ModelManager.indicatesUnreadableLocalModel(error))
+    }
+
+    func test_memoryPressureDuringLoad_doesNotJustifyDeletingTheModel() {
+        let error = NSError(domain: "com.apple.CoreML", code: 1, userInfo: [
+            NSLocalizedDescriptionKey: "Unable to allocate memory for the model."
+        ])
+        XCTAssertFalse(ModelManager.indicatesUnreadableLocalModel(error))
+    }
+
+    /// Отказ компиляции — ровно та формулировка, которой Core ML отвечает и на
+    /// нехватку ресурсов. По доктрине «в закрытую» её недостаточно.
+    func test_compilationFailureAlone_doesNotJustifyDeletingTheModel() {
+        let error = NSError(domain: "com.apple.CoreML", code: 1, userInfo: [
+            NSLocalizedDescriptionKey: "Failed to compile the model."
+        ])
+        XCTAssertFalse(ModelManager.indicatesUnreadableLocalModel(error))
+    }
+
+    /// Но когда та же компиляция прямо называет негодный файл — это порча.
+    func test_compilationFailureNamingTheModelFile_justifiesDeletingTheModel() {
+        let message = "compiling model.mil failed: unexpected end of file"
+        XCTAssertTrue(ModelManager.indicatesUnreadableLocalModel(TranscribingError.underlying(message)))
+    }
 }

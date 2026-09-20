@@ -205,8 +205,25 @@ SHALL делить одну загрузку: повторная компиля�
 
 #### Scenario: Core ML не читает model.mil
 <!-- test: ModelLoadFailureClassificationTests.test_coreMLMILReadFailure_justifiesDeletingTheModel -->
-- **WHEN** ошибка из домена `com.apple.CoreML` или упоминает `model.mil`
+- **WHEN** текст ошибки говорит о нечитаемых файлах модели — `model.mil`,
+  `mil network`, `mlmodelc`, `mlpackage`, порча, непрочитанный разбор
 - **THEN** удаляется только полезная нагрузка модели, токенизатор сохраняется
+
+#### Scenario: принадлежность к домену Core ML сама по себе ничего не доказывает
+<!-- test: ModelLoadFailureClassificationTests.test_unrecognisedCoreMLError_failsClosed_andKeepsTheModel -->
+- **WHEN** ошибка из домена `com.apple.CoreML`, но её текст не говорит о
+  нечитаемых файлах
+- **THEN** модель сохраняется
+
+#### Scenario: нехватка памяти при загрузке модели
+<!-- test: ModelLoadFailureClassificationTests.test_memoryPressureDuringLoad_doesNotJustifyDeletingTheModel -->
+- **WHEN** загрузка не удалась из-за нехватки памяти или ресурсов
+- **THEN** модель сохраняется
+
+Отказ компиляции сам по себе к порче не приравнивается: та же формулировка
+возникает при нехватке памяти, а приложение само отдаёт модель по сигналу
+системы и перезагружает её по требованию — то есть транзиентный отказ на
+этом пути ожидаем.
 
 #### Scenario: неизвестная ошибка
 <!-- test: ModelLoadFailureClassificationTests.test_unknownError_failsClosed_andKeepsTheModel -->

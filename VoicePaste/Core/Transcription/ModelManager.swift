@@ -6,7 +6,8 @@ import Foundation
 /// - Readiness pre-warms the model once per launch; a later first use lazily
 ///   loads/compiles it when that warm-up was skipped or it has been unloaded.
 /// - After the last active task, an unload timer starts using
-///   `DM-001.modelUnloadMinutes` (1–60, default 10; `0` keeps it warm).
+///   `modelUnloadMinutes` (1–60). Its default is `0` — keep the model
+///   resident — so no timer is scheduled unless the user asks for one.
 /// - A new recording/import cancels the pending timer (`beginTask()`).
 /// - `unloadNow()` is called on app quit and from Settings "Выгрузить сейчас".
 @MainActor
@@ -344,12 +345,17 @@ public final class ModelManager: ObservableObject {
     // stop — it says nothing about the bytes already on disk.
     if error is URLError || nsError.domain == NSURLErrorDomain { return false }
 
-    // Core ML speaks only about the model files it was handed. Checked
-    // before the text markers below because its own wording ("Error in
-    // reading the MIL network") contains the word "network" while having
-    // nothing to do with networking.
-    if nsError.domain == "com.apple.CoreML" { return true }
-
+    // A Core ML error says who reported the failure, not that the bytes on
+    // disk are bad. Core ML raises errors from its own domain with the files
+    // perfectly intact — most notably under memory pressure, which this app
+    // creates deliberately: it hands the model back on the system's pressure
+    // signal and reloads it on demand, so a transient load failure there is
+    // an expected event, not proof of corruption. The domain is therefore
+    // not a verdict; only the wording below is.
+    //
+    // Core ML's own "Error in reading the MIL network" is still read as
+    // corruption — `mil network` is a corrupt marker, and the network markers
+    // deliberately never match a bare "network".
     let text = String(describing: error).lowercased()
     // WhisperKit/Hub transport signatures. Deliberately specific — a bare
     // "network" substring would misread Core ML's own message.
@@ -360,9 +366,14 @@ public final class ModelManager: ObservableObject {
     ]
     if networkMarkers.contains(where: { text.contains($0) }) { return false }
 
+    // Each marker names a file or a reading failure — never merely a stage of
+    // work. "compiling"/"compilation" used to be here and were removed: Core
+    // ML answers resource exhaustion with the same wording, so they deleted
+    // healthy models. A compile failure that *names* the bad file still
+    // matches through `model.mil` / `mlmodelc`.
     let corruptMarkers = [
       "model.mil", "mil network", "mlmodelc", "mlpackage", "corrupt",
-      "failed to parse", "cannot be read", "compiling", "compilation",
+      "failed to parse", "cannot be read",
     ]
     return corruptMarkers.contains(where: { text.contains($0) })
   }
