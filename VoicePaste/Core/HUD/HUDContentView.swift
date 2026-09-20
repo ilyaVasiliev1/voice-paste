@@ -34,7 +34,7 @@ struct HUDContentView: View {
         }
         .frame(width: HUDLayout.hostWidth, height: HUDLayout.hostHeight, alignment: .bottom)
         .compositingGroup()
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: layout)  // TOK-motion.surface
+        .animation(reduceMotion ? nil : .easeInOut(duration: DesignTokens.Motion.standard), value: layout)  // TOK-motion.surface
     }
 
     /// Fixed-geometry capsule used by every state whose child controls have a
@@ -234,23 +234,23 @@ struct HUDContentView: View {
             .foregroundStyle(isImportTargeted ? Color.accentColor : .secondary)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(
-                isImportTargeted ? Color.accentColor.opacity(0.10) : Color.primary.opacity(0.035),
-                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                DesignTokens.DropZone.fill(isTargeted: isImportTargeted),
+                in: RoundedRectangle(cornerRadius: DesignTokens.DropZone.cornerRadius, style: .continuous)
             )
             .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: DesignTokens.DropZone.cornerRadius, style: .continuous)
                     .strokeBorder(
-                        isImportTargeted ? Color.accentColor.opacity(0.9) : Color.primary.opacity(0.22),
-                        style: StrokeStyle(lineWidth: 1, dash: [5, 4])
+                        isImportTargeted ? Color.accentColor.opacity(0.9) : DesignTokens.DropZone.idleStroke,
+                        style: StrokeStyle(lineWidth: 1, dash: DesignTokens.DropZone.dash)
                     )
                     .allowsHitTesting(false)
             }
             // The complete dashed rectangle is one native click target —
             // not merely its icon or explanatory text.
-            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: DesignTokens.DropZone.cornerRadius, style: .continuous))
         }
         .padding(HUDLayout.contentInset)
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: isImportTargeted)  // TOK-motion.drop-target
+        .animation(reduceMotion ? nil : .easeOut(duration: DesignTokens.Motion.quick), value: isImportTargeted)  // TOK-motion.drop-target
         .onDrop(of: [.fileURL], isTargeted: $isImportTargeted, perform: loadDroppedFile)
     }
 
@@ -360,7 +360,7 @@ private struct HUDIconButton: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            withAnimation(.easeOut(duration: 0.10)) { isHovered = hovering }  // TOK-motion.hover
+            withAnimation(.easeOut(duration: DesignTokens.Motion.quick)) { isHovered = hovering }  // TOK-motion.hover
         }
         .accessibilityLabel(Text(labelKey))
     }

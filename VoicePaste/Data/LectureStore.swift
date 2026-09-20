@@ -68,8 +68,12 @@ public actor LectureStore: LectureStoring {
                         VALUES (?, ?, ?, ?, ?, ?)
                         """,
                     arguments: [
-                        paragraph.id.uuidString, lecture.id.uuidString, paragraph.orderIndex,
-                        paragraph.startMilliseconds, paragraph.endMilliseconds, paragraph.text,
+                        // Владелец берётся у самого абзаца: это его поле, и
+                        // расхождение с лекцией должно всплыть внешним ключом,
+                        // а не быть тихо переписано здесь.
+                        paragraph.id.uuidString, paragraph.lectureID.uuidString,
+                        paragraph.orderIndex, paragraph.startMilliseconds,
+                        paragraph.endMilliseconds, paragraph.text,
                     ]
                 )
             }

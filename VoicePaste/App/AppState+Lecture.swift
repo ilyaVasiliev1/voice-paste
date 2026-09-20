@@ -19,7 +19,13 @@ extension AppState {
     }
 
     private func beginLectureRecording() {
-        guard !isLectureRecording, dictationPhase == .idle else { return }
+        guard !isLectureRecording else { return }
+        // Обратный запрет — в `beginRecording()`. Здесь отказ объясняется:
+        // молча неработающая кнопка хуже честного отказа.
+        guard dictationPhase == .idle else {
+            presentHUD(.error(message: NSLocalizedString("lecture.busyWithDictation", comment: "")))
+            return
+        }
         lectureRecorder.cancel()
         do {
             try audioCapture.start()
@@ -58,15 +64,23 @@ extension AppState {
         let startedAt = lectureStartedAt ?? Date()
         lectureStartedAt = nil
 
-        guard let engine = try? await modelManager.ensureLoaded() else {
+        let paragraphs: [LectureParagraph]
+        if let engine = try? await modelManager.ensureLoaded() {
+            paragraphs = await lectureRecorder.finish(
+                transcriber: engine,
+                language: settings.languageMode,
+                totalSamples: samples
+            )
+        } else {
+            // Модель не поднялась — хвост досчитать нечем. Но всё, что уже
+            // распозналось за лекцию, лежит на экране и обязано быть
+            // сохранено: иначе час прослушанного исчезнет при следующем
+            // старте, когда `cancel()` очистит абзацы. Отказ виден, а не
+            // только в журнале.
+            paragraphs = lectureRecorder.paragraphs
+            presentHUD(.error(message: NSLocalizedString("lecture.tailNotTranscribed", comment: "")))
             await DiagnosticLog.shared.log("lecture.finish.noModel")
-            return
         }
-        let paragraphs = await lectureRecorder.finish(
-            transcriber: engine,
-            language: settings.languageMode,
-            totalSamples: samples
-        )
         await persistLecture(paragraphs: paragraphs, startedAt: startedAt, samples: samples.count)
     }
 
@@ -97,12 +111,81 @@ extension AppState {
         )
         do {
             try await lectureStore.save(detail)
+            await refreshSavedLectures()
         } catch {
             // Лекция уже на экране и никуда не делась — отказ хранилища не
             // отменяет прослушанного. Но молчать о нём нельзя: это ровно та
             // потеря, которую иначе замечают через неделю.
             await DiagnosticLog.shared.log(
                 "lecture.saveFailed",
+                detail: String(describing: error)
+            )
+        }
+    }
+
+    // MARK: - Сохранённые лекции
+
+    /// Перечитывает список сохранённых лекций.
+    public func refreshSavedLectures() async {
+        guard let lectureStore else { return }
+        do {
+            savedLectures = try await lectureStore.fetchAll()
+        } catch {
+            await DiagnosticLog.shared.log(
+                "lecture.listFailed",
+                detail: String(describing: error)
+            )
+        }
+    }
+
+    /// Открывает сохранённую лекцию для чтения. Идущую запись не трогает:
+    /// открыть чужую лекцию посреди своей — верный способ потерять её.
+    public func openSavedLecture(id: UUID) async {
+        guard !isLectureRecording, let lectureStore else { return }
+        do {
+            guard let detail = try await lectureStore.fetchDetail(id: id) else { return }
+            openedLecture = detail
+        } catch {
+            await DiagnosticLog.shared.log(
+                "lecture.openFailed",
+                detail: String(describing: error)
+            )
+        }
+    }
+
+    public func closeOpenedLecture() {
+        openedLecture = nil
+    }
+
+    public func renameLecture(id: UUID, title: String) async {
+        guard let lectureStore else { return }
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        do {
+            try await lectureStore.rename(
+                id: id,
+                title: trimmed,
+                updatedAt: Int64(Date().timeIntervalSince1970 * 1_000)
+            )
+            await refreshSavedLectures()
+            if openedLecture?.lecture.id == id { openedLecture?.lecture.title = trimmed }
+        } catch {
+            await DiagnosticLog.shared.log(
+                "lecture.renameFailed",
+                detail: String(describing: error)
+            )
+        }
+    }
+
+    public func deleteLecture(id: UUID) async {
+        guard let lectureStore else { return }
+        do {
+            try await lectureStore.delete(id: id)
+            if openedLecture?.lecture.id == id { openedLecture = nil }
+            await refreshSavedLectures()
+        } catch {
+            await DiagnosticLog.shared.log(
+                "lecture.deleteFailed",
                 detail: String(describing: error)
             )
         }

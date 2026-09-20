@@ -96,6 +96,11 @@ public final class AppState: ObservableObject {
     public let lectureRecorder = LectureRecorder()
     @Published public internal(set) var isLectureRecording = false
     @Published public internal(set) var lectureElapsedSeconds: Double = 0
+    /// Сохранённые лекции для списка. Пополняется после каждой записи.
+    @Published public internal(set) var savedLectures: [Lecture] = []
+    /// Открытая для чтения лекция. Пока она не `nil`, экран показывает её, а
+    /// не текущую запись.
+    @Published public internal(set) var openedLecture: LectureDetail?
     let lectureStore: (any LectureStoring)?
     var lectureStartedAt: Date?
     var lectureTimerTask: Task<Void, Never>?
@@ -344,6 +349,19 @@ public final class AppState: ObservableObject {
     // MARK: - Recording (L-004, DEP-003)
 
     private func beginRecording() {
+        // Микрофон и накопитель в приложении одни. Если идёт лекция, старт
+        // диктовки не «добавляет вторую запись», а рушит обе: `start()` молча
+        // возвращается на уже идущем захвате, а последующий `stop()` выгребает
+        // буфер лекции себе. Прежде это проходило без единой ошибки на экране,
+        // и лекция продолжала выглядеть записывающейся при остановленном
+        // микрофоне.
+        guard !isLectureRecording else {
+            dictationStateMachine.handleProcessingFinished()
+            dictationPhase = .idle
+            presentHUD(.error(message: NSLocalizedString("dictation.busyWithLecture", comment: "")))
+            Task { await DiagnosticLog.shared.log("dictation.refused.lectureRecording") }
+            return
+        }
         frontAppSnapshot = TextInserter.captureFrontAppSnapshot()
         // `L-010`: start loading the model the moment recording begins, so it
         // warms up *while the user is still speaking* if the one-time launch

@@ -90,6 +90,20 @@ final class DictationWindowPlannerTests: XCTestCase {
         XCTAssertNil(planner.tail(totalSamples: window - overlap))
     }
 
+    /// Условие `commit` намеренно строгое: фиксация не того отрезка означала
+    /// бы разъехавшуюся нарезку. Тест закрепляет, что проверка отмены в
+    /// вызывающем коде обязана стоять до фиксации, а не после.
+    func test_committingAPieceThatIsNotTheRequestedOne_isAProgrammerError() throws {
+        var planner = makePlanner()
+        let first = planner.closedWindow(availableSamples: window * 3)
+
+        planner.commit(try XCTUnwrap(first))
+
+        // Тот же отрезок второй раз — уже не тот, что запрошен сейчас.
+        XCTAssertNotEqual(planner.plannedUpTo, 0)
+        XCTAssertNotEqual(planner.closedWindow(availableSamples: window * 3), first)
+    }
+
     // MARK: - Покрытие без дыр
 
     /// Главное свойство: объединение всех выданных отрезков обязано покрыть

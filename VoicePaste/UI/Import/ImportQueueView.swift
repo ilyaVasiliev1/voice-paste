@@ -24,7 +24,7 @@ struct ImportQueueView: View {
                     queue
                 }
             }
-            .padding(24)
+            .padding(DesignTokens.detailPanePadding)
             .frame(maxWidth: 860, alignment: .leading)
         }
         .onDrop(of: [.fileURL], isTargeted: $isDropTargeted, perform: acceptDrop)
@@ -56,22 +56,22 @@ struct ImportQueueView: View {
             }
             .frame(maxWidth: .infinity, minHeight: 190)
             .padding(20)
-            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: DesignTokens.DropZone.cornerRadius, style: .continuous))
         }
         .buttonStyle(.plain)
         .background(
-            isDropTargeted ? Color.accentColor.opacity(0.10) : Color.primary.opacity(0.035),
-            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+            DesignTokens.DropZone.fill(isTargeted: isDropTargeted),
+            in: RoundedRectangle(cornerRadius: DesignTokens.DropZone.cornerRadius, style: .continuous)
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: DesignTokens.DropZone.cornerRadius, style: .continuous)
                 .strokeBorder(
-                    isDropTargeted ? Color.accentColor.opacity(0.9) : Color.primary.opacity(0.18),
-                    style: StrokeStyle(lineWidth: 1, dash: [6, 5])
+                    isDropTargeted ? Color.accentColor.opacity(0.9) : DesignTokens.DropZone.idleStroke,
+                    style: StrokeStyle(lineWidth: 1, dash: DesignTokens.DropZone.dash)
                 )
                 .allowsHitTesting(false)
         }
-        .animation(.easeOut(duration: 0.14), value: isDropTargeted)
+        .animation(.easeOut(duration: DesignTokens.Motion.quick), value: isDropTargeted)
         .accessibilityLabel("Добавить аудио или видео")
         .accessibilityHint("Открывает Finder для выбора файла")
     }
@@ -181,7 +181,7 @@ private struct QueueRow: View {
             }
         }
         .padding(12)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: DesignTokens.cardCornerRadius, style: .continuous))
     }
 
     private var remainingText: String {

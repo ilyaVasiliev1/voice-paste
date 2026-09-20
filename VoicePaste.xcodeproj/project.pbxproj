@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		C0000000000000000000011C /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000011B /* App.swift */; };
+		C000000000000000000009C1 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = C000000000000000000009C0 /* DesignTokens.swift */; };
 		C000000000000000000009B3 /* LectureRecorderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C000000000000000000009B2 /* LectureRecorderTests.swift */; };
 		C000000000000000000009B1 /* LectureStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C000000000000000000009B0 /* LectureStoreTests.swift */; };
 		C0000000000000000000098D /* LectureParagraphBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000098C /* LectureParagraphBuilderTests.swift */; };
@@ -116,6 +117,7 @@
 		A10000000000000000000015 /* VoicePaste.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoicePaste.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000016 /* VoicePasteTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VoicePasteTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C0000000000000000000011B /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
+		C000000000000000000009C0 /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
 		C000000000000000000009B2 /* LectureRecorderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureRecorderTests.swift; sourceTree = "<group>"; };
 		C000000000000000000009B0 /* LectureStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureStoreTests.swift; sourceTree = "<group>"; };
 		C0000000000000000000098C /* LectureParagraphBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureParagraphBuilderTests.swift; sourceTree = "<group>"; };
@@ -449,6 +451,7 @@
 		C00000000000000000000112 /* UI */ = {
 			isa = PBXGroup;
 			children = (
+				C000000000000000000009C0 /* DesignTokens.swift */,
 				C000000000000000000009A1 /* Lecture */,
 				C00000000000000000000504 /* Dashboard */,
 				C00000000000000000000113 /* History */,
@@ -693,6 +696,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C000000000000000000009C1 /* DesignTokens.swift in Sources */,
 				C0000000000000000000098B /* LectureView.swift in Sources */,
 				C00000000000000000000989 /* AppState+Lecture.swift in Sources */,
 				C00000000000000000000987 /* LectureStore.swift in Sources */,

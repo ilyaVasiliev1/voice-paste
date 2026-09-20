@@ -10,23 +10,26 @@ struct LectureView: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject var recorder: LectureRecorder
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selectedText = ""
     @State private var isTranslationPresented = false
+    @State private var isRenaming = false
+    @State private var renameTitle = ""
 
     var body: some View {
         VStack(spacing: 0) {
             header
             Divider()
-            if recorder.paragraphs.isEmpty {
-                ContentUnavailableView(
-                    "lecture.empty.title",
-                    systemImage: "text.book.closed",
-                    description: Text("lecture.empty.description")
-                )
-                .frame(maxHeight: .infinity)
-            } else {
-                transcript
+            content
+        }
+        .task { await appState.refreshSavedLectures() }
+        .alert("lecture.rename", isPresented: $isRenaming) {
+            TextField("lecture.rename", text: $renameTitle)
+            Button("lecture.rename.confirm") {
+                guard let id = appState.openedLecture?.lecture.id else { return }
+                Task { await appState.renameLecture(id: id, title: renameTitle) }
             }
+            Button("lecture.rename.cancel", role: .cancel) {}
         }
         // Системный переводчик macOS 15: работает на устройстве и текст
         // наружу не отправляет — иначе обещание офлайна было бы нарушено.
@@ -34,13 +37,26 @@ struct LectureView: View {
     }
 
     private var header: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(appState.openedLecture?.lecture.title ?? NSLocalizedString("lecture.section", comment: ""))
+                .font(.title2.weight(.semibold))
+            controls
+        }
+        .padding(.horizontal, DesignTokens.detailPanePadding)
+        .padding(.vertical, 16)
+    }
+
+    private var controls: some View {
         HStack(spacing: 12) {
             Button {
                 appState.toggleLectureRecording()
             } label: {
+                // `waveform` — общий значок голосового ввода в продукте.
+                // Своя пара символов на этом экране означала бы, что одно и
+                // то же действие называется по-разному в разных местах.
                 Label(
                     appState.isLectureRecording ? "lecture.stop" : "lecture.start",
-                    systemImage: appState.isLectureRecording ? "stop.circle.fill" : "record.circle"
+                    systemImage: appState.isLectureRecording ? "stop.fill" : "waveform"
                 )
             }
             .keyboardShortcut("l", modifiers: [.command, .shift])
@@ -63,6 +79,25 @@ struct LectureView: View {
                     .foregroundStyle(.secondary)
             }
 
+            if let opened = appState.openedLecture {
+                Button {
+                    appState.closeOpenedLecture()
+                } label: {
+                    Label("lecture.backToList", systemImage: "chevron.backward")
+                }
+                Button {
+                    TextInserter.copyToClipboard(opened.plainText)
+                } label: {
+                    Label("lecture.copyAll", systemImage: "doc.on.doc")
+                }
+                Button {
+                    renameTitle = opened.lecture.title
+                    isRenaming = true
+                } label: {
+                    Label("lecture.rename", systemImage: "pencil")
+                }
+            }
+
             Spacer()
 
             if let language = recorder.detectedLanguage {
@@ -71,15 +106,77 @@ struct LectureView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
     }
 
-    private var transcript: some View {
+    /// Что показывать: открытую сохранённую лекцию, текущую запись или
+    /// список сохранённых. Список — не украшение: лекция, которую записали и
+    /// не могут открыть, записана впустую.
+    @ViewBuilder
+    private var content: some View {
+        if let opened = appState.openedLecture {
+            paragraphList(opened.paragraphs.map {
+                LectureParagraph(
+                    text: $0.text,
+                    startSeconds: Double($0.startMilliseconds) / 1_000,
+                    endSeconds: Double($0.endMilliseconds) / 1_000
+                )
+            }, followsTail: false)
+        } else if !recorder.paragraphs.isEmpty {
+            paragraphList(recorder.paragraphs, followsTail: true)
+        } else if appState.savedLectures.isEmpty {
+            ContentUnavailableView(
+                "lecture.empty.title",
+                systemImage: "text.book.closed",
+                description: Text("lecture.empty.description")
+            )
+            .frame(maxHeight: .infinity)
+        } else {
+            savedList
+        }
+    }
+
+    private var savedList: some View {
+        List(appState.savedLectures) { lecture in
+            Button {
+                Task { await appState.openSavedLecture(id: lecture.id) }
+            } label: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(lecture.title).font(.headline)
+                    Text(Self.summary(for: lecture))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .contextMenu {
+                Button(role: .destructive) {
+                    Task { await appState.deleteLecture(id: lecture.id) }
+                } label: {
+                    Label("lecture.delete", systemImage: "trash")
+                }
+            }
+        }
+    }
+
+    private static func summary(for lecture: Lecture) -> String {
+        let minutes = lecture.durationMilliseconds / 60_000
+        return String(
+            format: NSLocalizedString("lecture.row.summary", comment: ""),
+            minutes,
+            lecture.wordCount
+        )
+    }
+
+    private func paragraphList(
+        _ paragraphs: [LectureParagraph],
+        followsTail: Bool
+    ) -> some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 18) {
-                    ForEach(Array(recorder.paragraphs.enumerated()), id: \.offset) { index, paragraph in
+                    ForEach(Array(paragraphs.enumerated()), id: \.offset) { index, paragraph in
                         LectureParagraphRow(
                             paragraph: paragraph,
                             onTranslate: {
@@ -90,14 +187,15 @@ struct LectureView: View {
                         .id(index)
                     }
                 }
-                .padding(16)
+                .padding(DesignTokens.detailPanePadding)
                 .textSelection(.enabled)
             }
-            .onChange(of: recorder.paragraphs.count) { _, count in
+            .onChange(of: paragraphs.count) { _, count in
                 // Лекция идёт — экран держится конца, иначе за говорящим
-                // придётся гоняться руками.
-                guard appState.isLectureRecording, count > 0 else { return }
-                withAnimation(.easeOut(duration: 0.2)) {
+                // придётся гоняться руками. У открытой на чтение лекции
+                // прокрутка остаётся за человеком.
+                guard followsTail, appState.isLectureRecording, count > 0 else { return }
+                withAnimation(reduceMotion ? nil : .easeOut(duration: DesignTokens.Motion.deliberate)) {
                     proxy.scrollTo(count - 1, anchor: .bottom)
                 }
             }

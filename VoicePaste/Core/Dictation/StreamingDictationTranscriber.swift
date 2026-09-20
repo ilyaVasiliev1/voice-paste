@@ -148,13 +148,19 @@ final class StreamingDictationTranscriber {
                 let result = try await transcriber.transcribe(
                     TranscriptionRequest(samples: samples, language: language)
                 )
+                // Проверка отмены обязана стоять до фиксации, а не после.
+                // Распознавание не прерывается на полуслове, и пока оно шло,
+                // `finish()` или `cancel()` могли переустановить нарезку. Тогда
+                // фиксация окна, посчитанного для прежней нарезки, нарушает
+                // условие `commit` и роняет процесс. Отменённый результат
+                // просто выбрасывается.
+                if Task.isCancelled { return }
                 planner.commit(window)
                 absorb(result)
             } catch {
                 failure = error
                 return
             }
-            if Task.isCancelled { return }
         }
     }
 

@@ -159,6 +159,36 @@ final class LectureRecorderTests: XCTestCase {
         XCTAssertNil(recorder.detectedLanguage)
     }
 
+    /// Модель нередко склеивает перекрывшийся хвост с новыми словами в один
+    /// сегмент. Раньше он выбрасывался целиком — вместе с новыми словами.
+    func test_segmentStraddlingTheOverlap_isKeptInsteadOfDropped() async throws {
+        let recorder = LectureRecorder(pollInterval: .milliseconds(5))
+        let window = LectureRecorder.windowSeconds
+        let model = ScriptedLectureTranscriber(scripts: [
+            [SegmentSeed(text: "Первое окно кончается тут.", start: 0, end: window)],
+            // Начинается до конца принятого (перекрытие), кончается после:
+            // в нём и повтор, и новые слова.
+            [SegmentSeed(text: "тут и продолжается дальше.", start: 0, end: 4)],
+        ])
+        let available = Box(Int(window * 2) * sampleRate)
+
+        recorder.begin(
+            transcriber: model,
+            language: .auto,
+            pauseSeconds: 2,
+            availableSamples: { available.value },
+            readSamples: { [weak self] range in self?.samples(seconds: Double(range.count) / 16_000) ?? [] }
+        )
+        try await waitUntil { await model.callCount >= 2 }
+        let text = recorder.paragraphs.map(\.text).joined(separator: " ")
+        recorder.cancel()
+
+        XCTAssertTrue(
+            text.contains("продолжается дальше"),
+            "Новые слова в сегменте, начавшемся до границы, теряться не должны. Получено: \(text)"
+        )
+    }
+
     // MARK: - Вспомогательное
 
     /// Условие читает состояние записи, а оно живёт на главном акторе —

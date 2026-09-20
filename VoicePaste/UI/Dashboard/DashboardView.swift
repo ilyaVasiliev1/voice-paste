@@ -11,6 +11,9 @@ struct DashboardView: View {
 
     @EnvironmentObject private var appState: AppState
     @State private var stats = UsageStats.empty
+    /// Статистику не удалось прочитать. Поднято, чтобы отказ не
+    /// выдавался за отсутствие данных.
+    @State private var didFailToLoad = false
     @State private var period: Period = .month
     @State private var selectedDay: DailyUsageStat?
 
@@ -22,7 +25,7 @@ struct DashboardView: View {
                 metrics
                 chart
             }
-            .padding(24)
+            .padding(DesignTokens.detailPanePadding)
         }
         .task {
             await load()
@@ -59,7 +62,7 @@ struct DashboardView: View {
             .padding(.horizontal, 12).padding(.vertical, 9)
         }
         .buttonStyle(.plain)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: DesignTokens.cardCornerRadius, style: .continuous))
     }
 
     private var metrics: some View {
@@ -77,7 +80,7 @@ struct DashboardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: DesignTokens.cardCornerRadius, style: .continuous))
     }
 
     private var chart: some View {
@@ -88,8 +91,22 @@ struct DashboardView: View {
                 if let selectedDay { tooltip(for: selectedDay) }
             }
             if stats.dailyStats.isEmpty || stats.totalTranscriptCount == 0 {
-                ContentUnavailableView("Здесь появится статистика", systemImage: "chart.line.uptrend.xyaxis")
-                    .frame(maxWidth: .infinity, minHeight: 210)
+                Group {
+                    if didFailToLoad {
+                        // Отказ базы больше не выдаётся за «записей нет».
+                        ContentUnavailableView(
+                            "dashboard.statsFailed.title",
+                            systemImage: "exclamationmark.triangle",
+                            description: Text("dashboard.statsFailed.description")
+                        )
+                    } else {
+                        ContentUnavailableView(
+                            "Здесь появится статистика",
+                            systemImage: "chart.line.uptrend.xyaxis"
+                        )
+                    }
+                }
+                .frame(maxWidth: .infinity, minHeight: 210)
             } else {
                 Chart(stats.dailyStats, id: \.day) { item in
                     AreaMark(x: .value("Период", item.day, unit: period == .day ? .hour : .day), y: .value("Слова", item.wordCount))
@@ -127,7 +144,7 @@ struct DashboardView: View {
                 .font(.caption).foregroundStyle(.secondary)
         }
         .padding(14)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: DesignTokens.cardCornerRadius, style: .continuous))
     }
 
     private func tooltip(for day: DailyUsageStat) -> some View {
@@ -152,6 +169,22 @@ struct DashboardView: View {
     }
 
     private func load() async {
-        stats = (try? await appState.historyStore.fetchUsageStats(now: Date(), dayCount: period.rawValue)) ?? .empty
+        do {
+            stats = try await appState.historyStore.fetchUsageStats(
+                now: Date(),
+                dayCount: period.rawValue
+            )
+            didFailToLoad = false
+        } catch {
+            // Прежде отказ базы подменялся пустой статистикой и становился
+            // неотличим от честного «вы ещё ничего не наговорили». Это тот же
+            // класс дефекта, что исправлен в `DetailEditor`: молчаливый отказ
+            // выглядит успехом.
+            didFailToLoad = true
+            await DiagnosticLog.shared.log(
+                "dashboard.statsFailed",
+                detail: String(describing: error)
+            )
+        }
     }
 }

@@ -125,9 +125,16 @@ public final class LectureRecorder: ObservableObject {
                 transcriber: transcriber,
                 language: language
             )
+            // До фиксации, а не после: распознавание не прерывается на
+            // полуслове, и пока оно шло, остановка или отмена могли
+            // переустановить нарезку. Фиксация окна от прежней нарезки
+            // нарушает условие `commit` и роняет процесс.
+            if Task.isCancelled {
+                isCatchingUp = false
+                return
+            }
             planner.commit(window)
             isCatchingUp = false
-            if Task.isCancelled { return }
         }
     }
 
@@ -150,12 +157,19 @@ public final class LectureRecorder: ObservableObject {
                 TranscriptionRequest(samples: samples, language: language)
             )
             if detectedLanguage == nil { detectedLanguage = result.detectedLanguage }
-            // Перекрытие окон даёт повторы на стыке. Сегмент, начавшийся
-            // раньше конца уже принятого, отбрасывается: он уже показан.
+            // Перекрытие окон даёт повторы на стыке. Отбрасывается только
+            // сегмент, целиком лежащий в уже принятом времени.
+            //
+            // Раньше условием было `startSeconds >= lastEnd`, и это теряло
+            // речь: модель нередко склеивает перекрывшийся хвост с новыми
+            // словами в один сегмент, который начинается до границы, а
+            // кончается после. Такой сегмент выбрасывался целиком — вместе с
+            // новыми словами. Размен сделан в сторону повтора: увидеть слово
+            // дважды неприятно, не увидеть вовсе — потеря.
             let lastEnd = segments.last?.endSeconds ?? -.infinity
             let fresh = result.segments
                 .map { $0.offset(by: offset) }
-                .filter { $0.startSeconds >= lastEnd }
+                .filter { $0.endSeconds > lastEnd }
             segments.append(contentsOf: fresh)
             paragraphs = LectureParagraphBuilder.build(from: segments, pauseSeconds: pauseSeconds)
         } catch {
