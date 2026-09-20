@@ -8,6 +8,12 @@ set -euo pipefail
 PROJECT_ROOT="${0:A:h:h}"
 DERIVED_DATA="$PROJECT_ROOT/.tmp/safe-tests"
 CACHE_ROOT="$PROJECT_ROOT/.tmp/test-caches"
+# The pinned SPM checkout lives outside .tmp on purpose: `-disableAutomatic-
+# PackageResolution` below means a missing checkout fails the run instead of
+# fetching, and .tmp is both git-ignored and the first thing a cleanup wipes.
+# Keeping it per-machine lets `rm -rf .tmp` stay free on a metered or tunnelled
+# link, where re-fetching WhisperKit and GRDB is the slowest step by far.
+SOURCE_PACKAGES="${SOURCE_PACKAGES_DIR:-$HOME/Library/Caches/VoicePaste/SourcePackages}"
 TEST_APP_EXECUTABLE="$DERIVED_DATA/Build/Products/Debug/VoicePaste.app/Contents/MacOS/VoicePaste"
 
 function matching_processes() {
@@ -51,7 +57,7 @@ nice -n 15 xcodebuild \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
   -derivedDataPath "$DERIVED_DATA" \
-  -clonedSourcePackagesDirPath "$DERIVED_DATA/SourcePackages" \
+  -clonedSourcePackagesDirPath "$SOURCE_PACKAGES" \
   -packageCachePath "$CACHE_ROOT/packages" \
   -disablePackageRepositoryCache \
   -disableAutomaticPackageResolution \

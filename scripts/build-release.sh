@@ -21,7 +21,7 @@ NOTARY_PROFILE="${NOTARY_PROFILE:-}"
 DERIVED_DATA="$PROJECT_ROOT/.tmp/release"
 OUTPUT_DIR="$PROJECT_ROOT/.tmp/release-artifacts"
 APP_PATH="$DERIVED_DATA/Build/Products/Release/VoicePaste.app"
-PACKAGE_CACHE="${SOURCE_PACKAGES_DIR:-$PROJECT_ROOT/.tmp/safe-tests/SourcePackages}"
+PACKAGE_CACHE="${SOURCE_PACKAGES_DIR:-$HOME/Library/Caches/VoicePaste/SourcePackages}"
 BUILD_CACHE="$PROJECT_ROOT/.tmp/release-caches"
 
 mkdir -p "$OUTPUT_DIR" "$BUILD_CACHE/clang" "$BUILD_CACHE/swiftpm" "$BUILD_CACHE/xdg" "$BUILD_CACHE/user-home"
