@@ -22,7 +22,16 @@ struct VoicePasteApp: App {
         let settings: AppSettings
         let modelDirectory: URL
         if isRunningTests {
-            let defaults = UserDefaults(suiteName: "VoicePaste-TestHost-\(UUID().uuidString)")!
+            let suiteName = "VoicePaste-TestHost-\(UUID().uuidString)"
+            guard let defaults = UserDefaults(suiteName: suiteName) else {
+                // `UserDefaults(suiteName:)` returns nil only when the name
+                // collides with the bundle identifier or the global domain,
+                // which a UUID-based name cannot. Falling back to `.standard`
+                // would write the user's real preferences from a test run —
+                // the precise thing this branch exists to prevent — so fail
+                // loudly rather than quietly doing the forbidden thing.
+                fatalError("VoicePaste: could not open an isolated defaults suite for the test host")
+            }
             settings = AppSettings(defaults: defaults)
             modelDirectory = FileManager.default.temporaryDirectory
                 .appendingPathComponent("VoicePaste-TestHost-\(UUID().uuidString)", isDirectory: true)
