@@ -15,6 +15,7 @@ public final class AppSettings: ObservableObject {
         static let languageMode = "languageMode"
         static let showInDock = "showInDock"
         static let modelDownloadSource = "modelDownloadSource"
+        static let lectureParagraphPauseSeconds = "lectureParagraphPauseSeconds"
     }
 
     private let defaults: UserDefaults
@@ -65,6 +66,20 @@ public final class AppSettings: ObservableObject {
     /// Default `true`. When disabled, the app stays available from the menu
     /// bar but is absent from the Dock and app switcher.
     @Published public var showInDock: Bool { didSet { persist() } }
+
+    /// Пауза, с которой в учебном режиме начинается новый абзац. От 1 до 10
+    /// секунд, по умолчанию 2 — у разных говорящих разный темп, поэтому это
+    /// настройка, а не константа.
+    @Published public var lectureParagraphPauseSeconds: Double {
+        didSet {
+            let clamped = LectureParagraphBuilder.clampPause(lectureParagraphPauseSeconds)
+            guard clamped == lectureParagraphPauseSeconds else {
+                lectureParagraphPauseSeconds = clamped
+                return
+            }
+            persist()
+        }
+    }
     /// Default `.github` (`AT-093`, `L-010`) — the project's own release is
     /// the only source reachable from mainland China. Applies to the *next* model
     /// download (and any tokenizer/config re-fetch); never re-downloads an
@@ -118,6 +133,10 @@ public final class AppSettings: ObservableObject {
         // that could drift from it.
         self.launchAtLogin = Self.isEnabled(loginItemRegistry.status)
         self.showInDock = defaults.object(forKey: Keys.showInDock) as? Bool ?? true
+        self.lectureParagraphPauseSeconds = LectureParagraphBuilder.clampPause(
+            defaults.object(forKey: Keys.lectureParagraphPauseSeconds) as? Double
+                ?? LectureParagraphBuilder.defaultPauseSeconds
+        )
         self.modelDownloadSource =
             ModelDownloadSource(rawValue: defaults.string(forKey: Keys.modelDownloadSource) ?? "") ?? .github
         // `historyEnabled`'s own `didSet` above doesn't fire for this

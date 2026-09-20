@@ -87,6 +87,23 @@ private struct SettingsBody: View {
                 // switch snaps back to reality if that request fails.
                 Toggle("settings.general.launchAtLogin", isOn: $settings.launchAtLogin)
                 Toggle("settings.general.showInDock", isOn: $settings.showInDock)
+                // Порог паузы для абзацев лекции: у разных говорящих разный
+                // темп, поэтому это настройка, а не константа.
+                LabeledContent("settings.lecture.pause") {
+                    HStack {
+                        Slider(
+                            value: $settings.lectureParagraphPauseSeconds,
+                            in: LectureParagraphBuilder.pauseRange,
+                            step: 0.5
+                        )
+                        Text(String(format: "%.1f с", settings.lectureParagraphPauseSeconds))
+                            .font(.system(.body, design: .monospaced))
+                            .frame(width: 56, alignment: .trailing)
+                    }
+                }
+                Text("settings.lecture.pauseDescription")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                     .onChange(of: settings.showInDock) { _, _ in appState.applyDockVisibility() }
             }
             permissionsControls

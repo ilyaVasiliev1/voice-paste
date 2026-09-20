@@ -188,6 +188,20 @@
 "history.empty.description" = "Начните диктовку или транскрибируйте файл, чтобы увидеть историю.";
 "history.detail.empty" = "Выберите запись, чтобы увидеть текст";
 "history.detail.saveFailed" = "Правка не сохранена";
+
+/* Учебный режим */
+"lecture.section" = "Лекции";
+"lecture.start" = "Начать лекцию";
+"lecture.stop" = "Остановить";
+"lecture.elapsed" = "Идёт запись";
+"lecture.catchingUp" = "распознаётся…";
+"lecture.empty.title" = "Здесь появится расшифровка лекции";
+"lecture.empty.description" = "Нажмите «Начать лекцию» — текст будет пополняться по ходу, абзацами по паузам говорящего.";
+"lecture.translate" = "Перевести";
+"lecture.copyParagraph" = "Скопировать абзац";
+"lecture.paragraph.startsAt" = "Начало абзаца";
+"settings.lecture.pause" = "Пауза для нового абзаца";
+"settings.lecture.pauseDescription" = "Пауза длиннее этого значения начинает новый абзац в расшифровке лекции.";
 "history.source.dictation" = "Диктовка";
 "history.source.file" = "Файл";
 "history.toolbar.copy" = "Копировать";

@@ -8,6 +8,15 @@
 
 /* Begin PBXBuildFile section */
 		C0000000000000000000011C /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000011B /* App.swift */; };
+		C000000000000000000009B3 /* LectureRecorderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C000000000000000000009B2 /* LectureRecorderTests.swift */; };
+		C000000000000000000009B1 /* LectureStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C000000000000000000009B0 /* LectureStoreTests.swift */; };
+		C0000000000000000000098D /* LectureParagraphBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000098C /* LectureParagraphBuilderTests.swift */; };
+		C0000000000000000000098B /* LectureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000098A /* LectureView.swift */; };
+		C00000000000000000000989 /* AppState+Lecture.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000988 /* AppState+Lecture.swift */; };
+		C00000000000000000000987 /* LectureStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000986 /* LectureStore.swift */; };
+		C00000000000000000000985 /* Lecture.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000984 /* Lecture.swift */; };
+		C00000000000000000000983 /* LectureRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000982 /* LectureRecorder.swift */; };
+		C00000000000000000000981 /* LectureParagraphBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000980 /* LectureParagraphBuilder.swift */; };
 		C0000000000000000000011E /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000011D /* AppState.swift */; };
 		C00000000000000000000120 /* AudioCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000011F /* AudioCaptureService.swift */; };
 		C00000000000000000000122 /* DictationStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000121 /* DictationStateMachine.swift */; };
@@ -107,6 +116,15 @@
 		A10000000000000000000015 /* VoicePaste.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoicePaste.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000016 /* VoicePasteTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VoicePasteTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C0000000000000000000011B /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
+		C000000000000000000009B2 /* LectureRecorderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureRecorderTests.swift; sourceTree = "<group>"; };
+		C000000000000000000009B0 /* LectureStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureStoreTests.swift; sourceTree = "<group>"; };
+		C0000000000000000000098C /* LectureParagraphBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureParagraphBuilderTests.swift; sourceTree = "<group>"; };
+		C0000000000000000000098A /* LectureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureView.swift; sourceTree = "<group>"; };
+		C00000000000000000000988 /* AppState+Lecture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState+Lecture.swift"; sourceTree = "<group>"; };
+		C00000000000000000000986 /* LectureStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureStore.swift; sourceTree = "<group>"; };
+		C00000000000000000000984 /* Lecture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Lecture.swift; sourceTree = "<group>"; };
+		C00000000000000000000982 /* LectureRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureRecorder.swift; sourceTree = "<group>"; };
+		C00000000000000000000980 /* LectureParagraphBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureParagraphBuilder.swift; sourceTree = "<group>"; };
 		C0000000000000000000011D /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		C0000000000000000000011F /* AudioCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioCaptureService.swift; sourceTree = "<group>"; };
 		C00000000000000000000121 /* DictationStateMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationStateMachine.swift; sourceTree = "<group>"; };
@@ -229,6 +247,23 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		C000000000000000000009A1 /* Lecture */ = {
+			isa = PBXGroup;
+			children = (
+				C0000000000000000000098A /* LectureView.swift */,
+			);
+			path = Lecture;
+			sourceTree = "<group>";
+		};
+		C000000000000000000009A0 /* Lecture */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000982 /* LectureRecorder.swift */,
+				C00000000000000000000980 /* LectureParagraphBuilder.swift */,
+			);
+			path = Lecture;
+			sourceTree = "<group>";
+		};
 		C00000000000000000000101 /* VoicePaste */ = {
 			isa = PBXGroup;
 			children = (
@@ -245,6 +280,7 @@
 		C00000000000000000000102 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				C00000000000000000000988 /* AppState+Lecture.swift */,
 				C0000000000000000000011B /* App.swift */,
 				C0000000000000000000011D /* AppState.swift */,
 				C00000000000000000000300 /* AppDelegate.swift */,
@@ -255,6 +291,7 @@
 		C00000000000000000000103 /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				C000000000000000000009A0 /* Lecture */,
 				C00000000000000000000104 /* Audio */,
 				C00000000000000000000105 /* Dictation */,
 				C00000000000000000000106 /* HUD */,
@@ -386,6 +423,7 @@
 		C00000000000000000000110 /* Data */ = {
 			isa = PBXGroup;
 			children = (
+				C00000000000000000000986 /* LectureStore.swift */,
 				C00000000000000000000149 /* AppDatabase.swift */,
 				C0000000000000000000014B /* HistoryStore.swift */,
 				C0000000000000000000014D /* Migrations.swift */,
@@ -398,6 +436,7 @@
 		C00000000000000000000111 /* Domain */ = {
 			isa = PBXGroup;
 			children = (
+				C00000000000000000000984 /* Lecture.swift */,
 				C00000000000000000000151 /* HistoryStoring.swift */,
 				C00000000000000000000153 /* Transcript.swift */,
 				C00000000000000000000155 /* TranscriptListItem.swift */,
@@ -410,6 +449,7 @@
 		C00000000000000000000112 /* UI */ = {
 			isa = PBXGroup;
 			children = (
+				C000000000000000000009A1 /* Lecture */,
 				C00000000000000000000504 /* Dashboard */,
 				C00000000000000000000113 /* History */,
 				C00000000000000000000114 /* Import */,
@@ -485,6 +525,9 @@
 		C0000000000000000000011A /* VoicePasteTests */ = {
 			isa = PBXGroup;
 			children = (
+				C000000000000000000009B2 /* LectureRecorderTests.swift */,
+				C000000000000000000009B0 /* LectureStoreTests.swift */,
+				C0000000000000000000098C /* LectureParagraphBuilderTests.swift */,
 				C00000000000000000000169 /* AppTests.swift */,
 				C0000000000000000000016B /* DictationStateMachineTests.swift */,
 				C0000000000000000000016D /* TextNormalizerTests.swift */,
@@ -650,6 +693,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C0000000000000000000098B /* LectureView.swift in Sources */,
+				C00000000000000000000989 /* AppState+Lecture.swift in Sources */,
+				C00000000000000000000987 /* LectureStore.swift in Sources */,
+				C00000000000000000000985 /* Lecture.swift in Sources */,
+				C00000000000000000000983 /* LectureRecorder.swift in Sources */,
+				C00000000000000000000981 /* LectureParagraphBuilder.swift in Sources */,
 				C0000000000000000000011C /* App.swift in Sources */,
 				C0000000000000000000011E /* AppState.swift in Sources */,
 				C00000000000000000000301 /* AppDelegate.swift in Sources */,
@@ -709,6 +758,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C000000000000000000009B3 /* LectureRecorderTests.swift in Sources */,
+				C000000000000000000009B1 /* LectureStoreTests.swift in Sources */,
+				C0000000000000000000098D /* LectureParagraphBuilderTests.swift in Sources */,
 				C0000000000000000000016A /* AppTests.swift in Sources */,
 				C0000000000000000000016C /* DictationStateMachineTests.swift in Sources */,
 				C0000000000000000000016E /* TextNormalizerTests.swift in Sources */,
@@ -787,7 +839,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = VoicePaste/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 0.1.15;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ilyavasiliev.voicepaste;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -813,7 +865,7 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = VoicePaste/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 0.1.15;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ilyavasiliev.voicepaste;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -833,7 +885,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ilyavasiliev.voicepaste.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_STRICT_CONCURRENCY = complete;
@@ -848,7 +900,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ilyavasiliev.voicepaste.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_STRICT_CONCURRENCY = complete;

@@ -99,7 +99,7 @@ xcodebuild -scheme VoicePaste -destination 'platform=macOS' \
 
 ## Среда и подпись
 
-Xcode 26+, Swift 6, цель — macOS 14 и новее на Apple Silicon. Приложение не в
+Xcode 26+, Swift 6, цель — macOS 15 и новее на Apple Silicon. Приложение не в
 песочнице: ему нужны микрофон и универсальный доступ, а установка идёт не через
 App Store.
 

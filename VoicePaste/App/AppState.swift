@@ -14,6 +14,7 @@ public enum MainContentSection: Hashable, Sendable {
     case history
     case dashboard
     case importQueue
+    case lecture
 }
 
 /// Central orchestrator wiring `L-001` through `L-008`/`L-010` together:
@@ -49,7 +50,10 @@ public final class AppState: ObservableObject {
     @Published public var requestedMainContentSection: MainContentSection?
 
     private var dictationStateMachine: DictationStateMachine
-    private let audioCapture = AudioCaptureService()
+    /// `internal`, а не `private`: захват нужен и учебному режиму,
+    /// живущему в `AppState+Lecture.swift`. Микрофон один, и заводить
+    /// второй захват ради инкапсуляции значило бы драться за устройство.
+    let audioCapture = AudioCaptureService()
     /// Считает закрывшиеся окна длинной записи, пока она идёт, чтобы после
     /// остановки досчитывался только хвост. Короткую диктовку не трогает:
     /// планировщик не выдаёт окон, пока их не набралось, и запись уходит в
@@ -84,6 +88,18 @@ public final class AppState: ObservableObject {
     /// onboarding appear to disappear behind System Settings.
     private var isOnboardingVisible = false
 
+    // MARK: - Учебный режим
+
+    /// Ведёт запись лекции и держит её абзацы. Отдельный объект, а не поля
+    /// здесь: у лекции своя нарезка, свои времена и своя жизнь, не связанная
+    /// с диктовкой.
+    public let lectureRecorder = LectureRecorder()
+    @Published public internal(set) var isLectureRecording = false
+    @Published public internal(set) var lectureElapsedSeconds: Double = 0
+    let lectureStore: (any LectureStoring)?
+    var lectureStartedAt: Date?
+    var lectureTimerTask: Task<Void, Never>?
+
     // MARK: - HUD import drop zone (UI-006, second spec-required surface)
 
     /// Whether the HUD is currently showing the import drop
@@ -103,9 +119,11 @@ public final class AppState: ObservableObject {
         modelManager: ModelManager,
         historyStore: any HistoryStoring,
         importManager: ImportManager,
+        lectureStore: (any LectureStoring)? = nil,
         persistenceFailureMessage: String? = nil,
         enableGlobalHotkey: Bool = !ProcessRuntime.isRunningTests
     ) {
+        self.lectureStore = lectureStore
         self.settings = settings
         self.modelManager = modelManager
         self.readiness = ReadinessCoordinator(modelManager: modelManager)
@@ -132,6 +150,11 @@ public final class AppState: ObservableObject {
         // right-side workspace and the small queue line in Statistics must
         // redraw for every staged/progress/completion update.
         self.importManager.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &forwardingCancellables)
+        // Абзацы лекции пополняются во время записи — экран обязан
+        // перерисовываться, иначе текст «появится» только после остановки.
+        self.lectureRecorder.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &forwardingCancellables)
 
@@ -561,6 +584,10 @@ public final class AppState: ObservableObject {
         openMainOrOnboarding(section: .importQueue)
     }
 
+    public func openLecture() {
+        openMainOrOnboarding(section: .lecture)
+    }
+
     /// `INV-015`/`AT-088`/`AT-089` single router: every entry point that
     /// wants the app's one permanent window — the menu bar's "Открыть
     /// VoicePaste"/"Статистика", the HUD's "Открыть в истории"/import-queue
@@ -670,7 +697,10 @@ public final class AppState: ObservableObject {
     /// status plaques) — routes through here instead of calling
     /// `hud.present` directly so switching away from the import surface
     /// always tears down its progress subscription first.
-    private func presentHUD(_ state: HUDState) {
+    /// `internal`, а не `private`: показать отказ микрофона нужно и
+    /// учебному режиму из соседнего файла. Вторая поверхность ошибок
+    /// ради инкапсуляции была бы хуже одного общего HUD.
+    func presentHUD(_ state: HUDState) {
         endImportHUDObservation()
         hud.present(state)
     }

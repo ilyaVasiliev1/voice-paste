@@ -34,10 +34,50 @@ nonisolated public struct TranscriptionRequest: Sendable {
 nonisolated public struct TranscriptionResult: Sendable, Equatable {
     public var rawText: String
     public var detectedLanguage: String?
+    /// Куски речи со своим временем внутри распознанного отрезка.
+    ///
+    /// Модель отдаёт их всегда, но диктовке они не нужны: ей важен один
+    /// готовый текст. Учебному режиму — нужны: абзацы там режутся по
+    /// настоящим паузам говорящего, а пауза это разница между концом одного
+    /// куска и началом следующего. Без времён её неоткуда взять.
+    ///
+    /// Пусто по умолчанию: распознаватель, который времён не сообщает,
+    /// остаётся пригодным для диктовки.
+    public var segments: [TranscribedSegment]
 
-    public init(rawText: String, detectedLanguage: String?) {
+    public init(
+        rawText: String,
+        detectedLanguage: String?,
+        segments: [TranscribedSegment] = []
+    ) {
         self.rawText = rawText
         self.detectedLanguage = detectedLanguage
+        self.segments = segments
+    }
+}
+
+/// Кусок распознанной речи со временем относительно начала отрезка, который
+/// отдавали модели.
+nonisolated public struct TranscribedSegment: Sendable, Equatable {
+    public var text: String
+    public var startSeconds: Double
+    public var endSeconds: Double
+
+    public init(text: String, startSeconds: Double, endSeconds: Double) {
+        self.text = text
+        self.startSeconds = startSeconds
+        self.endSeconds = endSeconds
+    }
+
+    /// Сдвигает время на начало окна: при нарезке записи модель видит каждое
+    /// окно отдельно и отсчитывает время от его начала, а лекции нужно время
+    /// от начала записи.
+    public func offset(by seconds: Double) -> TranscribedSegment {
+        TranscribedSegment(
+            text: text,
+            startSeconds: startSeconds + seconds,
+            endSeconds: endSeconds + seconds
+        )
     }
 }
 

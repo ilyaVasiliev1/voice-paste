@@ -220,7 +220,16 @@ private actor WhisperInferenceWorker {
         }
         return TranscriptionResult(
             rawText: text,
-            detectedLanguage: plan.languageCode ?? results.first?.language
+            detectedLanguage: plan.languageCode ?? results.first?.language,
+            // Времена — от начала отрезка, который отдали модели. Учебный
+            // режим сдвигает их на начало окна; диктовка не смотрит.
+            segments: results.flatMap(\.segments).map {
+                TranscribedSegment(
+                    text: $0.text,
+                    startSeconds: Double($0.start),
+                    endSeconds: Double($0.end)
+                )
+            }
         )
     }
 }

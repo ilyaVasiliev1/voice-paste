@@ -360,6 +360,25 @@ SHALL принудительно оставаться обычной (значо
 
 ---
 
+### Invariant: Целевая платформа — macOS 15 и новее на Apple Silicon
+<!-- entities: VoicePasteApp -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste.xcodeproj/project.pbxproj -->
+
+`MACOSX_DEPLOYMENT_TARGET` SHALL быть `15.0`, архитектура — `arm64`.
+
+Порог поднят с 14.0 сознательно: перевод выделенного текста в учебном режиме
+идёт системным фреймворком `Translation`, доступным с macOS 15. Облачный
+переводчик не рассматривался — он нарушил бы обещание офлайна, на котором
+стоит продукт.
+
+Проверяется `xcodebuild -showBuildSettings` и `lipo -archs` по собранному
+двоичному файлу.
+
+> Last verified: 2026-09-20
+
+---
+
 ### Invariant: Минимум главного окна вмещает обе его колонки
 <!-- entities: MainWindowLayout, MainWindowView, HistoryView -->
 <!-- platforms: macos -->

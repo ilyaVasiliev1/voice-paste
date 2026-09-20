@@ -46,6 +46,10 @@ struct VoicePasteApp: App {
         )
         let store: any HistoryStoring
         let queueStore: any ImportQueueStoring
+        // Лекции живут в той же базе. `nil` под тестами и при недоступном
+        // хранилище: учебный режим тогда работает на экране, но не пишется —
+        // это лучше, чем отказ режима целиком.
+        var lectureStore: (any LectureStoring)?
         let persistenceFailureMessage: String?
         if isRunningTests {
             // XCTest loads the product as TEST_HOST. Never touch the user's
@@ -53,6 +57,7 @@ struct VoicePasteApp: App {
             // compiling/running a unit test bundle.
             store = FailingHistoryStore()
             queueStore = InMemoryImportQueueStore()
+            lectureStore = nil
             persistenceFailureMessage = nil
         } else {
             do {
@@ -65,10 +70,12 @@ struct VoicePasteApp: App {
                 // call from `HistoryStore`'s own actor isolation.
                 store = HistoryStore(dbPool: pool, historyEnabled: settings.isHistoryEnabledNow)
                 queueStore = ImportQueueStore(dbPool: pool)
+                lectureStore = LectureStore(dbPool: pool)
                 persistenceFailureMessage = nil
             } catch {
                 store = FailingHistoryStore()
                 queueStore = InMemoryImportQueueStore()
+                lectureStore = nil
                 let failureDetail = String(describing: error)
                 persistenceFailureMessage = failureDetail
                 Task {
@@ -90,6 +97,7 @@ struct VoicePasteApp: App {
             modelManager: modelManager,
             historyStore: store,
             importManager: importManager,
+            lectureStore: lectureStore,
             persistenceFailureMessage: persistenceFailureMessage
         ))
     }

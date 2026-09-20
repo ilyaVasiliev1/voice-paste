@@ -65,6 +65,16 @@ struct HistoryView: View {
                 .disabled(section == .dashboard)
 
                 Button {
+                    appState.openLecture()
+                } label: {
+                    Label("lecture.section", systemImage: "text.book.closed")
+                }
+                .labelStyle(.iconOnly)
+                .help("lecture.section")
+                .accessibilityLabel(Text("lecture.section"))
+                .disabled(section == .lecture)
+
+                Button {
                     appState.handleHotkeyDown()
                 } label: {
                     Label("history.toolbar.startDictation", systemImage: "waveform")
@@ -187,7 +197,9 @@ struct HistoryView: View {
 
     @ViewBuilder
     private var detailView: some View {
-        if section == .dashboard {
+        if section == .lecture {
+            LectureView(recorder: appState.lectureRecorder)
+        } else if section == .dashboard {
             DashboardView()
         } else if section == .importQueue {
             ImportQueueView()

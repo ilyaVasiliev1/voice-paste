@@ -119,6 +119,38 @@ public enum Migrations {
             try db.execute(sql: "CREATE INDEX import_jobs_on_createdAt_id ON import_jobs (createdAt ASC, id ASC)")
         }
 
+        // Лекция — не расшифровка: она длинная, читается кусками и к месту в
+        // ней возвращаются по времени. Поэтому своя таблица, а не поле в
+        // `transcripts`, и абзацы отдельной таблицей со своим порядком.
+        migrator.registerMigration("v4_lectures") { db in
+            try db.create(table: "lectures") { t in
+                t.column("id", .text).notNull().primaryKey()
+                t.column("createdAt", .integer).notNull()
+                t.column("updatedAt", .integer).notNull()
+                t.column("title", .text).notNull()
+                t.column("durationMilliseconds", .integer).notNull()
+                t.column("language", .text)
+                t.column("wordCount", .integer).notNull().defaults(to: 0)
+            }
+            try db.execute(sql: "CREATE INDEX lectures_on_createdAt_id ON lectures (createdAt DESC, id DESC)")
+
+            try db.create(table: "lecture_paragraphs") { t in
+                t.column("id", .text).notNull().primaryKey()
+                // Удаление лекции уносит её абзацы: осиротевший абзац не
+                // принадлежит ничему и не может быть показан.
+                t.column("lectureId", .text).notNull()
+                    .references("lectures", onDelete: .cascade)
+                t.column("orderIndex", .integer).notNull()
+                t.column("startMilliseconds", .integer).notNull()
+                t.column("endMilliseconds", .integer).notNull()
+                t.column("text", .text).notNull()
+            }
+            try db.execute(
+                sql: "CREATE INDEX lecture_paragraphs_on_lecture_order"
+                    + " ON lecture_paragraphs (lectureId, orderIndex ASC)"
+            )
+        }
+
         return migrator
     }
 }
