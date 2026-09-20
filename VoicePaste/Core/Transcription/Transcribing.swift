@@ -14,6 +14,14 @@ nonisolated public struct TranscriptionRequest: Sendable {
     public var samples: [Float]
     public var sampleRate: Double
     public var language: TranscriptionLanguage
+    /// Язык, определённый на предыдущем окне той же записи.
+    ///
+    /// Нужен только при нарезке. В режиме «автоматически» каждое окно иначе
+    /// определяет язык заново, а десяти секунд для этого мало: язык скачет
+    /// посреди одной лекции. Первое окно решает, остальные следуют за ним.
+    ///
+    /// Заданный язык этим не перебивается: он сильнее определения по звуку.
+    public var detectedLanguageHint: String?
     /// Optional progress sink for long inputs (`EC-013`, imported files).
     public var onProgress: (@Sendable (Double) -> Void)?
 
@@ -21,11 +29,13 @@ nonisolated public struct TranscriptionRequest: Sendable {
         samples: [Float],
         sampleRate: Double = 16_000,
         language: TranscriptionLanguage,
+        detectedLanguageHint: String? = nil,
         onProgress: (@Sendable (Double) -> Void)? = nil
     ) {
         self.samples = samples
         self.sampleRate = sampleRate
         self.language = language
+        self.detectedLanguageHint = detectedLanguageHint
         self.onProgress = onProgress
     }
 }

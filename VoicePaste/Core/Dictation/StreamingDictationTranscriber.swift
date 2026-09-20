@@ -103,7 +103,11 @@ final class StreamingDictationTranscriber {
 
         if let tail = planner.tail(totalSamples: totalSamples.count) {
             let result = try await transcriber.transcribe(
-                TranscriptionRequest(samples: Array(totalSamples[tail]), language: language)
+                TranscriptionRequest(
+                    samples: Array(totalSamples[tail]),
+                    language: language,
+                    detectedLanguageHint: detectedLanguage
+                )
             )
             planner.commit(tail)
             absorb(result)
@@ -146,7 +150,11 @@ final class StreamingDictationTranscriber {
             guard samples.count == window.count else { return }
             do {
                 let result = try await transcriber.transcribe(
-                    TranscriptionRequest(samples: samples, language: language)
+                    TranscriptionRequest(
+                    samples: samples,
+                    language: language,
+                    detectedLanguageHint: detectedLanguage
+                )
                 )
                 // Проверка отмены обязана стоять до фиксации, а не после.
                 // Распознавание не прерывается на полуслове, и пока оно шло,

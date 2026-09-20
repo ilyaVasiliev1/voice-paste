@@ -16,9 +16,19 @@ import Foundation
 @MainActor
 public final class LectureRecorder: ObservableObject {
 
-    public static let windowSeconds: Double = 10
+    /// Допустимые окна лекции. Меньше трёх секунд модель теряет контекст и
+    /// начинает угадывать; больше двадцати — текст появляется так редко, что
+    /// смысл живой расшифровки пропадает.
+    public static let windowRange: ClosedRange<Double> = 3...20
+    public static let defaultWindowSeconds: Double = 6
     public static let overlapSeconds: Double = 1
     private static let sampleRate = 16_000
+
+    public static func clampWindow(_ seconds: Double) -> Double {
+        min(max(seconds, windowRange.lowerBound), windowRange.upperBound)
+    }
+
+    private let windowSeconds: Double
 
     /// Абзацы на сейчас. Пополняются по мере того, как окна закрываются.
     @Published public private(set) var paragraphs: [LectureParagraph] = []
@@ -34,12 +44,16 @@ public final class LectureRecorder: ObservableObject {
     private var pauseSeconds: Double = LectureParagraphBuilder.defaultPauseSeconds
     private let pollInterval: Duration
 
-    public init(pollInterval: Duration = .milliseconds(500)) {
+    public init(
+        windowSeconds: Double = LectureRecorder.defaultWindowSeconds,
+        pollInterval: Duration = .milliseconds(500)
+    ) {
+        self.windowSeconds = Self.clampWindow(windowSeconds)
         self.pollInterval = pollInterval
-        self.planner = Self.makePlanner()
+        self.planner = Self.makePlanner(windowSeconds: Self.clampWindow(windowSeconds))
     }
 
-    private static func makePlanner() -> DictationWindowPlanner {
+    private static func makePlanner(windowSeconds: Double) -> DictationWindowPlanner {
         DictationWindowPlanner(
             windowSamples: Int(windowSeconds * Double(sampleRate)),
             overlapSamples: Int(overlapSeconds * Double(sampleRate))
@@ -98,7 +112,7 @@ public final class LectureRecorder: ObservableObject {
     public func cancel() {
         pump?.cancel()
         pump = nil
-        planner = Self.makePlanner()
+        planner = Self.makePlanner(windowSeconds: windowSeconds)
         segments = []
         paragraphs = []
         detectedLanguage = nil
@@ -154,7 +168,11 @@ public final class LectureRecorder: ObservableObject {
         let offset = Double(startSample) / Double(Self.sampleRate)
         do {
             let result = try await transcriber.transcribe(
-                TranscriptionRequest(samples: samples, language: language)
+                TranscriptionRequest(
+                    samples: samples,
+                    language: language,
+                    detectedLanguageHint: detectedLanguage
+                )
             )
             if detectedLanguage == nil { detectedLanguage = result.detectedLanguage }
             // Перекрытие окон даёт повторы на стыке. Отбрасывается только

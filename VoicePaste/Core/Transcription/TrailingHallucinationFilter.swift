@@ -19,6 +19,15 @@ public enum TrailingHallucinationFilter {
         "to be continued",
     ]
 
+    /// Известная галлюцинация декодера на тишине: модель дописывает
+    /// субтитровую концовку, которой в речи не было.
+    ///
+    /// Публично — потому что убирать её надо не только из готового текста, но
+    /// и из сегментов: учебный режим читает именно их, и там она всплывала.
+    public nonisolated static func isTerminalFiller(_ text: String) -> Bool {
+        knownTerminalFillers.contains(canonical(text))
+    }
+
     /// A short natural pause at the end of a sentence must not alter text.
     /// A model-only segment is removed only after at least 0.6 s of detected
     /// silence and with its own timestamp at least 0.2 s after real speech.

@@ -16,6 +16,7 @@ public final class AppSettings: ObservableObject {
         static let showInDock = "showInDock"
         static let modelDownloadSource = "modelDownloadSource"
         static let lectureParagraphPauseSeconds = "lectureParagraphPauseSeconds"
+        static let lectureWindowSeconds = "lectureWindowSeconds"
     }
 
     private let defaults: UserDefaults
@@ -70,6 +71,23 @@ public final class AppSettings: ObservableObject {
     /// Пауза, с которой в учебном режиме начинается новый абзац. От 1 до 10
     /// секунд, по умолчанию 2 — у разных говорящих разный темп, поэтому это
     /// настройка, а не константа.
+    /// Через сколько секунд речи расшифровка лекции пополняется на экране.
+    ///
+    /// Размен без правильного ответа: короче — текст появляется чаще, но
+    /// модель видит меньше контекста и чаще ошибается, а постоянная накладная
+    /// в полсекунды платится за каждое окно. Длиннее — точнее и экономнее,
+    /// но ждать дольше.
+    @Published public var lectureWindowSeconds: Double {
+        didSet {
+            let clamped = LectureRecorder.clampWindow(lectureWindowSeconds)
+            guard clamped == lectureWindowSeconds else {
+                lectureWindowSeconds = clamped
+                return
+            }
+            persist()
+        }
+    }
+
     @Published public var lectureParagraphPauseSeconds: Double {
         didSet {
             let clamped = LectureParagraphBuilder.clampPause(lectureParagraphPauseSeconds)
@@ -133,6 +151,10 @@ public final class AppSettings: ObservableObject {
         // that could drift from it.
         self.launchAtLogin = Self.isEnabled(loginItemRegistry.status)
         self.showInDock = defaults.object(forKey: Keys.showInDock) as? Bool ?? true
+        self.lectureWindowSeconds = LectureRecorder.clampWindow(
+            defaults.object(forKey: Keys.lectureWindowSeconds) as? Double
+                ?? LectureRecorder.defaultWindowSeconds
+        )
         self.lectureParagraphPauseSeconds = LectureParagraphBuilder.clampPause(
             defaults.object(forKey: Keys.lectureParagraphPauseSeconds) as? Double
                 ?? LectureParagraphBuilder.defaultPauseSeconds

@@ -93,7 +93,9 @@ public final class AppState: ObservableObject {
     /// Ведёт запись лекции и держит её абзацы. Отдельный объект, а не поля
     /// здесь: у лекции своя нарезка, свои времена и своя жизнь, не связанная
     /// с диктовкой.
-    public let lectureRecorder = LectureRecorder()
+    public private(set) lazy var lectureRecorder = LectureRecorder(
+        windowSeconds: settings.lectureWindowSeconds
+    )
     @Published public internal(set) var isLectureRecording = false
     @Published public internal(set) var lectureElapsedSeconds: Double = 0
     /// Сохранённые лекции для списка. Пополняется после каждой записи.

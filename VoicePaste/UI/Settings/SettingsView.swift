@@ -104,6 +104,21 @@ private struct SettingsBody: View {
                 Text("settings.lecture.pauseDescription")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                LabeledContent("settings.lecture.window") {
+                    HStack {
+                        Slider(
+                            value: $settings.lectureWindowSeconds,
+                            in: LectureRecorder.windowRange,
+                            step: 1
+                        )
+                        Text(String(format: "%.0f с", settings.lectureWindowSeconds))
+                            .font(.system(.body, design: .monospaced))
+                            .frame(width: 56, alignment: .trailing)
+                    }
+                }
+                Text("settings.lecture.windowDescription")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                     .onChange(of: settings.showInDock) { _, _ in appState.applyDockVisibility() }
             }
             permissionsControls

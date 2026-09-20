@@ -214,6 +214,8 @@
 "lecture.rename.cancel" = "Отмена";
 "settings.lecture.pause" = "Пауза для нового абзаца";
 "settings.lecture.pauseDescription" = "Пауза длиннее этого значения начинает новый абзац в расшифровке лекции.";
+"settings.lecture.window" = "Шаг обновления расшифровки";
+"settings.lecture.windowDescription" = "Через столько секунд речи текст пополняется на экране. Короче — чаще, но модель видит меньше контекста и чаще ошибается.";
 "history.source.dictation" = "Диктовка";
 "history.source.file" = "Файл";
 "history.toolbar.copy" = "Копировать";

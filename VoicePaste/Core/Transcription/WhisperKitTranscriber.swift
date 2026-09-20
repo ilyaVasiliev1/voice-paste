@@ -30,13 +30,58 @@ nonisolated public struct WhisperDecodingPlan: Equatable, Sendable {
 }
 
 nonisolated public struct WhisperKitTranscriber: Transcribing {
+
+    /// Приводит сегменты к тому же виду, в каком выдаётся готовый текст.
+    ///
+    /// Две вещи, которые готовый текст получает, а сегменты — нет, если их не
+    /// обработать. Первая: служебная разметка модели, которая иначе едет на
+    /// экран. Вторая: дописанная на тишине субтитровая концовка вроде
+    /// «Продолжение следует» — её из готового текста убирает
+    /// `TrailingHallucinationFilter`, а в сегментах она оставалась.
+    static func cleanedSegments(
+        from segments: [TranscribedSegment],
+        hadLongTrailingSilence: Bool
+    ) -> [TranscribedSegment] {
+        var cleaned = segments.compactMap { segment -> TranscribedSegment? in
+            let text = WhisperSpecialTokens.strip(segment.text)
+            guard !text.isEmpty else { return nil }
+            return TranscribedSegment(
+                text: text,
+                startSeconds: segment.startSeconds,
+                endSeconds: segment.endSeconds
+            )
+        }
+        // Концовка снимается только после настоящей тишины: та же оговорка,
+        // что у готового текста. Без тишины такая фраза могла быть сказана.
+        while hadLongTrailingSilence,
+            let last = cleaned.last,
+            TrailingHallucinationFilter.isTerminalFiller(last.text) {
+            cleaned.removeLast()
+        }
+        return cleaned
+    }
+
     /// Задача декодирования всегда распознавание, никогда не перевод: продукт
     /// показывает сказанное на языке, на котором оно сказано. В `.auto` язык
     /// не задаётся и включается определение; остальные значения задают язык
     /// явно — это надёжнее определения на короткой или смешанной речи.
-    public static func decodingPlan(for language: TranscriptionLanguage) -> WhisperDecodingPlan {
+    public static func decodingPlan(
+        for language: TranscriptionLanguage,
+        detectedLanguageHint: String? = nil
+    ) -> WhisperDecodingPlan {
         switch language {
         case .auto:
+            // Подсказка приходит только при нарезке записи: язык определило
+            // первое окно. Следовать ему надёжнее, чем определять заново на
+            // каждых десяти секундах — там язык скачет посреди лекции.
+            if let hint = detectedLanguageHint, !hint.isEmpty {
+                return WhisperDecodingPlan(
+                    languageCode: hint,
+                    detectLanguage: false,
+                    usePrefillPrompt: true,
+                    isTranslate: false
+                )
+            }
             return WhisperDecodingPlan(
                 languageCode: nil,
                 detectLanguage: true,
@@ -192,7 +237,10 @@ private actor WhisperInferenceWorker {
         guard !request.samples.isEmpty else { throw TranscribingError.emptyAudio }
         // `L-005`/`AT-095`: task is always transcription; `.auto` enables
         // language auto-detection instead of leaving it off by default.
-        let plan = WhisperKitTranscriber.decodingPlan(for: request.language)
+        let plan = WhisperKitTranscriber.decodingPlan(
+            for: request.language,
+            detectedLanguageHint: request.detectedLanguageHint
+        )
         // WhisperKit's no-speech score is unavailable in the current CoreML
         // decoder implementation, so suppress blank starts here and apply a
         // timestamp + signal based terminal-silence guard below.
@@ -231,18 +279,16 @@ private actor WhisperInferenceWorker {
             detectedLanguage: plan.languageCode ?? results.first?.language,
             // Времена — от начала отрезка, который отдали модели. Учебный
             // режим сдвигает их на начало окна; диктовка не смотрит.
-            segments: results.flatMap(\.segments).compactMap {
-                // Текст сегмента приходит с служебной разметкой модели.
-                // В готовом тексте результата её нет, а здесь — есть, и без
-                // очистки она уезжает прямо на экран.
-                let text = WhisperSpecialTokens.strip($0.text)
-                guard !text.isEmpty else { return nil }
-                return TranscribedSegment(
-                    text: text,
-                    startSeconds: Double($0.start),
-                    endSeconds: Double($0.end)
-                )
-            }
+            segments: WhisperKitTranscriber.cleanedSegments(
+                from: results.flatMap(\.segments).map {
+                    TranscribedSegment(
+                        text: $0.text,
+                        startSeconds: Double($0.start),
+                        endSeconds: Double($0.end)
+                    )
+                },
+                hadLongTrailingSilence: hadLongTrailingSilence
+            )
         )
     }
 }

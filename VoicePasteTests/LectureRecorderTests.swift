@@ -21,12 +21,44 @@ final class LectureRecorderTests: XCTestCase {
     // MARK: - Инвариант окна
 
     func test_lectureWindow_isShorterThanTheDictationWindow() {
-        XCTAssertLessThanOrEqual(LectureRecorder.windowSeconds, 10)
+        XCTAssertLessThanOrEqual(LectureRecorder.defaultWindowSeconds, 10)
         XCTAssertGreaterThanOrEqual(LectureRecorder.overlapSeconds, 1)
         XCTAssertLessThan(
-            LectureRecorder.windowSeconds, 28,
+            LectureRecorder.defaultWindowSeconds, 28,
             "Окно лекции обязано быть короче диктовочного: иначе текст появляется слишком поздно"
         )
+    }
+
+    func test_windowOutsideTheAllowedRange_isClamped() {
+        XCTAssertEqual(LectureRecorder.clampWindow(1), LectureRecorder.windowRange.lowerBound)
+        XCTAssertEqual(LectureRecorder.clampWindow(99), LectureRecorder.windowRange.upperBound)
+    }
+
+    /// Язык определяет первое окно, остальные следуют за ним. Иначе на
+    /// десяти секундах он скачет посреди одной лекции.
+    func test_afterFirstWindow_subsequentWindowsFollowTheDetectedLanguage() async throws {
+        let recorder = LectureRecorder(pollInterval: .milliseconds(5))
+        let window = LectureRecorder.defaultWindowSeconds
+        let model = ScriptedLectureTranscriber(
+            scripts: [[SegmentSeed(text: "Первое.", start: 0, end: 2)],
+                      [SegmentSeed(text: "Второе.", start: 0, end: 2)]],
+            languages: ["zh", "ru"]
+        )
+        let available = Box(Int(window * 2) * sampleRate)
+
+        recorder.begin(
+            transcriber: model,
+            language: .auto,
+            pauseSeconds: 2,
+            availableSamples: { available.value },
+            readSamples: { [weak self] range in self?.samples(seconds: Double(range.count) / 16_000) ?? [] }
+        )
+        try await waitUntil { await model.callCount >= 2 }
+        let hints = await model.receivedHints
+        recorder.cancel()
+
+        XCTAssertEqual(hints.first ?? "нет", "", "Первому окну подсказывать нечем")
+        XCTAssertEqual(hints.dropFirst().first, "zh", "Второе окно обязано следовать за первым")
     }
 
     // MARK: - Пополнение по ходу
@@ -36,7 +68,7 @@ final class LectureRecorderTests: XCTestCase {
         let model = ScriptedLectureTranscriber(scripts: [
             [SegmentSeed(text: "Сегодня разберём модель актора.", start: 0, end: 4)]
         ])
-        let available = Box(Int(LectureRecorder.windowSeconds) * sampleRate)
+        let available = Box(Int(LectureRecorder.defaultWindowSeconds) * sampleRate)
 
         recorder.begin(
             transcriber: model,
@@ -58,7 +90,7 @@ final class LectureRecorderTests: XCTestCase {
     /// вместо 00:11, и вернуться к месту стало бы невозможно.
     func test_segmentTimesAreOffsetToTheStartOfTheRecording() async throws {
         let recorder = LectureRecorder(pollInterval: .milliseconds(5))
-        let window = LectureRecorder.windowSeconds
+        let window = LectureRecorder.defaultWindowSeconds
         let model = ScriptedLectureTranscriber(scripts: [
             [SegmentSeed(text: "Первое окно.", start: 0, end: 4)],
             [SegmentSeed(text: "Второе окно.", start: 2, end: 6)],
@@ -123,7 +155,7 @@ final class LectureRecorderTests: XCTestCase {
             scripts: [[SegmentSeed(text: "Успевшее окно.", start: 0, end: 3)], []],
             failAtCall: 2
         )
-        let available = Box(Int(LectureRecorder.windowSeconds * 2) * sampleRate)
+        let available = Box(Int(LectureRecorder.defaultWindowSeconds * 2) * sampleRate)
 
         recorder.begin(
             transcriber: model,
@@ -163,7 +195,7 @@ final class LectureRecorderTests: XCTestCase {
     /// сегмент. Раньше он выбрасывался целиком — вместе с новыми словами.
     func test_segmentStraddlingTheOverlap_isKeptInsteadOfDropped() async throws {
         let recorder = LectureRecorder(pollInterval: .milliseconds(5))
-        let window = LectureRecorder.windowSeconds
+        let window = LectureRecorder.defaultWindowSeconds
         let model = ScriptedLectureTranscriber(scripts: [
             [SegmentSeed(text: "Первое окно кончается тут.", start: 0, end: window)],
             // Начинается до конца принятого (перекрытие), кончается после:
@@ -214,6 +246,7 @@ private actor ScriptedLectureTranscriber: Transcribing {
     private var languages: [String]
     private let failAtCall: Int?
     private(set) var callCount = 0
+    private(set) var receivedHints: [String] = []
 
     init(
         scripts: [[SegmentSeed]],
@@ -227,6 +260,7 @@ private actor ScriptedLectureTranscriber: Transcribing {
 
     func transcribe(_ request: TranscriptionRequest) async throws -> TranscriptionResult {
         callCount += 1
+        receivedHints.append(request.detectedLanguageHint ?? "")
         if callCount == failAtCall { throw TranscribingError.underlying("окно не посчиталось") }
         let script = scripts.isEmpty ? [] : scripts.removeFirst()
         let language = languages.isEmpty ? nil : languages.removeFirst()
