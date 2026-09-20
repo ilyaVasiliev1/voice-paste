@@ -73,22 +73,28 @@ struct LectureView: View {
                     .foregroundStyle(.secondary)
             }
 
-            if let opened = appState.openedLecture {
+            // Выход к списку нужен не только открытой лекции, но и только
+            // что записанной: без него из её расшифровки некуда деться.
+            if !appState.isLectureRecording, showsTranscript {
                 Button {
                     appState.closeOpenedLecture()
+                    recorder.cancel()
+                    Task { await appState.refreshSavedLectures() }
                 } label: {
                     Label("lecture.backToList", systemImage: "chevron.backward")
                 }
                 Button {
-                    TextInserter.copyToClipboard(opened.plainText)
+                    TextInserter.copyToClipboard(visibleText)
                 } label: {
                     Label("lecture.copyAll", systemImage: "doc.on.doc")
                 }
-                Button {
-                    renameTitle = opened.lecture.title
-                    isRenaming = true
-                } label: {
-                    Label("lecture.rename", systemImage: "pencil")
+                if let opened = appState.openedLecture {
+                    Button {
+                        renameTitle = opened.lecture.title
+                        isRenaming = true
+                    } label: {
+                        Label("lecture.rename", systemImage: "pencil")
+                    }
                 }
             }
 
@@ -100,6 +106,17 @@ struct LectureView: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    /// Показывается ли сейчас расшифровка — открытая или только что записанная.
+    private var showsTranscript: Bool {
+        appState.openedLecture != nil || !recorder.paragraphs.isEmpty
+    }
+
+    /// Текст того, что на экране, для копирования целиком.
+    private var visibleText: String {
+        if let opened = appState.openedLecture { return opened.plainText }
+        return recorder.paragraphs.map(\.text).joined(separator: "\n\n")
     }
 
     /// Что показывать: открытую сохранённую лекцию, текущую запись или
@@ -154,11 +171,14 @@ struct LectureView: View {
         }
     }
 
+    /// Длительность и объём лекции. Минутами не обойтись: лекция на сорок
+    /// секунд показывалась как «0 мин», и карточка выглядела пустой.
     private static func summary(for lecture: Lecture) -> String {
-        let minutes = lecture.durationMilliseconds / 60_000
+        let seconds = lecture.durationMilliseconds / 1_000
+        let clock = String(format: "%d:%02d", seconds / 60, seconds % 60)
         return String(
             format: NSLocalizedString("lecture.row.summary", comment: ""),
-            minutes,
+            clock,
             lecture.wordCount
         )
     }

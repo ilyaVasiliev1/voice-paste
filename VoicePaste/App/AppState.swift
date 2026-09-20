@@ -398,20 +398,26 @@ public final class AppState: ObservableObject {
         startStreamingTranscription()
     }
 
-    /// Поднимает счёт окон по ходу записи. Модель берётся уже загруженной:
-    /// грузить её здесь нельзя — `prewarm()` выше уже занят этим, а вторая
-    /// загрузка отняла бы память у идущей записи. Не успела прогреться —
-    /// окна просто не считаются, и запись уйдёт в модель целиком после
-    /// остановки, как было до нарезки.
+    /// Поднимает счёт окон по ходу записи, дождавшись модели.
+    ///
+    /// Ждать асинхронно, а не проверять «уже ли она в памяти»: после
+    /// перезапуска или выгрузки по нехватке памяти модель не резидентна, и
+    /// проверка молча отменяла бы весь параллельный счёт. `ensureLoaded()`
+    /// объединяет вызовы с идущим прогревом, так что второй загрузки не
+    /// будет.
     private func startStreamingTranscription() {
         streamingTranscriber.cancel()
-        guard let engine = modelManager.loadedTranscriber else { return }
-        streamingTranscriber.begin(
-            transcriber: engine,
-            language: settings.languageMode,
-            availableSamples: { [audioCapture] in audioCapture.capturedSampleCount },
-            readSamples: { [audioCapture] range in audioCapture.capturedSamples(in: range) }
-        )
+        Task { [weak self] in
+            guard let self, let engine = try? await modelManager.ensureLoaded() else { return }
+            // Пока модель грузилась, запись могли остановить или отменить.
+            guard dictationPhase == .recording else { return }
+            streamingTranscriber.begin(
+                transcriber: engine,
+                language: settings.languageMode,
+                availableSamples: { [audioCapture] in audioCapture.capturedSampleCount },
+                readSamples: { [audioCapture] range in audioCapture.capturedSamples(in: range) }
+            )
+        }
     }
 
     private func startElapsedTicker() {

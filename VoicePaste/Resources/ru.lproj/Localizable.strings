@@ -207,7 +207,7 @@
 "lecture.tailNotTranscribed" = "Модель недоступна: последние секунды не распознаны. Остальная лекция сохранена.";
 "lecture.delete" = "Удалить лекцию";
 "lecture.backToList" = "К списку";
-"lecture.row.summary" = "%d мин · %d слов";
+"lecture.row.summary" = "%@ · %d слов";
 "lecture.copyAll" = "Скопировать лекцию";
 "lecture.rename" = "Переименовать";
 "lecture.rename.confirm" = "Переименовать";

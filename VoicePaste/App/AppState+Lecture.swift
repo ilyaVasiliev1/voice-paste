@@ -42,18 +42,42 @@ extension AppState {
         lectureElapsedSeconds = 0
         startLectureTicker()
 
-        // Модель берётся уже загруженной: грузить её во время лекции нельзя,
-        // а прогрев идёт своим чередом. Не успела — окна не считаются, и
-        // расшифровка появится после остановки.
-        modelManager.prewarm()
-        guard let engine = modelManager.loadedTranscriber else { return }
-        lectureRecorder.begin(
-            transcriber: engine,
-            language: settings.languageMode,
-            pauseSeconds: settings.lectureParagraphPauseSeconds,
-            availableSamples: { [audioCapture] in audioCapture.capturedSampleCount },
-            readSamples: { [audioCapture] range in audioCapture.capturedSamples(in: range) }
-        )
+        startLectureTranscription()
+    }
+
+    /// Поднимает живой счёт окон, дождавшись модели.
+    ///
+    /// Прежде здесь стояла проверка «модель уже в памяти — иначе выходим», и
+    /// это убивало весь режим: после перезапуска или выгрузки по нехватке
+    /// памяти модель не резидентна, живой счёт молча не начинался, и вся
+    /// лекция распознавалась одним куском только после остановки. Ровно то,
+    /// что владелец и увидел.
+    ///
+    /// Ждать модель нужно асинхронно: запись уже идёт, звук копится, и к
+    /// моменту готовности первые окна будут посчитаны разом.
+    private func startLectureTranscription() {
+        Task { [weak self] in
+            guard let self else { return }
+            let engine: any Transcribing
+            do {
+                engine = try await modelManager.ensureLoaded()
+            } catch {
+                await DiagnosticLog.shared.log(
+                    "lecture.liveTranscriptionUnavailable",
+                    detail: String(describing: error)
+                )
+                return
+            }
+            // Пока модель грузилась, запись могли остановить.
+            guard isLectureRecording else { return }
+            lectureRecorder.begin(
+                transcriber: engine,
+                language: settings.languageMode,
+                pauseSeconds: settings.lectureParagraphPauseSeconds,
+                availableSamples: { [audioCapture] in audioCapture.capturedSampleCount },
+                readSamples: { [audioCapture] range in audioCapture.capturedSamples(in: range) }
+            )
+        }
     }
 
     private func finishLectureRecording() async {

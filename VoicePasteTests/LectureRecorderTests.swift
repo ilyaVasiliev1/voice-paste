@@ -34,9 +34,10 @@ final class LectureRecorderTests: XCTestCase {
         XCTAssertEqual(LectureRecorder.clampWindow(99), LectureRecorder.windowRange.upperBound)
     }
 
-    /// Язык определяет первое окно, остальные следуют за ним. Иначе на
-    /// десяти секундах он скачет посреди одной лекции.
-    func test_afterFirstWindow_subsequentWindowsFollowTheDetectedLanguage() async throws {
+    /// Лекция бывает смешанной: китайский с английскими вставками. Привязка
+    /// к языку первого окна заставила бы читать чужую речь чужим языком,
+    /// поэтому каждое окно определяет язык само.
+    func test_lectureNeverPinsTheLanguageOfTheFirstWindow() async throws {
         let recorder = LectureRecorder(pollInterval: .milliseconds(5))
         let window = LectureRecorder.defaultWindowSeconds
         let model = ScriptedLectureTranscriber(
@@ -57,8 +58,10 @@ final class LectureRecorderTests: XCTestCase {
         let hints = await model.receivedHints
         recorder.cancel()
 
-        XCTAssertEqual(hints.first ?? "нет", "", "Первому окну подсказывать нечем")
-        XCTAssertEqual(hints.dropFirst().first, "zh", "Второе окно обязано следовать за первым")
+        XCTAssertEqual(
+            hints, ["", ""],
+            "Ни одному окну лекции язык не навязывается: иначе смешанная лекция читается одним языком"
+        )
     }
 
     // MARK: - Пополнение по ходу
@@ -129,7 +132,9 @@ final class LectureRecorderTests: XCTestCase {
         XCTAssertEqual(paragraphs.map(\.text), ["Хвост записи."])
     }
 
-    func test_languageIsTakenFromTheFirstWindow() async throws {
+    /// Язык лекции в карточке — тот, что встретился чаще, а не первый:
+    /// на смешанной лекции первое окно о языке всей лекции не говорит.
+    func test_lectureLanguage_isTheMostFrequentAcrossWindows() async throws {
         let recorder = LectureRecorder(pollInterval: .milliseconds(5))
         let model = ScriptedLectureTranscriber(
             scripts: [[SegmentSeed(text: "Первое.", start: 0, end: 2)]],

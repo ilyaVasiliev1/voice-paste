@@ -40,6 +40,7 @@ public final class LectureRecorder: ObservableObject {
 
     private var planner: DictationWindowPlanner
     private var segments: [TranscribedSegment] = []
+    private var languageCounts: [String: Int] = [:]
     private var pump: Task<Void, Never>?
     private var pauseSeconds: Double = LectureParagraphBuilder.defaultPauseSeconds
     private let pollInterval: Duration
@@ -114,6 +115,7 @@ public final class LectureRecorder: ObservableObject {
         pump = nil
         planner = Self.makePlanner(windowSeconds: windowSeconds)
         segments = []
+        languageCounts = [:]
         paragraphs = []
         detectedLanguage = nil
         isCatchingUp = false
@@ -167,14 +169,21 @@ public final class LectureRecorder: ObservableObject {
     ) async {
         let offset = Double(startSample) / Double(Self.sampleRate)
         do {
+            // Подсказка языка здесь намеренно не передаётся, в отличие от
+            // диктовки. Диктовка коротка и одноязычна, лекция — нет: в ней
+            // переходят с китайского на английский и обратно, и привязка к
+            // языку первого окна заставила бы читать чужую речь чужим языком.
+            // Каждое окно определяет язык само.
             let result = try await transcriber.transcribe(
-                TranscriptionRequest(
-                    samples: samples,
-                    language: language,
-                    detectedLanguageHint: detectedLanguage
-                )
+                TranscriptionRequest(samples: samples, language: language)
             )
-            if detectedLanguage == nil { detectedLanguage = result.detectedLanguage }
+            // Язык лекции в целом — тот, что встретился в большинстве окон.
+            // Он идёт в карточку записи, а не в декодирование: на смешанной
+            // лекции первое окно о языке всей лекции ничего не говорит.
+            if let language = result.detectedLanguage, !language.isEmpty {
+                languageCounts[language, default: 0] += 1
+                detectedLanguage = languageCounts.max { $0.value < $1.value }?.key
+            }
             // Перекрытие окон даёт повторы на стыке. Отбрасывается только
             // сегмент, целиком лежащий в уже принятом времени.
             //
