@@ -103,6 +103,21 @@ final class LectureParagraphBuilderTests: XCTestCase {
         XCTAssertEqual(paragraphs[0].text, "Раз. Два.")
     }
 
+    /// Сегменты приходят из перекрывающихся окон: время следующего окна
+    /// может начаться раньше конца принятого. Прежде такая отрицательная
+    /// «пауза» продолжала абзац, и вся лекция сливалась в одно полотно.
+    func test_segmentFromAnOverlappingWindow_startsANewParagraph() {
+        let segments = [
+            segment("Конец первого окна.", 0, 10),
+            segment("Начало второго окна.", 9, 13),
+        ]
+
+        let paragraphs = LectureParagraphBuilder.build(from: segments, pauseSeconds: 2)
+
+        XCTAssertEqual(paragraphs.count, 2, "Стык окон обязан давать разрыв абзаца")
+        XCTAssertEqual(paragraphs[1].text, "Начало второго окна.")
+    }
+
     // MARK: - Порог
 
     func test_pauseBelowRange_isClampedToTheMinimum() {

@@ -1,5 +1,4 @@
 import SwiftUI
-import Translation
 
 /// Экран учебного режима: запись лекции с расшифровкой, которая пополняется
 /// по ходу.
@@ -11,8 +10,6 @@ struct LectureView: View {
     @ObservedObject var recorder: LectureRecorder
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var selectedText = ""
-    @State private var isTranslationPresented = false
     @State private var isRenaming = false
     @State private var renameTitle = ""
 
@@ -31,9 +28,6 @@ struct LectureView: View {
             }
             Button("lecture.rename.cancel", role: .cancel) {}
         }
-        // Системный переводчик macOS 15: работает на устройстве и текст
-        // наружу не отправляет — иначе обещание офлайна было бы нарушено.
-        .translationPresentation(isPresented: $isTranslationPresented, text: selectedText)
     }
 
     private var header: some View {
@@ -177,13 +171,7 @@ struct LectureView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 18) {
                     ForEach(Array(paragraphs.enumerated()), id: \.offset) { index, paragraph in
-                        LectureParagraphRow(
-                            paragraph: paragraph,
-                            onTranslate: {
-                                selectedText = paragraph.text
-                                isTranslationPresented = true
-                            }
-                        )
+                        LectureParagraphRow(paragraph: paragraph)
                         .id(index)
                     }
                 }
@@ -212,7 +200,6 @@ struct LectureView: View {
 /// возвращаются к месту в записи.
 private struct LectureParagraphRow: View {
     let paragraph: LectureParagraph
-    let onTranslate: () -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
@@ -226,11 +213,6 @@ private struct LectureParagraphRow: View {
                 .font(.body)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contextMenu {
-                    Button {
-                        onTranslate()
-                    } label: {
-                        Label("lecture.translate", systemImage: "character.book.closed")
-                    }
                     Button {
                         TextInserter.copyToClipboard(paragraph.text)
                     } label: {

@@ -66,7 +66,14 @@ nonisolated public enum LectureParagraphBuilder {
 
             if currentTexts.isEmpty {
                 currentStart = segment.startSeconds
-            } else if segment.startSeconds - currentEnd >= threshold {
+            } else if segment.startSeconds < currentEnd || segment.startSeconds - currentEnd >= threshold {
+                // Два повода начать абзац. Первый очевиден — пауза длиннее
+                // порога. Второй тоньше: сегмент, начавшийся раньше конца
+                // предыдущего, пришёл из следующего окна, и окна
+                // перекрываются. Отрицательная «пауза» не значит, что
+                // говорящий не молчал, — но и продолжать ею абзац нельзя:
+                // иначе стык окон никогда не даёт разрыва, и вся лекция
+                // сливается в одно полотно.
                 flush()
                 currentStart = segment.startSeconds
             }

@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		C0000000000000000000011C /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000011B /* App.swift */; };
+		C000000000000000000009D3 /* WhisperSpecialTokensTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C000000000000000000009D2 /* WhisperSpecialTokensTests.swift */; };
+		C000000000000000000009D1 /* WhisperSpecialTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = C000000000000000000009D0 /* WhisperSpecialTokens.swift */; };
 		C000000000000000000009C1 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = C000000000000000000009C0 /* DesignTokens.swift */; };
 		C000000000000000000009B3 /* LectureRecorderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C000000000000000000009B2 /* LectureRecorderTests.swift */; };
 		C000000000000000000009B1 /* LectureStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C000000000000000000009B0 /* LectureStoreTests.swift */; };
@@ -117,6 +119,8 @@
 		A10000000000000000000015 /* VoicePaste.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoicePaste.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000016 /* VoicePasteTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VoicePasteTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C0000000000000000000011B /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
+		C000000000000000000009D2 /* WhisperSpecialTokensTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperSpecialTokensTests.swift; sourceTree = "<group>"; };
+		C000000000000000000009D0 /* WhisperSpecialTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperSpecialTokens.swift; sourceTree = "<group>"; };
 		C000000000000000000009C0 /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
 		C000000000000000000009B2 /* LectureRecorderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureRecorderTests.swift; sourceTree = "<group>"; };
 		C000000000000000000009B0 /* LectureStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureStoreTests.swift; sourceTree = "<group>"; };
@@ -411,6 +415,7 @@
 		C0000000000000000000010F /* Transcription */ = {
 			isa = PBXGroup;
 			children = (
+				C000000000000000000009D0 /* WhisperSpecialTokens.swift */,
 				C00000000000000000000141 /* ModelManager.swift */,
 				C00000000000000000000143 /* ModelState.swift */,
 				C00000000000000000000145 /* Transcribing.swift */,
@@ -528,6 +533,7 @@
 		C0000000000000000000011A /* VoicePasteTests */ = {
 			isa = PBXGroup;
 			children = (
+				C000000000000000000009D2 /* WhisperSpecialTokensTests.swift */,
 				C000000000000000000009B2 /* LectureRecorderTests.swift */,
 				C000000000000000000009B0 /* LectureStoreTests.swift */,
 				C0000000000000000000098C /* LectureParagraphBuilderTests.swift */,
@@ -696,6 +702,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C000000000000000000009D1 /* WhisperSpecialTokens.swift in Sources */,
 				C000000000000000000009C1 /* DesignTokens.swift in Sources */,
 				C0000000000000000000098B /* LectureView.swift in Sources */,
 				C00000000000000000000989 /* AppState+Lecture.swift in Sources */,
@@ -762,6 +769,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C000000000000000000009D3 /* WhisperSpecialTokensTests.swift in Sources */,
 				C000000000000000000009B3 /* LectureRecorderTests.swift in Sources */,
 				C000000000000000000009B1 /* LectureStoreTests.swift in Sources */,
 				C0000000000000000000098D /* LectureParagraphBuilderTests.swift in Sources */,

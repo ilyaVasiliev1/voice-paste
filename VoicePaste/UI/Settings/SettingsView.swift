@@ -126,6 +126,7 @@ private struct SettingsBody: View {
                 Text("settings.language.auto").tag(TranscriptionLanguage.auto)
                 Text("settings.language.ru").tag(TranscriptionLanguage.ru)
                 Text("settings.language.en").tag(TranscriptionLanguage.en)
+                Text("settings.language.zh").tag(TranscriptionLanguage.zh)
             }
         }
         .formStyle(.grouped)

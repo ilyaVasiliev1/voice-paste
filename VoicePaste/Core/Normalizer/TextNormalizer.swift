@@ -172,7 +172,7 @@ nonisolated public struct TextNormalizer: Sendable {
         language: TranscriptionLanguage,
         changes: inout [NormalizationChange]
     ) -> String {
-        let languageCode = resolvedLanguageCode(for: language)
+        guard let languageCode = resolvedLanguageCode(for: language) else { return text }
         guard let ranges = spellChecker.misspelledRanges(in: text, language: languageCode), !ranges.isEmpty else {
             return text
         }
@@ -199,10 +199,17 @@ nonisolated public struct TextNormalizer: Sendable {
         return pieces.joined()
     }
 
-    nonisolated private func resolvedLanguageCode(for language: TranscriptionLanguage) -> String {
+    /// Язык для проверки орфографии. `nil` означает, что шаг пропускается.
+    nonisolated private func resolvedLanguageCode(for language: TranscriptionLanguage) -> String? {
         switch language {
         case .ru: return "ru"
         case .en: return "en"
+        case .zh:
+            // Для китайского орфография не применяется. Проверка работает
+            // словами, разделёнными пробелами, а китайский текст так не
+            // устроен: «мягкая правка» здесь не исправляет опечатки, а
+            // корёжит иероглифы. Лучше показать сказанное как есть.
+            return nil
         case .auto: return Locale.current.language.languageCode?.identifier ?? "en"
         }
     }

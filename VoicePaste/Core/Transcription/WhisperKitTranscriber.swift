@@ -30,9 +30,10 @@ nonisolated public struct WhisperDecodingPlan: Equatable, Sendable {
 }
 
 nonisolated public struct WhisperKitTranscriber: Transcribing {
-    /// `L-005`/`AT-095`: the decoding task is always transcription, never
-    /// translation; in `.auto` the language is left unset with detection
-    /// enabled, while `.ru`/`.en` force their language explicitly.
+    /// Задача декодирования всегда распознавание, никогда не перевод: продукт
+    /// показывает сказанное на языке, на котором оно сказано. В `.auto` язык
+    /// не задаётся и включается определение; остальные значения задают язык
+    /// явно — это надёжнее определения на короткой или смешанной речи.
     public static func decodingPlan(for language: TranscriptionLanguage) -> WhisperDecodingPlan {
         switch language {
         case .auto:
@@ -52,6 +53,13 @@ nonisolated public struct WhisperKitTranscriber: Transcribing {
         case .en:
             return WhisperDecodingPlan(
                 languageCode: "en",
+                detectLanguage: false,
+                usePrefillPrompt: true,
+                isTranslate: false
+            )
+        case .zh:
+            return WhisperDecodingPlan(
+                languageCode: "zh",
                 detectLanguage: false,
                 usePrefillPrompt: true,
                 isTranslate: false
@@ -223,9 +231,14 @@ private actor WhisperInferenceWorker {
             detectedLanguage: plan.languageCode ?? results.first?.language,
             // Времена — от начала отрезка, который отдали модели. Учебный
             // режим сдвигает их на начало окна; диктовка не смотрит.
-            segments: results.flatMap(\.segments).map {
-                TranscribedSegment(
-                    text: $0.text,
+            segments: results.flatMap(\.segments).compactMap {
+                // Текст сегмента приходит с служебной разметкой модели.
+                // В готовом тексте результата её нет, а здесь — есть, и без
+                // очистки она уезжает прямо на экран.
+                let text = WhisperSpecialTokens.strip($0.text)
+                guard !text.isEmpty else { return nil }
+                return TranscribedSegment(
+                    text: text,
                     startSeconds: Double($0.start),
                     endSeconds: Double($0.end)
                 )

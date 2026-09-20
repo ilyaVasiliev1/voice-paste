@@ -5,6 +5,7 @@ nonisolated public enum TranscriptionLanguage: String, Codable, CaseIterable, Se
     case auto
     case ru
     case en
+    case zh
 }
 
 /// One transcription request: 16 kHz mono Float32 samples (the format both

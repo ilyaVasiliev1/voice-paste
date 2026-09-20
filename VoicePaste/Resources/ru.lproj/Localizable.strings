@@ -137,6 +137,7 @@
 "settings.language.auto" = "Автоматически";
 "settings.language.ru" = "Русский";
 "settings.language.en" = "Английский";
+"settings.language.zh" = "Китайский";
 "settings.hotkey.recorderAccessibilityLabel" = "Запись горячей клавиши. Нажмите и введите новую комбинацию.";
 "settings.hotkey.changeHint" = "Нажмите, чтобы изменить";
 "settings.hotkey.recording" = "Нажмите сочетание…";
@@ -197,7 +198,6 @@
 "lecture.catchingUp" = "распознаётся…";
 "lecture.empty.title" = "Здесь появится расшифровка лекции";
 "lecture.empty.description" = "Нажмите «Начать лекцию» — текст будет пополняться по ходу, абзацами по паузам говорящего.";
-"lecture.translate" = "Перевести";
 "lecture.copyParagraph" = "Скопировать абзац";
 "lecture.paragraph.startsAt" = "Начало абзаца";
 "dashboard.statsFailed.title" = "Статистика недоступна";
