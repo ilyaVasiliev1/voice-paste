@@ -40,10 +40,10 @@ private final class ProgressBox: @unchecked Sendable {
 @MainActor
 final class AudioDecoderOggTests: XCTestCase {
 
-    private var sample01URL: URL {
-        URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .appendingPathComponent("Fixtures/TelegramOGG/sample-01.ogg")
+    private static let sample01Path = "TelegramOGG/sample-01.ogg"
+
+    private var sample01URL: URL? {
+        TestFixtureLocator.url(for: Self.sample01Path, sourceFile: #filePath)
     }
 
     /// The one real Telegram OGG/Opus fixture is deliberately gitignored
@@ -53,11 +53,11 @@ final class AudioDecoderOggTests: XCTestCase {
     /// when it is missing, so a clean checkout's suite stays green while local
     /// runs still exercise the real end-to-end decode path.
     private func requireSample01URL() throws -> URL {
-        let url = sample01URL
-        try XCTSkipUnless(
-            FileManager.default.fileExists(atPath: url.path),
-            "Telegram OGG/Opus fixture absent (gitignored — possible PII); skipping on clean checkout/CI"
-        )
+        // Отсутствие фикстуры — это пропуск, а не падение: на чистом клоне и
+        // в CI её нет намеренно.
+        guard let url = sample01URL else {
+            throw XCTSkip(TestFixtureLocator.absenceReason(for: Self.sample01Path))
+        }
         return url
     }
 

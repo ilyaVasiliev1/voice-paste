@@ -89,18 +89,11 @@ final class TranscriptionSpeedBenchmark: XCTestCase {
     }
 
     private func decodeFixture() async throws -> [Float] {
-        let url = Bundle(for: Self.self).bundleURL
-            .deletingLastPathComponent()
-            .appendingPathComponent("VoicePasteTests/Fixtures/TelegramOGG/sample-01.ogg")
-        let direct = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .appendingPathComponent("Fixtures/TelegramOGG/sample-01.ogg")
-        let existing = FileManager.default.fileExists(atPath: direct.path) ? direct : url
-        try XCTSkipUnless(
-            FileManager.default.fileExists(atPath: existing.path),
-            "Фикстура sample-01.ogg не найдена — она приватная и в git не входит."
-        )
-        return try await AudioDecoder().decode(url: existing)
+        let path = "TelegramOGG/sample-01.ogg"
+        guard let url = TestFixtureLocator.url(for: path, sourceFile: #filePath) else {
+            throw XCTSkip(TestFixtureLocator.absenceReason(for: path))
+        }
+        return try await AudioDecoder().decode(url: url)
     }
 
     private func makeTranscriberOnInstalledModel() async throws -> any Transcribing {

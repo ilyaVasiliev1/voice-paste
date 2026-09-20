@@ -6,8 +6,13 @@ set -euo pipefail
 # and the single-instance handoff, so an installed VoicePaste may keep running.
 
 PROJECT_ROOT="${0:A:h:h}"
-DERIVED_DATA="$PROJECT_ROOT/.tmp/safe-tests"
-CACHE_ROOT="$PROJECT_ROOT/.tmp/test-caches"
+# Сборка держится вне ~/Documents намеренно. Тестовый хост — это вторая копия
+# приложения, и запускается она при каждом прогоне; собранная внутри Documents,
+# она заставляет macOS спрашивать доступ к папке снова и снова, потому что
+# пересобранный и заново подписанный пакет для TCC — новое приложение.
+BUILD_ROOT="${VOICEPASTE_BUILD_ROOT:-$HOME/Library/Caches/VoicePaste/Build}"
+DERIVED_DATA="$BUILD_ROOT/safe-tests"
+CACHE_ROOT="$BUILD_ROOT/test-caches"
 # The pinned SPM checkout lives outside .tmp on purpose: `-disableAutomatic-
 # PackageResolution` below means a missing checkout fails the run instead of
 # fetching, and .tmp is both git-ignored and the first thing a cleanup wipes.
