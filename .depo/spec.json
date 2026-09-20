@@ -1,0 +1,11 @@
+{
+  "spec_dir": "spec",
+  "platforms": {
+    "macos": {
+      "entry_globs": [
+        "VoicePaste/App/*.swift",
+        "VoicePaste/**/*View.swift"
+      ]
+    }
+  }
+}
