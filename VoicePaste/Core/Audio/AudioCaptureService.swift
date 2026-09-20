@@ -39,6 +39,26 @@ nonisolated final class AudioSampleAccumulator: @unchecked Sendable {
         lock.unlock()
     }
 
+    /// Сколько сэмплов накоплено на сейчас. Нужно нарезке окон, которая
+    /// считает закрывшиеся отрезки, пока запись ещё идёт.
+    var count: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return sampleCount
+    }
+
+    /// Копия отрезка **без** опустошения буфера: запись продолжается, а конец
+    /// её ещё понадобится целиком — и фильтру хвоста, и проверке громкости.
+    /// Диапазон обрезается по накопленному, чтобы гонка с аудиопотоком давала
+    /// меньше данных, а не выход за границы.
+    func snapshot(_ range: Range<Int>) -> [Float] {
+        lock.lock()
+        defer { lock.unlock() }
+        let clamped = range.clamped(to: 0..<samples.count)
+        guard !clamped.isEmpty else { return [] }
+        return Array(samples[clamped])
+    }
+
     func drain() -> [Float] {
         drainWithRMS().samples
     }
@@ -167,6 +187,15 @@ public final class AudioCaptureService {
     private var levelPollTask: Task<Void, Never>?
 
     public init() {}
+
+    /// Накоплено сэмплов на сейчас. Читается во время записи нарезкой окон.
+    public var capturedSampleCount: Int { accumulator.count }
+
+    /// Копия отрезка накопленного звука, не трогающая буфер. Отдаёт меньше
+    /// запрошенного, если столько ещё не записано.
+    public func capturedSamples(in range: Range<Int>) -> [Float] {
+        accumulator.snapshot(range)
+    }
 
     public func start() throws {
         try beginCapture(clearingExistingSamples: true)

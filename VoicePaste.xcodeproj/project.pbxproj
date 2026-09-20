@@ -32,7 +32,9 @@
 		C00000000000000000000927 /* MainWindowLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000926 /* MainWindowLayoutTests.swift */; };
 		C00000000000000000000929 /* TranscriptionSpeedBenchmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000928 /* TranscriptionSpeedBenchmark.swift */; };
 		C00000000000000000000931 /* DictationWindowPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000930 /* DictationWindowPlanner.swift */; };
+		C00000000000000000000935 /* StreamingDictationTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000934 /* StreamingDictationTranscriber.swift */; };
 		C00000000000000000000933 /* DictationWindowPlannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000932 /* DictationWindowPlannerTests.swift */; };
+		C00000000000000000000937 /* TestFixtureLocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000936 /* TestFixtureLocator.swift */; };
 		C00000000000000000000142 /* ModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000141 /* ModelManager.swift */; };
 		C00000000000000000000144 /* ModelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000143 /* ModelState.swift */; };
 		C00000000000000000000146 /* Transcribing.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000145 /* Transcribing.swift */; };
@@ -180,7 +182,9 @@
 		C00000000000000000000926 /* MainWindowLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowLayoutTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000928 /* TranscriptionSpeedBenchmark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionSpeedBenchmark.swift; sourceTree = "<group>"; };
 		C00000000000000000000930 /* DictationWindowPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationWindowPlanner.swift; sourceTree = "<group>"; };
+		C00000000000000000000934 /* StreamingDictationTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingDictationTranscriber.swift; sourceTree = "<group>"; };
 		C00000000000000000000932 /* DictationWindowPlannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationWindowPlannerTests.swift; sourceTree = "<group>"; };
+		C00000000000000000000936 /* TestFixtureLocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestFixtureLocator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -278,6 +282,7 @@
 			children = (
 				C00000000000000000000121 /* DictationStateMachine.swift */,
 				C00000000000000000000930 /* DictationWindowPlanner.swift */,
+				C00000000000000000000934 /* StreamingDictationTranscriber.swift */,
 			);
 			path = Dictation;
 			sourceTree = "<group>";
@@ -502,6 +507,7 @@
 				C00000000000000000000926 /* MainWindowLayoutTests.swift */,
 				C00000000000000000000928 /* TranscriptionSpeedBenchmark.swift */,
 				C00000000000000000000932 /* DictationWindowPlannerTests.swift */,
+				C00000000000000000000936 /* TestFixtureLocator.swift */,
 			);
 			path = VoicePasteTests;
 			sourceTree = "<group>";
@@ -647,6 +653,7 @@
 				C00000000000000000000120 /* AudioCaptureService.swift in Sources */,
 				C00000000000000000000122 /* DictationStateMachine.swift in Sources */,
 				C00000000000000000000931 /* DictationWindowPlanner.swift in Sources */,
+				C00000000000000000000935 /* StreamingDictationTranscriber.swift in Sources */,
 				C00000000000000000000124 /* HUDContentView.swift in Sources */,
 				C00000000000000000000126 /* HUDState.swift in Sources */,
 				C00000000000000000000128 /* HUDWindowController.swift in Sources */,
@@ -723,6 +730,7 @@
 				C00000000000000000000927 /* MainWindowLayoutTests.swift in Sources */,
 				C00000000000000000000929 /* TranscriptionSpeedBenchmark.swift in Sources */,
 				C00000000000000000000933 /* DictationWindowPlannerTests.swift in Sources */,
+				C00000000000000000000937 /* TestFixtureLocator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

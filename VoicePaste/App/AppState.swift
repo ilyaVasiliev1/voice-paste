@@ -50,6 +50,14 @@ public final class AppState: ObservableObject {
 
     private var dictationStateMachine: DictationStateMachine
     private let audioCapture = AudioCaptureService()
+    /// Считает закрывшиеся окна длинной записи, пока она идёт, чтобы после
+    /// остановки досчитывался только хвост. Короткую диктовку не трогает:
+    /// планировщик не выдаёт окон, пока их не набралось, и запись уходит в
+    /// модель одним проходом, как и прежде.
+    private let streamingTranscriber = StreamingDictationTranscriber(
+        windowSamples: 28 * 16_000,
+        overlapSamples: Int(0.75 * 16_000)
+    )
     private let hud = HUDWindowController()
     private let normalizer = TextNormalizer()
     private var hotkeyManager: HotkeyManager?
@@ -332,6 +340,7 @@ public final class AppState: ObservableObject {
                 action: .selectMicrophone
             ))
             Task { await DiagnosticLog.shared.log("capture.start.failed", detail: String(describing: error)) }
+            streamingTranscriber.cancel()
             return
         }
         recordingStartedAt = Date()
@@ -343,6 +352,23 @@ public final class AppState: ObservableObject {
         // made the HUD vulnerable to being visually missed under load.
         refreshRecordingHUD(force: true)
         startElapsedTicker()
+        startStreamingTranscription()
+    }
+
+    /// Поднимает счёт окон по ходу записи. Модель берётся уже загруженной:
+    /// грузить её здесь нельзя — `prewarm()` выше уже занят этим, а вторая
+    /// загрузка отняла бы память у идущей записи. Не успела прогреться —
+    /// окна просто не считаются, и запись уйдёт в модель целиком после
+    /// остановки, как было до нарезки.
+    private func startStreamingTranscription() {
+        streamingTranscriber.cancel()
+        guard let engine = modelManager.loadedTranscriber else { return }
+        streamingTranscriber.begin(
+            transcriber: engine,
+            language: settings.languageMode,
+            availableSamples: { [audioCapture] in audioCapture.capturedSampleCount },
+            readSamples: { [audioCapture] range in audioCapture.capturedSamples(in: range) }
+        )
     }
 
     private func startElapsedTicker() {
@@ -381,6 +407,9 @@ public final class AppState: ObservableObject {
     private func discardRecording() {
         elapsedTimerTask?.cancel()
         pausedDictationExpiryTask?.cancel()
+        // Посчитанные по ходу окна выбрасываются вместе с буфером: отменённая
+        // запись не оставляет следов.
+        streamingTranscriber.cancel()
         _ = audioCapture.stop() // discarded on purpose: cancel means no transcription, no history
         frontAppSnapshot = nil
         recordingStartedAt = nil
@@ -691,8 +720,14 @@ public final class AppState: ObservableObject {
 
         do {
             let engine = try await modelManager.ensureLoaded()
-            let request = TranscriptionRequest(samples: samples, language: settings.languageMode)
-            let result = try await engine.transcribe(request)
+            // Окна, закрывшиеся во время записи, уже посчитаны — остаётся
+            // хвост. Для короткой диктовки окон не было вовсе, и `finish`
+            // распознаёт всю запись одним проходом, как и до нарезки.
+            let result = try await streamingTranscriber.finish(
+                transcriber: engine,
+                language: settings.languageMode,
+                totalSamples: samples
+            )
 
             let vocabulary = (try? await historyStore.fetchVocabulary()) ?? []
             let (normalizedText, _) = await normalizer.normalizeInBackground(

@@ -35,24 +35,35 @@ nonisolated struct DictationWindowPlanner: Sendable {
 
     /// Следующее закрывшееся окно, если накопленного звука на него хватает.
     /// `nil` означает «рано» — и для короткой записи так и останется.
-    mutating func nextClosedWindow(availableSamples: Int) -> Range<Int>? {
+    ///
+    /// Запрос ничего не сдвигает. Сдвиг — отдельным вызовом `commit`, и
+    /// только когда отрезок действительно прочитан и посчитан: сдвинуться
+    /// раньше значит пропустить окно, а пропущенное окно — это дыра в записи.
+    func closedWindow(availableSamples: Int) -> Range<Int>? {
         let start = nextWindowStart
         let end = start + windowSamples
         guard end <= availableSamples else { return nil }
-        plannedUpTo = end
         return start..<end
     }
 
     /// Незакрытый хвост после остановки записи. `nil`, если хвоста нет —
     /// последнее окно закрылось ровно на конце записи.
     ///
-    /// Когда не было выдано ни одного окна, возвращается вся запись: короткая
-    /// диктовка распознаётся одним проходом, как и до появления нарезки.
-    mutating func finalTail(totalSamples: Int) -> Range<Int>? {
+    /// Когда не было зафиксировано ни одного окна, возвращается вся запись:
+    /// короткая диктовка распознаётся одним проходом, как и до нарезки.
+    func tail(totalSamples: Int) -> Range<Int>? {
         let start = nextWindowStart
         guard start < totalSamples else { return nil }
-        plannedUpTo = totalSamples
         return start..<totalSamples
+    }
+
+    /// Отмечает отрезок посчитанным. Дальше нарезка пойдёт от его конца.
+    mutating func commit(_ piece: Range<Int>) {
+        precondition(
+            piece.lowerBound == nextWindowStart,
+            "Фиксируется не тот отрезок, который был запрошен: нарезка разъедется"
+        )
+        plannedUpTo = piece.upperBound
     }
 
     /// Начало следующего отрезка. До первого окна — ноль, дальше — конец
