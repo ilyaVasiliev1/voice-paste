@@ -30,9 +30,22 @@ final class TranscriptionSpeedBenchmark: XCTestCase {
 
     private static let sampleRate = 16_000
 
+    /// Окно, которым режет тракт импорта. Тот же размер взят и здесь, чтобы
+    /// оценка выигрыша относилась к уже работающему механизму.
+    private static let windowSeconds = 28
+
     /// Длины отрезков, на которых меряем. 5 с — типичная короткая диктовка,
     /// 28 с — окно, которым режет импорт, дальше — лекционный масштаб.
     private static let sliceDurations: [Int] = [5, 15, 28, 60, 120]
+
+    /// Строка замера. Кортеж на три поля линтер не пропускает, да и читается
+    /// хуже: у величин есть имена, пусть они будут в типе.
+    private struct Measurement {
+        let speechSeconds: Int
+        let elapsedSeconds: Double
+
+        var realtimeFactor: Double { elapsedSeconds / Double(speechSeconds) }
+    }
 
     func test_measureRealtimeFactorAcrossRecordingLengths() async throws {
         let marker = FileManager.default
@@ -55,11 +68,11 @@ final class TranscriptionSpeedBenchmark: XCTestCase {
         let warmUp = Array(samples.prefix(Self.sampleRate * 3))
         let warmUpSeconds = try await measure(transcriber, samples: warmUp)
 
-        var rows: [(seconds: Int, elapsed: Double, factor: Double)] = []
+        var rows: [Measurement] = []
         for seconds in Self.sliceDurations {
             let slice = Array(samples.prefix(Self.sampleRate * seconds))
             let elapsed = try await measure(transcriber, samples: slice)
-            rows.append((seconds, elapsed, elapsed / Double(seconds)))
+            rows.append(Measurement(speechSeconds: seconds, elapsedSeconds: elapsed))
         }
 
         report(warmUpSeconds: warmUpSeconds, rows: rows)
@@ -105,7 +118,7 @@ final class TranscriptionSpeedBenchmark: XCTestCase {
         )
     }
 
-    private func report(warmUpSeconds: Double, rows: [(seconds: Int, elapsed: Double, factor: Double)]) {
+    private func report(warmUpSeconds: Double, rows: [Measurement]) {
         var lines = [
             "",
             "ЗАМЕР СКОРОСТИ РАСПОЗНАВАНИЯ",
@@ -115,15 +128,20 @@ final class TranscriptionSpeedBenchmark: XCTestCase {
             "  --------|---------|-----------------------",
         ]
         for row in rows {
-            lines.append(String(format: "  %7d | %7.2f | %.3f", row.seconds, row.elapsed, row.factor))
+            lines.append(String(
+                format: "  %7d | %7.2f | %.3f",
+                row.speechSeconds, row.elapsedSeconds, row.realtimeFactor
+            ))
         }
         if let longest = rows.last {
-            let saved = longest.elapsed - (longest.elapsed / Double(longest.seconds)) * 28
+            // Досчитать после остановки остаётся только незакрытый хвост —
+            // не более одного окна.
+            let tail = longest.realtimeFactor * Double(Self.windowSeconds)
             lines.append("")
             lines.append(String(
-                format: "На записи в %d с параллельный счёт окнами по 28 с срезал бы ожидание "
+                format: "На записи в %d с параллельный счёт окнами по %d с срезал бы ожидание "
                     + "после остановки примерно с %.1f с до %.1f с.",
-                longest.seconds, longest.elapsed, max(0, longest.elapsed - saved)
+                longest.speechSeconds, Self.windowSeconds, longest.elapsedSeconds, tail
             ))
         }
         print(lines.joined(separator: "\n"))
