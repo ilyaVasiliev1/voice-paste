@@ -30,6 +30,7 @@
 		C00000000000000000000923 /* AppSettingsLaunchAtLoginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000922 /* AppSettingsLaunchAtLoginTests.swift */; };
 		C00000000000000000000925 /* MainWindowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000924 /* MainWindowLayout.swift */; };
 		C00000000000000000000927 /* MainWindowLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000926 /* MainWindowLayoutTests.swift */; };
+		C00000000000000000000929 /* TranscriptionSpeedBenchmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000928 /* TranscriptionSpeedBenchmark.swift */; };
 		C00000000000000000000142 /* ModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000141 /* ModelManager.swift */; };
 		C00000000000000000000144 /* ModelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000143 /* ModelState.swift */; };
 		C00000000000000000000146 /* Transcribing.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000145 /* Transcribing.swift */; };
@@ -175,6 +176,7 @@
 		C00000000000000000000922 /* AppSettingsLaunchAtLoginTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsLaunchAtLoginTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000924 /* MainWindowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowLayout.swift; sourceTree = "<group>"; };
 		C00000000000000000000926 /* MainWindowLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowLayoutTests.swift; sourceTree = "<group>"; };
+		C00000000000000000000928 /* TranscriptionSpeedBenchmark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionSpeedBenchmark.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -493,6 +495,7 @@
 				C00000000000000000000915 /* WhisperDecodingPlanTests.swift */,
 				C00000000000000000000922 /* AppSettingsLaunchAtLoginTests.swift */,
 				C00000000000000000000926 /* MainWindowLayoutTests.swift */,
+				C00000000000000000000928 /* TranscriptionSpeedBenchmark.swift */,
 			);
 			path = VoicePasteTests;
 			sourceTree = "<group>";
@@ -711,6 +714,7 @@
 				C00000000000000000000914 /* WhisperDecodingPlanTests.swift in Sources */,
 				C00000000000000000000923 /* AppSettingsLaunchAtLoginTests.swift in Sources */,
 				C00000000000000000000927 /* MainWindowLayoutTests.swift in Sources */,
+				C00000000000000000000929 /* TranscriptionSpeedBenchmark.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
