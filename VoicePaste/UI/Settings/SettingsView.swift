@@ -2,8 +2,10 @@ import AppKit
 import Foundation
 import SwiftUI
 
-/// `UI-005`. Sections map 1:1 to `ui-ux.md`; all controls bind to `DM-001`
-/// via `AppSettings`, which persists to `UserDefaults` on every change.
+/// `UI-settings.tabs`. Sections map 1:1 to `ui-ux.md`; all controls bind to
+/// `DM-001` via `AppSettings`, which persists to `UserDefaults` on every
+/// change — except `launchAtLogin` (`L-020`), whose source of truth is
+/// `SMAppService.mainApp.status`, not `UserDefaults`.
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
 
@@ -51,6 +53,10 @@ private struct SettingsBody: View {
         .task {
             await loadVocabulary()
             applyRequestedTab()
+            // `L-020`: the system is the source of truth for this switch —
+            // pick up a change made outside the app (System Settings →
+            // Login Items) every time this window becomes visible again.
+            settings.refreshLaunchAtLoginFromSystem()
         }
         // `UI-003` "Выбрать микрофон": if Settings was already open when the
         // HUD button was clicked, `.task` above won't re-run — this covers
@@ -75,6 +81,10 @@ private struct SettingsBody: View {
     private var generalSection: some View {
         Form {
             Section {
+                // `L-020`: this binding's getter reflects the system's own
+                // `SMAppService.mainApp.status`, not a stored preference —
+                // flipping it asks the system to register/unregister and the
+                // switch snaps back to reality if that request fails.
                 Toggle("settings.general.launchAtLogin", isOn: $settings.launchAtLogin)
                 Toggle("settings.general.showInDock", isOn: $settings.showInDock)
                     .onChange(of: settings.showInDock) { _, _ in appState.applyDockVisibility() }
@@ -121,10 +131,12 @@ private struct SettingsBody: View {
     private var modelSection: some View {
         Form {
             LabeledContent("settings.model.name", value: settings.modelID)
-            LabeledContent("settings.model.size", value: ByteCountFormatter.string(
-                fromByteCount: ModelCatalog.approximateSizeBytes,
-                countStyle: .file
-            ))
+            LabeledContent(
+                "settings.model.size",
+                value: ByteCountFormatter.string(
+                    fromByteCount: ModelCatalog.approximateSizeBytes,
+                    countStyle: .file
+                ))
             LabeledContent("settings.model.status", value: modelStatusDescription)
             Picker("settings.model.downloadSource", selection: $settings.modelDownloadSource) {
                 Text("settings.model.downloadSource.github").tag(ModelDownloadSource.github)
@@ -300,7 +312,9 @@ private struct SettingsBody: View {
     private var unloadMinutesDescription: String {
         settings.modelUnloadMinutes == 0
             ? NSLocalizedString("settings.model.unloadAfter.keepWarm", comment: "")
-            : String(format: NSLocalizedString("settings.model.unloadAfter.minutes", comment: ""), settings.modelUnloadMinutes)
+            : String(
+                format: NSLocalizedString("settings.model.unloadAfter.minutes", comment: ""),
+                settings.modelUnloadMinutes)
     }
 
     private var microphoneStatusDescription: String {

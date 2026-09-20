@@ -1,4 +1,5 @@
 import Foundation
+import ServiceManagement
 
 /// `DM-001` — the single small-footprint settings record, backed by
 /// `UserDefaults`. Every default below mirrors `data-model.md` exactly.
@@ -12,12 +13,20 @@ public final class AppSettings: ObservableObject {
         static let autoInsertEnabled = "autoInsertEnabled"
         static let autoCorrectSafeTypos = "autoCorrectSafeTypos"
         static let languageMode = "languageMode"
-        static let launchAtLogin = "launchAtLogin"
         static let showInDock = "showInDock"
         static let modelDownloadSource = "modelDownloadSource"
     }
 
     private let defaults: UserDefaults
+    /// `L-020`: the only path allowed to touch Login Items — a real
+    /// `SystemLoginItemRegistry` in production, a fake under
+    /// `ProcessRuntime.isRunningTests` or an injected test double.
+    private let loginItemRegistry: any LoginItemRegistering
+    /// Suppresses `launchAtLogin`'s `didSet` side effect while this type is
+    /// merely mirroring a status the system already reports — at init, after
+    /// a register/unregister attempt (success or failure), and when Settings
+    /// re-opens and picks up an out-of-band system change.
+    private var isApplyingSystemLoginItemStatus = false
 
     /// Global shortcut; default ⌥Space.
     @Published public var hotkey: HotkeyShortcut { didSet { persistHotkey() } }
@@ -41,8 +50,18 @@ public final class AppSettings: ObservableObject {
     @Published public var autoCorrectSafeTypos: Bool { didSet { persist() } }
     /// Default `auto`.
     @Published public var languageMode: TranscriptionLanguage { didSet { persist() } }
-    /// Default `false` (`UI-005`: "запуск при входе в macOS (выключен по умолчанию)").
-    @Published public var launchAtLogin: Bool { didSet { persist() } }
+    /// `L-020`: source of truth is `SMAppService.mainApp.status`, not this
+    /// property's own storage — it is never read back from `UserDefaults`.
+    /// Setting it from user interaction (`didSet` below) asks the system to
+    /// register/unregister; setting it from `syncLaunchAtLoginFromSystem()`
+    /// only mirrors what the system already reports and must not re-trigger
+    /// that request, which is what `isApplyingSystemLoginItemStatus` guards.
+    @Published public var launchAtLogin: Bool {
+        didSet {
+            guard !isApplyingSystemLoginItemStatus, launchAtLogin != oldValue else { return }
+            requestLoginItemChange(enable: launchAtLogin)
+        }
+    }
     /// Default `true`. When disabled, the app stays available from the menu
     /// bar but is absent from the Dock and app switcher.
     @Published public var showInDock: Bool { didSet { persist() } }
@@ -74,8 +93,13 @@ public final class AppSettings: ObservableObject {
         return { mirror.value }
     }
 
-    public init(defaults: UserDefaults = .standard) {
+    public init(
+        defaults: UserDefaults = .standard,
+        loginItemRegistry: any LoginItemRegistering = ProcessRuntime.isRunningTests
+            ? NullLoginItemRegistry() : SystemLoginItemRegistry()
+    ) {
         self.defaults = defaults
+        self.loginItemRegistry = loginItemRegistry
         self.hotkey = Self.loadHotkey(defaults) ?? .default
         self.recordingMode = RecordingMode(rawValue: defaults.string(forKey: Keys.recordingMode) ?? "") ?? .toggle
         // `L-010`: keep the model resident by default. Unloading it after an
@@ -88,9 +112,14 @@ public final class AppSettings: ObservableObject {
         self.autoInsertEnabled = defaults.object(forKey: Keys.autoInsertEnabled) as? Bool ?? true
         self.autoCorrectSafeTypos = defaults.object(forKey: Keys.autoCorrectSafeTypos) as? Bool ?? true
         self.languageMode = TranscriptionLanguage(rawValue: defaults.string(forKey: Keys.languageMode) ?? "") ?? .auto
-        self.launchAtLogin = defaults.object(forKey: Keys.launchAtLogin) as? Bool ?? false
+        // `L-020`: never read from `UserDefaults` — a clean machine has no
+        // registration, so the system status (`.notRegistered`) already
+        // gives the documented "выключено" default without a stored flag
+        // that could drift from it.
+        self.launchAtLogin = Self.isEnabled(loginItemRegistry.status)
         self.showInDock = defaults.object(forKey: Keys.showInDock) as? Bool ?? true
-        self.modelDownloadSource = ModelDownloadSource(rawValue: defaults.string(forKey: Keys.modelDownloadSource) ?? "") ?? .github
+        self.modelDownloadSource =
+            ModelDownloadSource(rawValue: defaults.string(forKey: Keys.modelDownloadSource) ?? "") ?? .github
         // `historyEnabled`'s own `didSet` above doesn't fire for this
         // initializer assignment, so the mirror needs an explicit initial
         // sync to match the value just loaded from `UserDefaults`.
@@ -104,7 +133,6 @@ public final class AppSettings: ObservableObject {
         defaults.set(autoInsertEnabled, forKey: Keys.autoInsertEnabled)
         defaults.set(autoCorrectSafeTypos, forKey: Keys.autoCorrectSafeTypos)
         defaults.set(languageMode.rawValue, forKey: Keys.languageMode)
-        defaults.set(launchAtLogin, forKey: Keys.launchAtLogin)
         defaults.set(showInDock, forKey: Keys.showInDock)
         defaults.set(modelDownloadSource.rawValue, forKey: Keys.modelDownloadSource)
     }
@@ -117,6 +145,71 @@ public final class AppSettings: ObservableObject {
     private static func loadHotkey(_ defaults: UserDefaults) -> HotkeyShortcut? {
         guard let data = defaults.data(forKey: Keys.hotkey) else { return nil }
         return try? JSONDecoder().decode(HotkeyShortcut.self, from: data)
+    }
+
+    // MARK: - Launch at login (L-020)
+
+    /// Called from `launchAtLogin`'s `didSet` when the user actually flips
+    /// the switch (never for a mere system-status refresh). The blocking
+    /// `SMAppService` call runs off the main actor (`INV-009`), and either
+    /// way it finishes, the published value is resynced from whatever the
+    /// system reports afterwards — on success that just confirms the
+    /// requested state; on failure or a mismatched result it snaps the
+    /// switch back to reality within the same interaction instead of
+    /// leaving it wherever the user left it (`L-020`).
+    private func requestLoginItemChange(enable: Bool) {
+        let registry = loginItemRegistry
+        loginItemRequestTask = Task.detached(priority: .userInitiated) { [weak self] in
+            do {
+                if enable {
+                    try registry.register()
+                } else {
+                    try registry.unregister()
+                }
+            } catch {
+                await DiagnosticLog.shared.log(
+                    "settings.launchAtLogin.failed",
+                    detail: "enable=\(enable) error=\(String(describing: error))"
+                )
+            }
+            await self?.syncLaunchAtLoginFromSystem(status: registry.status)
+        }
+    }
+
+    /// The in-flight request started by the most recent `launchAtLogin`
+    /// toggle, kept only so `waitForLoginItemRequestForTesting()` has
+    /// something to await — production code never reads it back.
+    private var loginItemRequestTask: Task<Void, Never>?
+
+    /// Test-only: awaits the register/unregister request in flight from the
+    /// most recent `launchAtLogin` toggle, so tests don't need to poll for
+    /// the detached system call and its resync to finish. No-op if nothing
+    /// is in flight.
+    func waitForLoginItemRequestForTesting() async {
+        await loginItemRequestTask?.value
+    }
+
+    /// Re-reads the system's actual status into `launchAtLogin` without
+    /// re-triggering `requestLoginItemChange(enable:)` — the single path used
+    /// both to correct after a register/unregister attempt above and to pick
+    /// up an out-of-band change (`refreshLaunchAtLoginFromSystem()`).
+    private func syncLaunchAtLoginFromSystem(status: SMAppService.Status? = nil) {
+        let resolved = status ?? loginItemRegistry.status
+        isApplyingSystemLoginItemStatus = true
+        launchAtLogin = Self.isEnabled(resolved)
+        isApplyingSystemLoginItemStatus = false
+    }
+
+    /// `L-020`: the system is the single source of truth for this switch's
+    /// position. `SettingsView` calls this whenever its "Основное" tab
+    /// becomes visible so a change made outside the app (System Settings →
+    /// Login Items) is reflected without a restart.
+    public func refreshLaunchAtLoginFromSystem() {
+        syncLaunchAtLoginFromSystem()
+    }
+
+    private static func isEnabled(_ status: SMAppService.Status) -> Bool {
+        status == .enabled
     }
 }
 

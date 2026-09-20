@@ -26,6 +26,8 @@
 		C0000000000000000000013C /* ReadinessCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000013B /* ReadinessCoordinator.swift */; };
 		C0000000000000000000013E /* ReadinessState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000013D /* ReadinessState.swift */; };
 		C00000000000000000000140 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000013F /* AppSettings.swift */; };
+		C00000000000000000000921 /* LoginItemRegistering.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000920 /* LoginItemRegistering.swift */; };
+		C00000000000000000000923 /* AppSettingsLaunchAtLoginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000922 /* AppSettingsLaunchAtLoginTests.swift */; };
 		C00000000000000000000142 /* ModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000141 /* ModelManager.swift */; };
 		C00000000000000000000144 /* ModelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000143 /* ModelState.swift */; };
 		C00000000000000000000146 /* Transcribing.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000145 /* Transcribing.swift */; };
@@ -167,6 +169,8 @@
 		C00000000000000000000911 /* AppSettingsModelDownloadSourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsModelDownloadSourceTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000913 /* ModelDownloadSourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloadSourceTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000915 /* WhisperDecodingPlanTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperDecodingPlanTests.swift; sourceTree = "<group>"; };
+		C00000000000000000000920 /* LoginItemRegistering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginItemRegistering.swift; sourceTree = "<group>"; };
+		C00000000000000000000922 /* AppSettingsLaunchAtLoginTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsLaunchAtLoginTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -342,6 +346,7 @@
 			isa = PBXGroup;
 			children = (
 				C0000000000000000000013F /* AppSettings.swift */,
+				C00000000000000000000920 /* LoginItemRegistering.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -482,6 +487,7 @@
 				C00000000000000000000911 /* AppSettingsModelDownloadSourceTests.swift */,
 				C00000000000000000000913 /* ModelDownloadSourceTests.swift */,
 				C00000000000000000000915 /* WhisperDecodingPlanTests.swift */,
+				C00000000000000000000922 /* AppSettingsLaunchAtLoginTests.swift */,
 			);
 			path = VoicePasteTests;
 			sourceTree = "<group>";
@@ -640,6 +646,7 @@
 				C0000000000000000000013C /* ReadinessCoordinator.swift in Sources */,
 				C0000000000000000000013E /* ReadinessState.swift in Sources */,
 				C00000000000000000000140 /* AppSettings.swift in Sources */,
+				C00000000000000000000921 /* LoginItemRegistering.swift in Sources */,
 				C00000000000000000000142 /* ModelManager.swift in Sources */,
 				C00000000000000000000144 /* ModelState.swift in Sources */,
 				C00000000000000000000146 /* Transcribing.swift in Sources */,
@@ -695,6 +702,7 @@
 				C00000000000000000000910 /* AppSettingsModelDownloadSourceTests.swift in Sources */,
 				C00000000000000000000912 /* ModelDownloadSourceTests.swift in Sources */,
 				C00000000000000000000914 /* WhisperDecodingPlanTests.swift in Sources */,
+				C00000000000000000000923 /* AppSettingsLaunchAtLoginTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
