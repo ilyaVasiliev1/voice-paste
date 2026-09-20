@@ -25,7 +25,11 @@ struct HistoryView: View {
     var body: some View {
         NavigationSplitView {
             sidebar
-                .navigationSplitViewColumnWidth(min: 240, ideal: 300, max: 380)
+                .navigationSplitViewColumnWidth(
+                    min: MainWindowLayout.sidebarMinWidth,
+                    ideal: MainWindowLayout.sidebarIdealWidth,
+                    max: MainWindowLayout.sidebarMaxWidth
+                )
                 .searchable(
                     text: $searchText,
                     placement: .sidebar,
@@ -164,7 +168,7 @@ struct HistoryView: View {
         }
     }
 
-    private var detailMinWidth: CGFloat { 520 }
+    private var detailMinWidth: CGFloat { MainWindowLayout.detailMinWidth }
 
     private var sidebarDeleteConfirmation: Binding<Bool> {
         Binding(

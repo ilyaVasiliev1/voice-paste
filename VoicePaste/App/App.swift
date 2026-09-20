@@ -160,7 +160,10 @@ struct VoicePasteApp: App {
                 .environmentObject(appState)
                 .environmentObject(appState.importManager)
         }
-        .defaultSize(width: 980, height: 640)
+        .defaultSize(
+            width: MainWindowLayout.defaultWindowWidth,
+            height: MainWindowLayout.defaultWindowHeight
+        )
         .windowResizability(.contentMinSize)
 
         Window("onboarding.window.title", id: "onboarding") {

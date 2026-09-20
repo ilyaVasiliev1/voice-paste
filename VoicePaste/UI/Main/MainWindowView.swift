@@ -9,7 +9,10 @@ struct MainWindowView: View {
 
     var body: some View {
         HistoryView(section: $section)
-            .frame(minWidth: 680, minHeight: 460)
+            .frame(
+                minWidth: MainWindowLayout.windowMinWidth,
+                minHeight: MainWindowLayout.windowMinHeight
+            )
             .safeAreaInset(edge: .top, spacing: 0) {
                 if appState.persistenceFailureMessage != nil {
                     Label(
