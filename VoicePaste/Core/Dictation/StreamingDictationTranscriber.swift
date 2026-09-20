@@ -15,13 +15,13 @@ import Foundation
 @MainActor
 final class StreamingDictationTranscriber {
 
-    /// Как часто спрашивать, не закрылось ли окно. Окно длиной в десятки
-    /// секунд, так что секунда опроса ничего не стоит и не мажет границу
-    /// заметно.
-    private static let pollInterval = Duration.seconds(1)
-
     private let windowSamples: Int
     private let overlapSamples: Int
+
+    /// Как часто спрашивать, не закрылось ли окно. Окно длиной в десятки
+    /// секунд, так что секунда опроса ничего не стоит и не мажет границу
+    /// заметно. Тесты задают меньший шаг, чтобы не ждать вживую.
+    private let pollInterval: Duration
 
     private var planner: DictationWindowPlanner
     private var mergedText = ""
@@ -31,9 +31,14 @@ final class StreamingDictationTranscriber {
     /// говорит. Он запоминается и решается при завершении.
     private var failure: Error?
 
-    init(windowSamples: Int, overlapSamples: Int) {
+    init(
+        windowSamples: Int,
+        overlapSamples: Int,
+        pollInterval: Duration = .seconds(1)
+    ) {
         self.windowSamples = windowSamples
         self.overlapSamples = overlapSamples
+        self.pollInterval = pollInterval
         self.planner = DictationWindowPlanner(
             windowSamples: windowSamples,
             overlapSamples: overlapSamples
@@ -55,9 +60,10 @@ final class StreamingDictationTranscriber {
         readSamples: @escaping @MainActor (Range<Int>) -> [Float]
     ) {
         cancel()
+        let interval = pollInterval
         pump = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: Self.pollInterval)
+                try? await Task.sleep(for: interval)
                 guard !Task.isCancelled, let self else { return }
                 await self.drainClosedWindows(
                     transcriber: transcriber,

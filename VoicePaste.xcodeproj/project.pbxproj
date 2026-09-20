@@ -35,6 +35,7 @@
 		C00000000000000000000935 /* StreamingDictationTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000934 /* StreamingDictationTranscriber.swift */; };
 		C00000000000000000000933 /* DictationWindowPlannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000932 /* DictationWindowPlannerTests.swift */; };
 		C00000000000000000000937 /* TestFixtureLocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000936 /* TestFixtureLocator.swift */; };
+		C00000000000000000000939 /* StreamingDictationTranscriberTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000938 /* StreamingDictationTranscriberTests.swift */; };
 		C00000000000000000000142 /* ModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000141 /* ModelManager.swift */; };
 		C00000000000000000000144 /* ModelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000143 /* ModelState.swift */; };
 		C00000000000000000000146 /* Transcribing.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000145 /* Transcribing.swift */; };
@@ -185,6 +186,7 @@
 		C00000000000000000000934 /* StreamingDictationTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingDictationTranscriber.swift; sourceTree = "<group>"; };
 		C00000000000000000000932 /* DictationWindowPlannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationWindowPlannerTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000936 /* TestFixtureLocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestFixtureLocator.swift; sourceTree = "<group>"; };
+		C00000000000000000000938 /* StreamingDictationTranscriberTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingDictationTranscriberTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -508,6 +510,7 @@
 				C00000000000000000000928 /* TranscriptionSpeedBenchmark.swift */,
 				C00000000000000000000932 /* DictationWindowPlannerTests.swift */,
 				C00000000000000000000936 /* TestFixtureLocator.swift */,
+				C00000000000000000000938 /* StreamingDictationTranscriberTests.swift */,
 			);
 			path = VoicePasteTests;
 			sourceTree = "<group>";
@@ -731,6 +734,7 @@
 				C00000000000000000000929 /* TranscriptionSpeedBenchmark.swift in Sources */,
 				C00000000000000000000933 /* DictationWindowPlannerTests.swift in Sources */,
 				C00000000000000000000937 /* TestFixtureLocator.swift in Sources */,
+				C00000000000000000000939 /* StreamingDictationTranscriberTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
