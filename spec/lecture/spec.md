@@ -33,7 +33,8 @@
 <!-- id: LectureEngine.selection -->
 <!-- entities: AppSettings, LiveTranscribing -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/Core/Lecture/LiveTranscribing.swift, VoicePaste/Core/Settings/AppSettings.swift -->
+<!-- enforced_macos: VoicePaste/Core/Lecture/LiveTranscribing.swift, VoicePaste/Core/Settings/AppSettings.swift, VoicePaste/App/AppState+Lecture.swift -->
+<!-- test_macos: VoicePasteTests/LiveTranscriptionTests.swift:test_defaultEngine_followsTheMeasuredWinnerPerLanguage -->
 
 Лекция SHALL распознаваться одним из двух движков на выбор: потоковым
 распознавателем системы или Whisper через нарезку на окна.
@@ -54,10 +55,12 @@
 это его смысл, а не украшение — иначе он ничем не лучше нарезки.
 
 #### Scenario: китайская лекция по умолчанию
+<!-- test: LiveTranscriptionTests.test_defaultEngine_followsTheMeasuredWinnerPerLanguage -->
 - **WHEN** язык лекции китайский и движок не переопределён
 - **THEN** используется потоковый распознаватель системы
 
 #### Scenario: русская лекция по умолчанию
+<!-- test: LiveTranscriptionTests.test_defaultEngine_followsTheMeasuredWinnerPerLanguage -->
 - **WHEN** язык лекции русский и движок не переопределён
 - **THEN** используется Whisper: система на русском ошибается вчетверо чаще
 
