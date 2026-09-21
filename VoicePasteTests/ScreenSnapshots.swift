@@ -141,7 +141,7 @@ final class ScreenSnapshots: XCTestCase {
 
     func test_mainWindow_sections() async throws {
         try skipUnlessRequested()
-        for section: MainContentSection in [.history, .lecture, .dashboard] {
+        for section: MainContentSection in [.history, .lecture, .importQueue, .dashboard] {
             for dark in [true, false] {
                 let app = try await makeAppState()
                 try await snapshot(
@@ -149,6 +149,26 @@ final class ScreenSnapshots: XCTestCase {
                     name: "main-\(section)-\(dark ? "dark" : "light")"
                 )
             }
+        }
+    }
+
+    func test_selectedRecords() async throws {
+        try skipUnlessRequested()
+        for dark in [true, false] {
+            let history = try await makeAppState()
+            history.requestedHistorySelection = try await history.historyStore.fetchPage(after: nil).items.first?.id
+            try await snapshot(
+                mainWindow(history, section: .history), size: windowSize, dark: dark,
+                name: "history-selected-\(dark ? "dark" : "light")"
+            )
+
+            let lecture = try await makeAppState()
+            let lectureID = try XCTUnwrap(lecture.savedLectures.first?.id)
+            await lecture.openSavedLecture(id: lectureID)
+            try await snapshot(
+                mainWindow(lecture, section: .lecture), size: windowSize, dark: dark,
+                name: "lecture-opened-\(dark ? "dark" : "light")"
+            )
         }
     }
 

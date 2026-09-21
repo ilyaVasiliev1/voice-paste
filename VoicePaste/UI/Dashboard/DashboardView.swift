@@ -3,18 +3,14 @@ import SwiftUI
 
 /// Local overview with factual daily points, not a generic dashboard.
 struct DashboardView: View {
-    private enum Period: Int, CaseIterable, Identifiable {
-        case day = 1, week = 7, month = 30
-        var id: Int { rawValue }
-        var title: String { self == .day ? "Сегодня" : "\(rawValue) дней" }
-    }
+    /// Период выбирается в списке раздела статистики.
+    let period: StatisticsPeriod
 
     @EnvironmentObject private var appState: AppState
     @State private var stats = UsageStats.empty
     /// Статистику не удалось прочитать. Поднято, чтобы отказ не
     /// выдавался за отсутствие данных.
     @State private var didFailToLoad = false
-    @State private var period: Period = .month
     @State private var selectedDay: DailyUsageStat?
 
     var body: some View {
@@ -27,24 +23,18 @@ struct DashboardView: View {
             }
             .padding(DesignTokens.detailPanePadding)
         }
-        .task {
+        // Смена периода перезапускает и загрузку, и слежение за изменениями.
+        .task(id: period) {
+            selectedDay = nil
             await load()
             await observeChanges()
         }
-        .onChange(of: period) { _, _ in Task { await load() } }
     }
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Статистика").font(.title2.weight(.semibold))
-                Text("Локально на этом Mac").font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
-            Picker("Период", selection: $period) {
-                ForEach(Period.allCases) { Text($0.title).tag($0) }
-            }
-            .labelsHidden().pickerStyle(.segmented).frame(width: 260)
+        VStack(alignment: .leading, spacing: 3) {
+            Text(period.title).font(.title2.weight(.semibold))
+            Text("Локально на этом Mac").font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -139,7 +129,7 @@ struct DashboardView: View {
             }
             Text(period == .day
                 ? "Активных часов: \(stats.activeDayCount) из 24"
-                : "Активных дней: \(stats.activeDayCount) из \(period.rawValue)")
+                : "Активных дней: \(stats.activeDayCount) из \(period.dayCount)")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .padding(14)
@@ -166,7 +156,7 @@ struct DashboardView: View {
         do {
             stats = try await appState.historyStore.fetchUsageStats(
                 now: Date(),
-                dayCount: period.rawValue
+                dayCount: period.dayCount
             )
             didFailToLoad = false
         } catch {
@@ -180,5 +170,20 @@ struct DashboardView: View {
                 detail: String(describing: error)
             )
         }
+    }
+}
+
+/// Список раздела статистики: периоды. Прежде — переключатель в шапке.
+struct StatisticsPeriodList: View {
+    @Binding var period: StatisticsPeriod
+
+    var body: some View {
+        List(StatisticsPeriod.allCases, selection: selection) { item in
+            Text(item.title).tag(item)
+        }
+    }
+
+    private var selection: Binding<StatisticsPeriod?> {
+        Binding(get: { period }, set: { if let value = $0 { period = value } })
     }
 }

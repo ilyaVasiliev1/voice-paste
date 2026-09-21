@@ -1,7 +1,102 @@
 import SwiftUI
 
-/// Экран учебного режима: запись лекции с расшифровкой, которая пополняется
-/// по ходу.
+/// Список раздела лекций: строка новой (или идущей) лекции и сохранённые.
+///
+/// Список — не украшение: лекция, которую записали и не могут открыть,
+/// записана впустую.
+struct LectureListColumn: View {
+    @EnvironmentObject private var appState: AppState
+    @State private var renaming: Lecture?
+
+    enum Item: Hashable {
+        case current
+        case saved(UUID)
+    }
+
+    var body: some View {
+        List(selection: selection) {
+            Section {
+                currentRow.tag(Item.current)
+            }
+            if !appState.savedLectures.isEmpty {
+                Section("lecture.saved") {
+                    ForEach(appState.savedLectures) { lecture in
+                        SavedLectureRow(lecture: lecture)
+                            .tag(Item.saved(lecture.id))
+                            // Открыть сохранённую посреди записи нельзя —
+                            // `openSavedLecture` откажет. Выключено, а не
+                            // молча не срабатывает.
+                            .disabled(appState.isLectureRecording)
+                            .contextMenu {
+                                Button {
+                                    renaming = lecture
+                                } label: {
+                                    Label("lecture.rename", systemImage: "pencil")
+                                }
+                                Button(role: .destructive) {
+                                    Task { await appState.deleteLecture(id: lecture.id) }
+                                } label: {
+                                    Label("lecture.delete", systemImage: "trash")
+                                }
+                            }
+                    }
+                }
+            }
+        }
+        .task { await appState.refreshSavedLectures() }
+        .lectureRenameAlert(target: $renaming)
+    }
+
+    private var selection: Binding<Item?> {
+        Binding(
+            get: { appState.openedLecture.map { .saved($0.lecture.id) } ?? .current },
+            set: { item in
+                switch item {
+                case .current: appState.closeOpenedLecture()
+                case .saved(let id): Task { await appState.openSavedLecture(id: id) }
+                case nil: break
+                }
+            }
+        )
+    }
+
+    private var currentRow: some View {
+        HStack(spacing: 10) {
+            Image(systemName: appState.isLectureRecording ? "record.circle.fill" : "plus.circle")
+                .foregroundStyle(appState.isLectureRecording ? Color.red : Color.accentColor)
+            Text(appState.isLectureRecording ? "lecture.recordingNow" : "lecture.new")
+            Spacer(minLength: 0)
+            if appState.isLectureRecording {
+                Text(LectureClock.text(appState.lectureElapsedSeconds))
+                    .font(.callout.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 3)
+    }
+}
+
+/// Сохранённая лекция в списке: название, дата, длительность и объём.
+private struct SavedLectureRow: View {
+    let lecture: Lecture
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(lecture.title)
+                .lineLimit(2)
+            Text(lecture.createdAtDate.formatted(date: .abbreviated, time: .shortened))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(LectureSummary.text(for: lecture))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 3)
+    }
+}
+
+/// Деталь раздела лекций: идущая запись, открытая лекция или приглашение
+/// начать.
 ///
 /// Оформление — только абзацы по паузам и метки времени. Ничего, чего не было
 /// сказано, на экране не появляется: заголовки и выводы продукт не сочиняет.
@@ -11,138 +106,167 @@ struct LectureView: View {
     @ObservedObject var settings: AppSettings
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var isRenaming = false
-    @State private var renameTitle = ""
+    @State private var renaming: Lecture?
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 0) {
             header
             Divider()
             content
         }
-        .task { await appState.refreshSavedLectures() }
-        .alert("lecture.rename", isPresented: $isRenaming) {
-            TextField("lecture.rename", text: $renameTitle)
-            Button("lecture.rename.confirm") {
-                guard let id = appState.openedLecture?.lecture.id else { return }
-                Task { await appState.renameLecture(id: id, title: renameTitle) }
-            }
-            Button("lecture.rename.cancel", role: .cancel) {}
-        }
+        .toolbar { toolbar }
+        .lectureRenameAlert(target: $renaming)
     }
 
+    // MARK: - Шапка
+
     private var header: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(appState.openedLecture?.lecture.title ?? NSLocalizedString("lecture.section", comment: ""))
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
                 .font(.title2.weight(.semibold))
-            controls
+            statusLine
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, DesignTokens.detailPanePadding)
         .padding(.vertical, 16)
     }
 
-    private var controls: some View {
+    private var title: String {
+        if let opened = appState.openedLecture { return opened.lecture.title }
+        return NSLocalizedString(appState.isLectureRecording ? "lecture.recordingNow" : "lecture.new", comment: "")
+    }
+
+    /// Строка состояния. Таймер записи стоит здесь крупно и первым: прежде он
+    /// терялся в ряду приглушённых списков, и не было видно, что запись идёт.
+    private var statusLine: some View {
         HStack(spacing: 12) {
-            Button {
-                appState.toggleLectureRecording()
-            } label: {
-                // `waveform` — общий значок голосового ввода в продукте.
-                // Своя пара символов на этом экране означала бы, что одно и
-                // то же действие называется по-разному в разных местах.
-                Label(
-                    appState.isLectureRecording ? "lecture.stop" : "lecture.start",
-                    systemImage: appState.isLectureRecording ? "stop.fill" : "waveform"
-                )
-            }
-            .keyboardShortcut("l", modifiers: [.command, .shift])
-            .accessibilityIdentifier("lecture-toggle")
-
-            // Язык выбирается до записи и действует на всю лекцию. Во время
-            // записи заблокирован: смена языка посреди неё разошлась бы с уже
-            // распознанным.
-            Picker("lecture.language", selection: $settings.lectureLanguage) {
-                Text("settings.language.zh").tag(TranscriptionLanguage.zh)
-                Text("settings.language.ru").tag(TranscriptionLanguage.ru)
-                Text("settings.language.en").tag(TranscriptionLanguage.en)
-                Text("settings.language.auto").tag(TranscriptionLanguage.auto)
-            }
-            .labelsHidden()
-            .frame(width: 150)
-            .disabled(appState.isLectureRecording)
-            .accessibilityIdentifier("lecture-language")
-
-            if LectureEngine.isSystemEngineAvailable {
-                Picker("lecture.engine", selection: $settings.lectureEngine) {
-                    Text("lecture.engine.auto").tag(LectureEngine?.none)
-                    Text("lecture.engine.system").tag(LectureEngine?.some(.system))
-                    Text("lecture.engine.whisper").tag(LectureEngine?.some(.whisper))
-                }
-                .labelsHidden()
-                .frame(width: 170)
-                .disabled(appState.isLectureRecording)
-                .accessibilityIdentifier("lecture-engine")
-            }
-
             if appState.isLectureRecording {
-                Text(Self.clock(appState.lectureElapsedSeconds))
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel(Text("lecture.elapsed"))
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(.red)
+                        .frame(width: 9, height: 9)
+                        .accessibilityHidden(true)
+                    Text(LectureClock.text(appState.lectureElapsedSeconds))
+                        .font(.title3.monospacedDigit().weight(.medium))
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(Text("lecture.elapsed"))
+            } else if let opened = appState.openedLecture {
+                Text(opened.lecture.createdAtDate.formatted(date: .long, time: .shortened))
+                Text(LectureSummary.text(for: opened.lecture))
             }
 
             // Честный показатель вместо выдуманного «уточняемого» текста:
             // последние секунды ещё считаются и на экране их пока нет.
             if recorder.isCatchingUp {
-                ProgressView()
-                    .controlSize(.small)
+                ProgressView().controlSize(.small)
                 Text("lecture.catchingUp")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
-            // Выход к списку нужен не только открытой лекции, но и только
-            // что записанной: без него из её расшифровки некуда деться.
-            if !appState.isLectureRecording, showsTranscript {
+            Spacer(minLength: 0)
+
+            if settings.lectureLanguage == .auto, !appState.isLectureRecording, appState.openedLecture == nil {
+                Text("lecture.language.autoWarning")
+                    .multilineTextAlignment(.trailing)
+            } else if let language = recorder.detectedLanguage, appState.openedLecture == nil {
+                Text(language.uppercased())
+            }
+        }
+        .font(.callout)
+        .foregroundStyle(.secondary)
+    }
+
+    // MARK: - Панель инструментов
+
+    /// Действия раздела. Язык и движок — меню с подписью словами: прежде это
+    /// были два списка без подписей, и выбор движка назывался «По языку».
+    @ToolbarContentBuilder
+    private var toolbar: some ToolbarContent {
+        ToolbarItemGroup {
+            if let opened = appState.openedLecture {
                 Button {
-                    appState.closeOpenedLecture()
-                    recorder.cancel()
-                    Task { await appState.refreshSavedLectures() }
-                } label: {
-                    Label("lecture.backToList", systemImage: "chevron.backward")
-                }
-                Button {
-                    TextInserter.copyToClipboard(visibleText)
+                    TextInserter.copyToClipboard(opened.plainText)
                 } label: {
                     Label("lecture.copyAll", systemImage: "doc.on.doc")
                 }
-                if let opened = appState.openedLecture {
-                    Button {
-                        renameTitle = opened.lecture.title
-                        isRenaming = true
-                    } label: {
-                        Label("lecture.rename", systemImage: "pencil")
+                .help("lecture.copyAll")
+                Button {
+                    renaming = opened.lecture
+                } label: {
+                    Label("lecture.rename", systemImage: "pencil")
+                }
+                .help("lecture.rename")
+            } else if !appState.isLectureRecording, !recorder.paragraphs.isEmpty {
+                Button {
+                    TextInserter.copyToClipboard(recorder.paragraphs.map(\.text).joined(separator: "\n\n"))
+                } label: {
+                    Label("lecture.copyAll", systemImage: "doc.on.doc")
+                }
+                .help("lecture.copyAll")
+            }
+
+            // Язык выбирается до записи и действует на всю лекцию. Во время
+            // записи заблокирован: смена языка посреди неё разошлась бы с уже
+            // распознанным.
+            Menu {
+                Picker("lecture.language", selection: $settings.lectureLanguage) {
+                    ForEach(LectureMenuText.languages, id: \.self) { language in
+                        Text(LectureMenuText.name(of: language)).tag(language)
                     }
                 }
+                .pickerStyle(.inline)
+                .labelsHidden()
+            } label: {
+                Text(String(
+                    format: NSLocalizedString("lecture.language.label", comment: ""),
+                    LectureMenuText.name(of: settings.lectureLanguage)
+                ))
+            }
+            .fixedSize()
+            .disabled(appState.isLectureRecording)
+            .help("lecture.language")
+            .accessibilityIdentifier("lecture-language")
+
+            if LectureEngine.isSystemEngineAvailable {
+                Menu {
+                    Picker("lecture.engine", selection: $settings.lectureEngine) {
+                        Text("lecture.engine.auto").tag(LectureEngine?.none)
+                        Text("lecture.engine.system").tag(LectureEngine?.some(.system))
+                        Text("lecture.engine.whisper").tag(LectureEngine?.some(.whisper))
+                    }
+                    .pickerStyle(.inline)
+                    .labelsHidden()
+                } label: {
+                    Text(String(
+                        format: NSLocalizedString("lecture.engine.label", comment: ""),
+                        LectureMenuText.name(of: settings.lectureEngine)
+                    ))
+                }
+                .fixedSize()
+                .disabled(appState.isLectureRecording)
+                .help("lecture.engine")
+                .accessibilityIdentifier("lecture-engine")
             }
 
-            Spacer()
-
-            if settings.lectureLanguage == .auto, !appState.isLectureRecording {
-                Text("lecture.language.autoWarning")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            } else if let language = recorder.detectedLanguage {
-                Text(language.uppercased())
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            Button {
+                // Новая запись начинается с чистой детали, а не поверх
+                // открытой сохранённой лекции.
+                if !appState.isLectureRecording { appState.closeOpenedLecture() }
+                appState.toggleLectureRecording()
+            } label: {
+                // `waveform` — общий значок голосового ввода в продукте.
+                Label(
+                    appState.isLectureRecording ? "lecture.stop" : "lecture.start",
+                    systemImage: appState.isLectureRecording ? "stop.fill" : "waveform"
+                )
+                .labelStyle(.titleAndIcon)
             }
+            .keyboardShortcut("l", modifiers: [.command, .shift])
+            .accessibilityIdentifier("lecture-toggle")
         }
     }
 
-    /// Показывается ли сейчас расшифровка — открытая или только что записанная.
-    private var showsTranscript: Bool {
-        appState.openedLecture != nil || !recorder.paragraphs.isEmpty
-    }
+    // MARK: - Содержимое
 
     /// Идёт запись — показываем живую расшифровку, даже пустую. Прежде экран
     /// переключался на неё только после первого устоявшегося абзаца, а
@@ -152,15 +276,6 @@ struct LectureView: View {
         appState.isLectureRecording || !recorder.paragraphs.isEmpty || !recorder.volatileText.isEmpty
     }
 
-    /// Текст того, что на экране, для копирования целиком.
-    private var visibleText: String {
-        if let opened = appState.openedLecture { return opened.plainText }
-        return recorder.paragraphs.map(\.text).joined(separator: "\n\n")
-    }
-
-    /// Что показывать: открытую сохранённую лекцию, текущую запись или
-    /// список сохранённых. Список — не украшение: лекция, которую записали и
-    /// не могут открыть, записана впустую.
     @ViewBuilder
     private var content: some View {
         if let opened = appState.openedLecture {
@@ -173,53 +288,18 @@ struct LectureView: View {
             }, followsTail: false)
         } else if showsLiveTranscript {
             paragraphList(recorder.paragraphs, followsTail: true)
-        } else if appState.savedLectures.isEmpty {
-            ContentUnavailableView(
-                "lecture.empty.title",
-                systemImage: "text.book.closed",
-                description: Text("lecture.empty.description")
-            )
-            .frame(maxHeight: .infinity)
         } else {
-            savedList
-        }
-    }
-
-    private var savedList: some View {
-        List(appState.savedLectures) { lecture in
-            Button {
-                Task { await appState.openSavedLecture(id: lecture.id) }
-            } label: {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(lecture.title).font(.headline)
-                    Text(Self.summary(for: lecture))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
+            ContentUnavailableView {
+                Label("lecture.detail.idle.title", systemImage: "text.book.closed")
+            } description: {
+                Text("lecture.detail.idle.description")
+            } actions: {
+                Button("lecture.start") { appState.toggleLectureRecording() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
             }
-            .buttonStyle(.plain)
-            .contextMenu {
-                Button(role: .destructive) {
-                    Task { await appState.deleteLecture(id: lecture.id) }
-                } label: {
-                    Label("lecture.delete", systemImage: "trash")
-                }
-            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-    }
-
-    /// Длительность и объём лекции. Минутами не обойтись: лекция на сорок
-    /// секунд показывалась как «0 мин», и карточка выглядела пустой.
-    private static func summary(for lecture: Lecture) -> String {
-        let seconds = lecture.durationMilliseconds / 1_000
-        let clock = String(format: "%d:%02d", seconds / 60, seconds % 60)
-        return String(
-            format: NSLocalizedString("lecture.row.summary", comment: ""),
-            clock,
-            lecture.wordCount
-        )
     }
 
     private func paragraphList(
@@ -264,10 +344,80 @@ struct LectureView: View {
             }
         }
     }
+}
 
-    private static func clock(_ seconds: Double) -> String {
+/// Время записи на часах: минуты и секунды.
+enum LectureClock {
+    static func text(_ seconds: Double) -> String {
         let total = Int(seconds)
         return String(format: "%02d:%02d", total / 60, total % 60)
+    }
+}
+
+/// Длительность и объём лекции. Минутами не обойтись: лекция на сорок
+/// секунд показывалась как «0 мин», и строка выглядела пустой.
+enum LectureSummary {
+    static func text(for lecture: Lecture) -> String {
+        let seconds = lecture.durationMilliseconds / 1_000
+        let clock = String(format: "%d:%02d", seconds / 60, seconds % 60)
+        return String(
+            format: NSLocalizedString("lecture.row.summary", comment: ""),
+            clock,
+            lecture.wordCount
+        )
+    }
+}
+
+/// Подписи меню языка и движка.
+private enum LectureMenuText {
+    static let languages: [TranscriptionLanguage] = [.zh, .ru, .en, .auto]
+
+    static func name(of language: TranscriptionLanguage) -> String {
+        NSLocalizedString("settings.language.\(language.rawValue)", comment: "")
+    }
+
+    static func name(of engine: LectureEngine?) -> String {
+        switch engine {
+        case nil: NSLocalizedString("lecture.engine.auto", comment: "")
+        case .system: NSLocalizedString("lecture.engine.system", comment: "")
+        case .whisper: NSLocalizedString("lecture.engine.whisper", comment: "")
+        }
+    }
+}
+
+private extension Lecture {
+    var createdAtDate: Date { Date(timeIntervalSince1970: Double(createdAt) / 1_000) }
+}
+
+/// Переименование лекции — одно на список и деталь.
+private struct LectureRenameAlert: ViewModifier {
+    @EnvironmentObject private var appState: AppState
+    @Binding var target: Lecture?
+    @State private var title = ""
+
+    func body(content: Content) -> some View {
+        content
+            .alert("lecture.rename", isPresented: isPresented) {
+                TextField("lecture.rename", text: $title)
+                Button("lecture.rename.confirm") {
+                    guard let id = target?.id else { return }
+                    Task { await appState.renameLecture(id: id, title: title) }
+                }
+                Button("lecture.rename.cancel", role: .cancel) {}
+            }
+            .onChange(of: target) { _, lecture in
+                if let lecture { title = lecture.title }
+            }
+    }
+
+    private var isPresented: Binding<Bool> {
+        Binding(get: { target != nil }, set: { if !$0 { target = nil } })
+    }
+}
+
+private extension View {
+    func lectureRenameAlert(target: Binding<Lecture?>) -> some View {
+        modifier(LectureRenameAlert(target: target))
     }
 }
 

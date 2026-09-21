@@ -279,20 +279,20 @@ HUD SHALL быть вторым входом в ту же очередь: под
 
 ---
 
-### Requirement: Очередь видна в боковом списке и в статистике
+### Requirement: Очередь видна в списке истории и в статистике
 <!-- id: HistoryView.sidebar -->
 <!-- entities: ImportManager, ImportJob, HistoryView, DashboardView -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/UI/History/HistoryView.swift, VoicePaste/UI/Dashboard/DashboardView.swift -->
+<!-- enforced_macos: VoicePaste/UI/History/HistoryView.swift, VoicePaste/UI/Dashboard/DashboardView.swift, VoicePaste/UI/History/HistoryListModel.swift -->
 
 Пока есть незавершённые задачи, они SHALL показываться отдельной секцией
-в боковом списке истории (кроме режима поиска) и строкой состояния очереди
+в списке истории (кроме режима поиска) и строкой состояния очереди
 в статистике; обе ведут в рабочую область очереди. В историю и поиск они
 при этом не попадают.
 
 #### Scenario: идёт обработка файла
 - **WHEN** в очереди есть активная задача и строка поиска пуста
-- **THEN** в боковом списке видна секция «В процессе» с этапом и прогрессом
+- **THEN** в списке истории видна секция «В процессе» с этапом и прогрессом
 
 #### Scenario: открыт поиск
 - **WHEN** в строке поиска есть запрос

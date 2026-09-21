@@ -2,9 +2,9 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The right-side import workspace. It intentionally never replaces the
-/// history sidebar: Finder and drag-and-drop are just two inputs for the
-/// same persistent `ImportManager` queue.
+/// Деталь раздела импорта: зона добавления файла. Finder и перетаскивание —
+/// два входа в одну и ту же очередь `ImportManager`; сама очередь — в списке
+/// раздела (`ImportQueueList`).
 struct ImportQueueView: View {
     @EnvironmentObject private var appState: AppState
     @State private var isDropTargeted = false
@@ -13,21 +13,22 @@ struct ImportQueueView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 header
-                if appState.importManager.jobs.isEmpty {
-                    dropStage
-                } else {
-                    // Keep the same drop stage after a job arrives. Forcing
-                    // the existing 190 pt content into 150 pt made SwiftUI
-                    // compress and overflow it into the header, so the two
-                    // states looked like unrelated designs.
-                    dropStage
-                    queue
-                }
+                dropStage
             }
             .padding(DesignTokens.detailPanePadding)
             .frame(maxWidth: 860, alignment: .leading)
         }
         .onDrop(of: [.fileURL], isTargeted: $isDropTargeted, perform: acceptDrop)
+        .toolbar {
+            ToolbarItem {
+                Button(action: openPanel) {
+                    Label("history.toolbar.transcribeFile", systemImage: "arrow.down.doc")
+                        .labelStyle(.titleAndIcon)
+                }
+                // `INV-015`/`AT-088`: import stays disabled while not ready.
+                .disabled(appState.readiness.state != .ready)
+            }
+        }
     }
 
     private var header: some View {
@@ -76,29 +77,6 @@ struct ImportQueueView: View {
         .accessibilityHint("Открывает Finder для выбора файла")
     }
 
-    private var queue: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Очередь")
-                .font(.headline)
-            ForEach(appState.importManager.jobs) { job in
-                QueueRow(
-                    job: job,
-                    canRetry: appState.importManager.canRetry(id: job.id),
-                    onRetry: {
-                        Task { await appState.importManager.retry(id: job.id) }
-                    },
-                    onRemove: {
-                        if job.state == .failed {
-                            appState.importManager.dismissFailed(id: job.id)
-                        } else {
-                            appState.importManager.cancel(id: job.id)
-                        }
-                    }
-                )
-            }
-        }
-    }
-
     private func openPanel() {
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = true
@@ -120,6 +98,38 @@ struct ImportQueueView: View {
             }
         }
         return true
+    }
+}
+
+/// Список раздела импорта: задачи очереди — идущие, ждущие и упавшие.
+struct ImportQueueList: View {
+    @EnvironmentObject private var appState: AppState
+
+    var body: some View {
+        if appState.importManager.jobs.isEmpty {
+            ContentUnavailableView(
+                "import.queue.empty.title",
+                systemImage: "tray",
+                description: Text("import.queue.empty.description")
+            )
+        } else {
+            List(appState.importManager.jobs) { job in
+                QueueRow(
+                    job: job,
+                    canRetry: appState.importManager.canRetry(id: job.id),
+                    onRetry: {
+                        Task { await appState.importManager.retry(id: job.id) }
+                    },
+                    onRemove: {
+                        if job.state == .failed {
+                            appState.importManager.dismissFailed(id: job.id)
+                        } else {
+                            appState.importManager.cancel(id: job.id)
+                        }
+                    }
+                )
+            }
+        }
     }
 }
 
@@ -180,8 +190,7 @@ private struct QueueRow: View {
                 .help("Отменить")
             }
         }
-        .padding(12)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: DesignTokens.cardCornerRadius, style: .continuous))
+        .padding(.vertical, 4)
     }
 
     private var remainingText: String {

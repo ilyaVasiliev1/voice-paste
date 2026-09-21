@@ -2,7 +2,7 @@ import XCTest
 
 @testable import VoicePaste
 
-/// Инвариант «Минимум главного окна вмещает обе его колонки».
+/// Инвариант «Минимум главного окна вмещает все три его колонки».
 ///
 /// Числа раскладки — чистые константы, поэтому проверяются без поднятия
 /// интерфейса. Это единственный способ получить здесь доказательство: слой
@@ -13,43 +13,46 @@ import XCTest
 @MainActor
 final class MainWindowLayoutTests: XCTestCase {
 
-    func test_windowMinimumWidth_fitsSidebarAndDetailAtTheirMinimums() {
-        let required = MainWindowLayout.sidebarMinWidth + MainWindowLayout.detailMinWidth
+    private let columnsAtMinimum = MainWindowLayout.sidebarMinWidth
+        + MainWindowLayout.listMinWidth
+        + MainWindowLayout.detailMinWidth
 
+    func test_windowMinimumWidth_fitsAllThreeColumnsAtTheirMinimums() {
         XCTAssertGreaterThanOrEqual(
             MainWindowLayout.windowMinWidth,
-            required,
+            columnsAtMinimum,
             """
-            Минимум окна \(MainWindowLayout.windowMinWidth) меньше суммы колонок \(required). \
-            В таком окне правой части некуда сжиматься, и раскладка ломается.
+            Минимум окна \(MainWindowLayout.windowMinWidth) меньше суммы колонок \(columnsAtMinimum). \
+            В таком окне детали некуда сжиматься, и раскладка ломается.
             """
         )
     }
 
-    func test_defaultWidth_fitsFullyExpandedSidebarBesideDetailMinimum() {
-        let required = MainWindowLayout.sidebarMaxWidth + MainWindowLayout.detailMinWidth
+    func test_defaultWidth_fitsExpandedSidebarAndListBesideDetailMinimum() {
+        let required = MainWindowLayout.sidebarMaxWidth
+            + MainWindowLayout.listMaxWidth
+            + MainWindowLayout.detailMinWidth
 
         XCTAssertGreaterThanOrEqual(
             MainWindowLayout.defaultWindowWidth,
             required,
             """
             Ширина по умолчанию \(MainWindowLayout.defaultWindowWidth) не вмещает \
-            раскрытую панель рядом с правой частью (\(required)).
+            раскрытые разделы и список рядом с деталью (\(required)).
             """
         )
     }
 
-    func test_sidebarWidths_areOrderedMinIdealMax() {
+    func test_columnWidths_areOrderedMinIdealMax() {
         XCTAssertLessThanOrEqual(MainWindowLayout.sidebarMinWidth, MainWindowLayout.sidebarIdealWidth)
         XCTAssertLessThanOrEqual(MainWindowLayout.sidebarIdealWidth, MainWindowLayout.sidebarMaxWidth)
+        XCTAssertLessThanOrEqual(MainWindowLayout.listMinWidth, MainWindowLayout.listIdealWidth)
+        XCTAssertLessThanOrEqual(MainWindowLayout.listIdealWidth, MainWindowLayout.listMaxWidth)
     }
 
     /// Минимум окна обязан оставаться выведенным, а не вписанным: вписанное
     /// руками число и есть тот дефект, который этот инвариант закрывает.
     func test_windowMinimumWidth_isDerivedFromColumns_notAStandaloneNumber() {
-        XCTAssertEqual(
-            MainWindowLayout.windowMinWidth,
-            MainWindowLayout.sidebarMinWidth + MainWindowLayout.detailMinWidth
-        )
+        XCTAssertEqual(MainWindowLayout.windowMinWidth, columnsAtMinimum)
     }
 }

@@ -11,7 +11,7 @@
 | Core | `VoicePaste/Core/` | 30 файлов, 6023 строки | Вся логика продукта, разложенная по доменам |
 | Data | `VoicePaste/Data/` | 6 файлов, 945 строк | SQLite через GRDB: схема, миграции, хранилища |
 | Domain | `VoicePaste/Domain/` | 6 файлов, 366 строк | Модели без зависимости от GRDB и AppKit |
-| UI | `VoicePaste/UI/` | 12 файлов, 2119 строк | SwiftUI-экраны |
+| UI | `VoicePaste/UI/` | 16 файлов, 2616 строк | SwiftUI-экраны |
 | Тесты | `VoicePasteTests/` | 29 файлов | 235 кейсов |
 
 Домены `Core/`: `Audio`, `Dictation`, `HUD`, `History`, `Hotkey`, `Import`,
@@ -52,8 +52,8 @@ UI не обращается к `AVAudioEngine`, `AXUIElement` и GRDB напр�
 распознаёт их по ходу и сдвигает времена сегментов на начало окна.
 `Core/Lecture/LectureParagraphBuilder.swift` собирает абзацы по паузам
 говорящего — чистая функция, языковая модель в оформлении не участвует.
-`UI/Lecture/LectureView.swift` показывает их с метками времени и переводит
-выделенное системным переводчиком. `Data/LectureStore.swift` сохраняет лекцию
+`UI/Lecture/LectureView.swift` — список лекций и деталь с абзацами и метками
+времени. `Data/LectureStore.swift` сохраняет лекцию
 и абзацы одной транзакцией.
 
 ## Путь импорта файла
@@ -90,6 +90,7 @@ UI не обращается к `AVAudioEngine`, `AXUIElement` и GRDB напр�
 | Тронуть вставку текста | `Core/Insertion/TextInserter.swift` | `VoicePasteTests/TextInserterTests.swift` |
 | Изменить нарезку окон | `Core/Dictation/DictationWindowPlanner.swift` | `DictationWindowPlannerTests`, `StreamingDictationTranscriberTests` |
 | Тронуть учебный режим | `Core/Lecture/`, `UI/Lecture/` | `LectureParagraphBuilderTests`, `LectureRecorderTests`, `LectureStoreTests` |
+| Тронуть главное окно или его вид | `UI/Main/MainWindowView.swift` (три колонки), `UI/Main/MainContentSection.swift` (разделы) | `MainWindowLayoutTests`, `MainContentSectionTests`, снимки: `zsh scripts/snapshots.sh <каталог>` |
 | Собрать выпуск | `scripts/build-release.sh` | Сборка отказывает, если модель попала в пакет |
 
 ## Границы

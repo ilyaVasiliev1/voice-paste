@@ -346,13 +346,61 @@ SHALL принудительно оставаться обычной (значо
 
 ---
 
+### Requirement: Главное окно — разделы, список и деталь
+<!-- id: MainContentSection.sidebarOrder -->
+<!-- entities: MainContentSection, MainWindowView, HistoryListModel -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/UI/Main/MainWindowView.swift, VoicePaste/UI/Main/MainContentSection.swift, VoicePaste/UI/History/HistoryListModel.swift -->
+<!-- test_macos: VoicePasteTests/MainContentSectionTests.swift:test_sidebar_listsFourSectionsInAgreedOrder_withWordLabels -->
+
+Главное окно SHALL делиться на три колонки: разделы слева, список выбранного
+раздела посередине, деталь выбранного справа. Разделы подписаны словами, а не
+только значками: Лекции, История, Импорт, Статистика — в этом порядке.
+
+Каждый раздел владеет обеими правыми колонками:
+
+| раздел | список | деталь |
+|---|---|---|
+| Лекции | сохранённые лекции с датой и строка новой лекции | идущая запись, открытая лекция или приглашение начать |
+| История | записи с поиском и секцией «В процессе» | текст записи |
+| Импорт | задачи очереди | зона добавления файла |
+| Статистика | периоды: сегодня, 7 и 30 дней | показатели и график периода |
+
+Действия раздела SHALL стоять в панели инструментов и меняться вместе с
+разделом, а не собираться рядом в шапке детали: общий ряд не помещался в
+среднее окно и обрезал подписи кнопок.
+
+Прежде лекции жили в детали, а история — в боковой панели: два раздела
+устроены по-разному, и владелец назвал это «навигация стрёмная».
+
+#### Scenario: порядок разделов
+<!-- test: MainContentSectionTests.test_sidebar_listsFourSectionsInAgreedOrder_withWordLabels -->
+- **WHEN** окно открыто
+- **THEN** слева четыре раздела в порядке Лекции, История, Импорт, Статистика, у каждого подпись
+
+#### Scenario: переход из строки меню или плашки
+<!-- test: HistoryListModelTests.test_selectionMadeBeforeStoreIsAttached_stillLoadsTheRecord -->
+- **WHEN** строка меню просит статистику, а плашка — очередь или запись истории
+- **THEN** окно открывается на этом разделе, запись истории выбрана в списке
+
+#### Scenario: выбор записи истории
+- **WHEN** в списке истории выбрана запись
+- **THEN** её текст в детали, копирование и удаление доступны в панели инструментов
+
+#### Scenario: периоды статистики
+<!-- test: MainContentSectionTests.test_statisticsPeriods_areTodayWeekMonth -->
+- **WHEN** открыт раздел статистики
+- **THEN** в списке три периода — сегодня, 7 и 30 дней, — а деталь показывает выбранный
+
+---
+
 ### Invariant: У приложения одно постоянное окно
 <!-- entities: VoicePasteApp, MainWindowView, MainContentSection -->
 <!-- platforms: macos -->
 <!-- enforced_macos: VoicePaste/App/App.swift, VoicePaste/UI/Main/MainWindowView.swift -->
 
-История, статистика и очередь импорта SHALL жить в одном окне с
-идентификатором `main` как его секции. Онбординг — отдельное окно и
+Лекции, история, статистика и очередь импорта SHALL жить в одном окне с
+идентификатором `main` как его разделы. Онбординг — отдельное окно и
 единственное исключение, открываемое при запуске. Второго окна приложения не
 создаётся ни одним переходом.
 
@@ -405,16 +453,15 @@ SHALL принудительно оставаться обычной (значо
 
 ---
 
-### Invariant: Минимум главного окна вмещает обе его колонки
-<!-- entities: MainWindowLayout, MainWindowView, HistoryView -->
+### Invariant: Минимум главного окна вмещает все три его колонки
+<!-- entities: MainWindowLayout, MainWindowView -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/UI/Main/MainWindowLayout.swift, VoicePaste/UI/Main/MainWindowView.swift, VoicePaste/UI/History/HistoryView.swift -->
+<!-- enforced_macos: VoicePaste/UI/Main/MainWindowLayout.swift, VoicePaste/UI/Main/MainWindowView.swift -->
 <!-- test_macos: VoicePasteTests/MainWindowLayoutTests.swift -->
 
-Минимальная ширина главного окна SHALL быть не меньше суммы минимальной
-ширины боковой панели и минимальной ширины правой части. Ширина по
-умолчанию SHALL вмещать боковую панель, раскрытую до предела, вместе с
-правой частью на её минимуме.
+Минимальная ширина главного окна SHALL быть не меньше суммы минимальных
+ширин разделов, списка и детали. Ширина по умолчанию SHALL вмещать разделы и
+список, раскрытые до предела, вместе с деталью на её минимуме.
 
 Минимум окна не задаётся отдельным числом: он выводится из ширин колонок.
 Заданный руками, он однажды разойдётся с ними — и разошёлся: 680 при
@@ -422,11 +469,12 @@ SHALL принудительно оставаться обычной (значо
 положении, а при растягивании панели расходились сильнее, и правой части
 было некуда сжиматься.
 
-#### Scenario: панель растянута до предела
-- **WHEN** боковая панель раскрыта на максимальную ширину
-- **THEN** правая часть не уже своего минимума, а окно не превышает ширину по умолчанию
+#### Scenario: колонки растянуты до предела
+<!-- test: MainWindowLayoutTests.test_defaultWidth_fitsExpandedSidebarAndListBesideDetailMinimum -->
+- **WHEN** разделы и список раскрыты на максимальную ширину
+- **THEN** деталь не уже своего минимума, а окно не превышает ширину по умолчанию
 
-> Last verified: 2026-09-20
+> Last verified: 2026-09-21
 
 ---
 

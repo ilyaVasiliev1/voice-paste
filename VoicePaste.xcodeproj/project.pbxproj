@@ -46,7 +46,10 @@
 		C00000000000000000000921 /* LoginItemRegistering.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000920 /* LoginItemRegistering.swift */; };
 		C00000000000000000000923 /* AppSettingsLaunchAtLoginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000922 /* AppSettingsLaunchAtLoginTests.swift */; };
 		C00000000000000000000925 /* MainWindowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000924 /* MainWindowLayout.swift */; };
+		CA0000000000000000000919 /* MainContentSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0000000000000000000918 /* MainContentSection.swift */; };
 		C00000000000000000000927 /* MainWindowLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000926 /* MainWindowLayoutTests.swift */; };
+		CA000000000000000000091D /* HistoryListModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA000000000000000000091C /* HistoryListModelTests.swift */; };
+		CA0000000000000000000917 /* MainContentSectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0000000000000000000916 /* MainContentSectionTests.swift */; };
 		CA0000000000000000000915 /* SpeechDurationTextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0000000000000000000914 /* SpeechDurationTextTests.swift */; };
 		C00000000000000000000929 /* TranscriptionSpeedBenchmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000928 /* TranscriptionSpeedBenchmark.swift */; };
 		C00000000000000000000931 /* DictationWindowPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000930 /* DictationWindowPlanner.swift */; };
@@ -70,6 +73,7 @@
 		C0000000000000000000015A /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000159 /* Localizable.strings */; };
 		C0000000000000000000015C /* DetailEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000015B /* DetailEditor.swift */; };
 		C0000000000000000000015E /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000015D /* HistoryView.swift */; };
+		CA000000000000000000091B /* HistoryListModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA000000000000000000091A /* HistoryListModel.swift */; };
 		C00000000000000000000160 /* ImportPanelPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000015F /* ImportPanelPresenter.swift */; };
 		C00000000000000000000162 /* MenuBarContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000161 /* MenuBarContentView.swift */; };
 		C00000000000000000000164 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000163 /* OnboardingView.swift */; };
@@ -177,6 +181,7 @@
 		C00000000000000000000159 /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = Localizable.strings; sourceTree = "<group>"; };
 		C0000000000000000000015B /* DetailEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailEditor.swift; sourceTree = "<group>"; };
 		C0000000000000000000015D /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		CA000000000000000000091A /* HistoryListModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryListModel.swift; sourceTree = "<group>"; };
 		C0000000000000000000015F /* ImportPanelPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportPanelPresenter.swift; sourceTree = "<group>"; };
 		C00000000000000000000161 /* MenuBarContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarContentView.swift; sourceTree = "<group>"; };
 		C00000000000000000000163 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
@@ -217,7 +222,10 @@
 		C00000000000000000000920 /* LoginItemRegistering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginItemRegistering.swift; sourceTree = "<group>"; };
 		C00000000000000000000922 /* AppSettingsLaunchAtLoginTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsLaunchAtLoginTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000924 /* MainWindowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowLayout.swift; sourceTree = "<group>"; };
+		CA0000000000000000000918 /* MainContentSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainContentSection.swift; sourceTree = "<group>"; };
 		C00000000000000000000926 /* MainWindowLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowLayoutTests.swift; sourceTree = "<group>"; };
+		CA000000000000000000091C /* HistoryListModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryListModelTests.swift; sourceTree = "<group>"; };
+		CA0000000000000000000916 /* MainContentSectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainContentSectionTests.swift; sourceTree = "<group>"; };
 		CA0000000000000000000914 /* SpeechDurationTextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechDurationTextTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000928 /* TranscriptionSpeedBenchmark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionSpeedBenchmark.swift; sourceTree = "<group>"; };
 		C00000000000000000000930 /* DictationWindowPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationWindowPlanner.swift; sourceTree = "<group>"; };
@@ -490,6 +498,7 @@
 			children = (
 				C0000000000000000000015B /* DetailEditor.swift */,
 				C0000000000000000000015D /* HistoryView.swift */,
+				CA000000000000000000091A /* HistoryListModel.swift */,
 			);
 			path = History;
 			sourceTree = "<group>";
@@ -578,6 +587,8 @@
 				C00000000000000000000915 /* WhisperDecodingPlanTests.swift */,
 				C00000000000000000000922 /* AppSettingsLaunchAtLoginTests.swift */,
 				C00000000000000000000926 /* MainWindowLayoutTests.swift */,
+				CA000000000000000000091C /* HistoryListModelTests.swift */,
+				CA0000000000000000000916 /* MainContentSectionTests.swift */,
 				CA0000000000000000000914 /* SpeechDurationTextTests.swift */,
 				C00000000000000000000928 /* TranscriptionSpeedBenchmark.swift */,
 				C00000000000000000000932 /* DictationWindowPlannerTests.swift */,
@@ -601,6 +612,7 @@
 			children = (
 				C00000000000000000000610 /* MainWindowView.swift */,
 				C00000000000000000000924 /* MainWindowLayout.swift */,
+				CA0000000000000000000918 /* MainContentSection.swift */,
 			);
 			path = Main;
 			sourceTree = "<group>";
@@ -773,6 +785,7 @@
 				C00000000000000000000158 /* VocabularyEntry.swift in Sources */,
 				C0000000000000000000015C /* DetailEditor.swift in Sources */,
 				C0000000000000000000015E /* HistoryView.swift in Sources */,
+				CA000000000000000000091B /* HistoryListModel.swift in Sources */,
 				C00000000000000000000160 /* ImportPanelPresenter.swift in Sources */,
 				C00000000000000000000162 /* MenuBarContentView.swift in Sources */,
 				C00000000000000000000164 /* OnboardingView.swift in Sources */,
@@ -783,6 +796,7 @@
 				CA0000000000000000000913 /* SpeechDurationText.swift in Sources */,
 				C00000000000000000000611 /* MainWindowView.swift in Sources */,
 				C00000000000000000000925 /* MainWindowLayout.swift in Sources */,
+				CA0000000000000000000919 /* MainContentSection.swift in Sources */,
 				C00000000000000000000801 /* ImportQueueStoring.swift in Sources */,
 				C00000000000000000000803 /* ImportQueueStore.swift in Sources */,
 				C00000000000000000000805 /* ImportQueueView.swift in Sources */,
@@ -822,6 +836,8 @@
 				C00000000000000000000914 /* WhisperDecodingPlanTests.swift in Sources */,
 				C00000000000000000000923 /* AppSettingsLaunchAtLoginTests.swift in Sources */,
 				C00000000000000000000927 /* MainWindowLayoutTests.swift in Sources */,
+				CA000000000000000000091D /* HistoryListModelTests.swift in Sources */,
+				CA0000000000000000000917 /* MainContentSectionTests.swift in Sources */,
 				CA0000000000000000000915 /* SpeechDurationTextTests.swift in Sources */,
 				C00000000000000000000929 /* TranscriptionSpeedBenchmark.swift in Sources */,
 				C00000000000000000000933 /* DictationWindowPlannerTests.swift in Sources */,

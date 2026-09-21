@@ -9,14 +9,6 @@ public enum SettingsTab: Equatable, Sendable {
     case permissions
 }
 
-/// The two destinations of the single permanent application window.
-public enum MainContentSection: Hashable, Sendable {
-    case history
-    case dashboard
-    case importQueue
-    case lecture
-}
-
 /// Central orchestrator wiring `L-001` through `L-008`/`L-010` together:
 /// readiness, the global hotkey, audio capture, transcription, normalization,
 /// insertion, the HUD, and history. UI (`MenuBarContentView`, `HistoryView`,
@@ -608,10 +600,6 @@ public final class AppState: ObservableObject {
 
     public func openImportQueue() {
         openMainOrOnboarding(section: .importQueue)
-    }
-
-    public func openLecture() {
-        openMainOrOnboarding(section: .lecture)
     }
 
     /// `INV-015`/`AT-088`/`AT-089` single router: every entry point that

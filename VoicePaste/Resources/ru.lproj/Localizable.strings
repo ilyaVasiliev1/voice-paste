@@ -206,7 +206,7 @@
 "lecture.busyWithDictation" = "Идёт диктовка. Дождитесь её окончания.";
 "lecture.tailNotTranscribed" = "Модель недоступна: последние секунды не распознаны. Остальная лекция сохранена.";
 "lecture.delete" = "Удалить лекцию";
-"lecture.backToList" = "К списку";
+"lecture.saved" = "Сохранённые";
 "lecture.language" = "Язык лекции";
 "lecture.engine" = "Движок";
 "lecture.listening" = "Слушаю…";
@@ -225,6 +225,8 @@
 "settings.lecture.windowDescription" = "Через столько секунд речи текст пополняется на экране. Короче — чаще, но модель видит меньше контекста и чаще ошибается.";
 "history.source.dictation" = "Диктовка";
 "history.source.file" = "Файл";
+"history.toolbar.startDictation" = "Начать диктовку";
+"history.toolbar.transcribeFile" = "Добавить файл…";
 "history.toolbar.copy" = "Копировать";
 "history.toolbar.export" = "Экспорт…";
 "history.toolbar.delete" = "Удалить";
@@ -241,10 +243,20 @@
 
 /* Main window (UI-008) */
 "main.window.title" = "VoicePaste";
-"main.section.transcribe" = "Транскрибация";
+"main.section.lecture" = "Лекции";
 "main.section.history" = "История";
-"main.section.dashboard" = "Дашборд";
-"main.section.settings" = "Настройки";
+"main.section.importQueue" = "Импорт";
+"main.section.dashboard" = "Статистика";
+"main.sections" = "Разделы";
+"lecture.new" = "Новая лекция";
+"lecture.recordingNow" = "Идёт запись";
+"lecture.engine.label" = "Движок: %@";
+"lecture.language.label" = "Язык: %@";
+"lecture.detail.idle.title" = "Новая лекция";
+"lecture.detail.idle.description" = "Выберите язык и движок в панели инструментов и нажмите «Начать лекцию». Текст будет пополняться по ходу, абзацами по паузам говорящего.";
+"import.queue.empty.title" = "Очередь пуста";
+"import.queue.empty.description" = "Добавленные файлы появятся здесь и будут обработаны по очереди.";
+"history.list.empty.title" = "Записей пока нет";
 
 /* Транскрибация (UI-008.1) */
 "transcribe.lastResult.title" = "Последняя расшифровка";
