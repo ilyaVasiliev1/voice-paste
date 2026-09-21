@@ -207,6 +207,8 @@
 "lecture.tailNotTranscribed" = "Модель недоступна: последние секунды не распознаны. Остальная лекция сохранена.";
 "lecture.delete" = "Удалить лекцию";
 "lecture.backToList" = "К списку";
+"lecture.language" = "Язык лекции";
+"lecture.language.autoWarning" = "На автоматическом модель может ошибиться и передать речь словами чужого языка";
 "lecture.row.summary" = "%@ · %d слов";
 "lecture.copyAll" = "Скопировать лекцию";
 "lecture.rename" = "Переименовать";

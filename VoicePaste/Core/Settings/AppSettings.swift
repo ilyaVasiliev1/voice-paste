@@ -17,6 +17,7 @@ public final class AppSettings: ObservableObject {
         static let modelDownloadSource = "modelDownloadSource"
         static let lectureParagraphPauseSeconds = "lectureParagraphPauseSeconds"
         static let lectureWindowSeconds = "lectureWindowSeconds"
+        static let lectureLanguage = "lectureLanguage"
     }
 
     private let defaults: UserDefaults
@@ -71,6 +72,15 @@ public final class AppSettings: ObservableObject {
     /// Пауза, с которой в учебном режиме начинается новый абзац. От 1 до 10
     /// секунд, по умолчанию 2 — у разных говорящих разный темп, поэтому это
     /// настройка, а не константа.
+    /// Язык лекции. Отдельно от языка диктовки: диктуют на одном языке,
+    /// а лекции слушают на другом.
+    ///
+    /// По умолчанию задан явно, а не «автоматически». Ошибка определения на
+    /// окне в несколько секунд стоит дорого: модель не отказывается
+    /// распознавать, а передаёт услышанное словами назначенного языка, и
+    /// китайская речь выходит набором русских слов.
+    @Published public var lectureLanguage: TranscriptionLanguage { didSet { persist() } }
+
     /// Через сколько секунд речи расшифровка лекции пополняется на экране.
     ///
     /// Размен без правильного ответа: короче — текст появляется чаще, но
@@ -151,6 +161,9 @@ public final class AppSettings: ObservableObject {
         // that could drift from it.
         self.launchAtLogin = Self.isEnabled(loginItemRegistry.status)
         self.showInDock = defaults.object(forKey: Keys.showInDock) as? Bool ?? true
+        self.lectureLanguage = TranscriptionLanguage(
+            rawValue: defaults.string(forKey: Keys.lectureLanguage) ?? ""
+        ) ?? .zh
         self.lectureWindowSeconds = LectureRecorder.clampWindow(
             defaults.object(forKey: Keys.lectureWindowSeconds) as? Double
                 ?? LectureRecorder.defaultWindowSeconds
@@ -176,6 +189,9 @@ public final class AppSettings: ObservableObject {
         defaults.set(languageMode.rawValue, forKey: Keys.languageMode)
         defaults.set(showInDock, forKey: Keys.showInDock)
         defaults.set(modelDownloadSource.rawValue, forKey: Keys.modelDownloadSource)
+        defaults.set(lectureLanguage.rawValue, forKey: Keys.lectureLanguage)
+        defaults.set(lectureParagraphPauseSeconds, forKey: Keys.lectureParagraphPauseSeconds)
+        defaults.set(lectureWindowSeconds, forKey: Keys.lectureWindowSeconds)
     }
 
     private func persistHotkey() {

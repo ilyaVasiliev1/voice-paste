@@ -198,7 +198,7 @@ struct HistoryView: View {
     @ViewBuilder
     private var detailView: some View {
         if section == .lecture {
-            LectureView(recorder: appState.lectureRecorder)
+            LectureView(recorder: appState.lectureRecorder, settings: appState.settings)
         } else if section == .dashboard {
             DashboardView()
         } else if section == .importQueue {

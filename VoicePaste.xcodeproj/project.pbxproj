@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		C0000000000000000000011C /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000011B /* App.swift */; };
+		C000000000000000000009E1 /* AppSettingsLecturePersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C000000000000000000009E0 /* AppSettingsLecturePersistenceTests.swift */; };
 		C000000000000000000009D3 /* WhisperSpecialTokensTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C000000000000000000009D2 /* WhisperSpecialTokensTests.swift */; };
 		C000000000000000000009D1 /* WhisperSpecialTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = C000000000000000000009D0 /* WhisperSpecialTokens.swift */; };
 		C000000000000000000009C1 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = C000000000000000000009C0 /* DesignTokens.swift */; };
@@ -119,6 +120,7 @@
 		A10000000000000000000015 /* VoicePaste.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoicePaste.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000016 /* VoicePasteTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VoicePasteTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C0000000000000000000011B /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
+		C000000000000000000009E0 /* AppSettingsLecturePersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsLecturePersistenceTests.swift; sourceTree = "<group>"; };
 		C000000000000000000009D2 /* WhisperSpecialTokensTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperSpecialTokensTests.swift; sourceTree = "<group>"; };
 		C000000000000000000009D0 /* WhisperSpecialTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperSpecialTokens.swift; sourceTree = "<group>"; };
 		C000000000000000000009C0 /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
@@ -533,6 +535,7 @@
 		C0000000000000000000011A /* VoicePasteTests */ = {
 			isa = PBXGroup;
 			children = (
+				C000000000000000000009E0 /* AppSettingsLecturePersistenceTests.swift */,
 				C000000000000000000009D2 /* WhisperSpecialTokensTests.swift */,
 				C000000000000000000009B2 /* LectureRecorderTests.swift */,
 				C000000000000000000009B0 /* LectureStoreTests.swift */,
@@ -769,6 +772,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C000000000000000000009E1 /* AppSettingsLecturePersistenceTests.swift in Sources */,
 				C000000000000000000009D3 /* WhisperSpecialTokensTests.swift in Sources */,
 				C000000000000000000009B3 /* LectureRecorderTests.swift in Sources */,
 				C000000000000000000009B1 /* LectureStoreTests.swift in Sources */,

@@ -8,6 +8,7 @@ import SwiftUI
 struct LectureView: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject var recorder: LectureRecorder
+    @ObservedObject var settings: AppSettings
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isRenaming = false
@@ -56,6 +57,20 @@ struct LectureView: View {
             .keyboardShortcut("l", modifiers: [.command, .shift])
             .accessibilityIdentifier("lecture-toggle")
 
+            // Язык выбирается до записи и действует на всю лекцию. Во время
+            // записи заблокирован: смена языка посреди неё разошлась бы с уже
+            // распознанным.
+            Picker("lecture.language", selection: $settings.lectureLanguage) {
+                Text("settings.language.zh").tag(TranscriptionLanguage.zh)
+                Text("settings.language.ru").tag(TranscriptionLanguage.ru)
+                Text("settings.language.en").tag(TranscriptionLanguage.en)
+                Text("settings.language.auto").tag(TranscriptionLanguage.auto)
+            }
+            .labelsHidden()
+            .frame(width: 150)
+            .disabled(appState.isLectureRecording)
+            .accessibilityIdentifier("lecture-language")
+
             if appState.isLectureRecording {
                 Text(Self.clock(appState.lectureElapsedSeconds))
                     .font(.system(.body, design: .monospaced))
@@ -100,7 +115,11 @@ struct LectureView: View {
 
             Spacer()
 
-            if let language = recorder.detectedLanguage {
+            if settings.lectureLanguage == .auto, !appState.isLectureRecording {
+                Text("lecture.language.autoWarning")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if let language = recorder.detectedLanguage {
                 Text(language.uppercased())
                     .font(.caption)
                     .foregroundStyle(.secondary)

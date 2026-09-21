@@ -72,7 +72,10 @@ extension AppState {
             guard isLectureRecording else { return }
             lectureRecorder.begin(
                 transcriber: engine,
-                language: settings.languageMode,
+                // Язык лекции, а не диктовки: диктуют на одном, слушают на
+                // другом. Заданный явно действует на все окна и не зависит
+                // от того, что модель услышала в первых секундах.
+                language: settings.lectureLanguage,
                 pauseSeconds: settings.lectureParagraphPauseSeconds,
                 availableSamples: { [audioCapture] in audioCapture.capturedSampleCount },
                 readSamples: { [audioCapture] range in audioCapture.capturedSamples(in: range) }
@@ -92,7 +95,7 @@ extension AppState {
         if let engine = try? await modelManager.ensureLoaded() {
             paragraphs = await lectureRecorder.finish(
                 transcriber: engine,
-                language: settings.languageMode,
+                language: settings.lectureLanguage,
                 totalSamples: samples
             )
         } else {
