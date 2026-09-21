@@ -209,6 +209,7 @@
 "lecture.backToList" = "К списку";
 "lecture.language" = "Язык лекции";
 "lecture.engine" = "Движок";
+"lecture.listening" = "Слушаю…";
 "lecture.engine.auto" = "По языку";
 "lecture.engine.system" = "Системный (быстрый)";
 "lecture.engine.whisper" = "Whisper (точнее на русском)";

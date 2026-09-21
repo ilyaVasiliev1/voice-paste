@@ -47,6 +47,8 @@ public final class LectureRecorder: ObservableObject {
     private var languageCounts: [String: Int] = [:]
     private var pump: Task<Void, Never>?
     private var liveEngine: (any LiveTranscribing)?
+    private var silenceSamples = 0
+    private var hasUnsettledSpeech = false
     private var pauseSeconds: Double = LectureParagraphBuilder.defaultPauseSeconds
     private let pollInterval: Duration
 
@@ -148,11 +150,42 @@ public final class LectureRecorder: ObservableObject {
                 self.absorb(update)
             }
         }
+        silenceSamples = 0
+        hasUnsettledSpeech = false
     }
 
-    /// Отдаёт потоковому движку очередной кусок звука.
+    /// Порог тишины и её длительность, после которой текст закрепляется.
+    ///
+    /// Закреплять надо **в тишине, а не по часам**. Первая версия закрепляла
+    /// раз в шесть секунд и резала слова посередине: `描述` («описание»)
+    /// превратилось в `描。 魔术` — остаток распознан как «магия». Это та же
+    /// беда стыков, от которой уходили, отказавшись от нарезки на окна.
+    ///
+    /// Порог громкости и длительность паузы — те же, что уже приняты в
+    /// продукте: 0,004 RMS отделяет тихую речь от шума микрофона, 0,6 с —
+    /// длительность, после которой фильтр хвоста считает тишину настоящей.
+    static let silenceRMS: Float = 0.004
+    static let settlePauseSeconds: Double = 0.6
+
+    /// Отдаёт потоковому движку очередной кусок звука и закрепляет текст,
+    /// когда говорящий замолчал.
     public func appendStreamingAudio(_ samples: [Float]) {
         liveEngine?.append(samples: samples)
+        guard !samples.isEmpty else { return }
+
+        let rms = (samples.reduce(0) { $0 + $1 * $1 } / Float(samples.count)).squareRoot()
+        if rms >= Self.silenceRMS {
+            silenceSamples = 0
+            hasUnsettledSpeech = true
+            return
+        }
+        silenceSamples += samples.count
+        let pause = Double(silenceSamples) / Double(Self.sampleRate)
+        // Закрепляем один раз на паузу и только если было что закреплять:
+        // иначе долгое молчание дёргало бы движок впустую.
+        guard hasUnsettledSpeech, pause >= Self.settlePauseSeconds else { return }
+        hasUnsettledSpeech = false
+        Task { [weak self] in await self?.liveEngine?.settle() }
     }
 
     /// Закрывает поток и отдаёт окончательные абзацы.
@@ -161,7 +194,9 @@ public final class LectureRecorder: ObservableObject {
         defer { isCatchingUp = false }
         await liveEngine?.finish()
         liveEngine = nil
-        pump?.cancel()
+        // Дождаться, пока приём разберёт последние обновления, а не обрывать
+        // его: устоявшийся хвост приходит ровно в момент завершения.
+        await pump?.value
         pump = nil
         volatileText = ""
         return paragraphs

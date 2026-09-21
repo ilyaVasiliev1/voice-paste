@@ -25,6 +25,8 @@ public final class SystemLiveTranscriber: LiveTranscribing {
     private var collector: Task<Void, Never>?
     private var converter: AVAudioConverter?
     private var inputFormat: AVAudioFormat?
+    /// Сколько звука подано. По нему считается точка закрепления.
+    private var fedSamples = 0
 
     private let updateStream: AsyncStream<LiveTranscriptUpdate>
     private let updateContinuation: AsyncStream<LiveTranscriptUpdate>.Continuation
@@ -117,13 +119,24 @@ public final class SystemLiveTranscriber: LiveTranscribing {
             let buffer = Self.buffer(from: samples, to: format, using: converter)
         else { return }
         continuation.yield(AnalyzerInput(buffer: buffer))
+        fedSamples += samples.count
+    }
+
+    public func settle() async {
+        guard let analyzer, fedSamples > 0 else { return }
+        let through = CMTime(value: CMTimeValue(fedSamples), timescale: 16_000)
+        try? await analyzer.finalize(through: through)
     }
 
     public func finish() async {
         inputContinuation?.finish()
         inputContinuation = nil
         try? await analyzer?.finalizeAndFinishThroughEndOfInput()
-        collector?.cancel()
+        // Дождаться, пока пересылка доставит последние результаты, а не
+        // обрывать её. Прежде здесь стояла отмена сразу после команды
+        // закончить — а весь устоявшийся текст приходит именно в этот момент,
+        // одним куском. Он терялся: 13 секунд речи давали одно слово.
+        await collector?.value
         collector = nil
         analyzer = nil
         updateContinuation.finish()

@@ -144,6 +144,14 @@ struct LectureView: View {
         appState.openedLecture != nil || !recorder.paragraphs.isEmpty
     }
 
+    /// Идёт запись — показываем живую расшифровку, даже пустую. Прежде экран
+    /// переключался на неё только после первого устоявшегося абзаца, а
+    /// системный распознаватель закрепляет текст редко: весь живой текст
+    /// приходил уточняемым и на экран не попадал вовсе.
+    private var showsLiveTranscript: Bool {
+        appState.isLectureRecording || !recorder.paragraphs.isEmpty || !recorder.volatileText.isEmpty
+    }
+
     /// Текст того, что на экране, для копирования целиком.
     private var visibleText: String {
         if let opened = appState.openedLecture { return opened.plainText }
@@ -163,7 +171,7 @@ struct LectureView: View {
                     endSeconds: Double($0.endMilliseconds) / 1_000
                 )
             }, followsTail: false)
-        } else if !recorder.paragraphs.isEmpty {
+        } else if showsLiveTranscript {
             paragraphList(recorder.paragraphs, followsTail: true)
         } else if appState.savedLectures.isEmpty {
             ContentUnavailableView(
@@ -225,32 +233,33 @@ struct LectureView: View {
                         LectureParagraphRow(paragraph: paragraph)
                         .id(index)
                     }
+                    // Живой текст — продолжение расшифровки, а не сноска: то,
+                    // что говорится прямо сейчас. Приглушён, потому что ещё
+                    // уточнится, но стоит там, куда смотрит глаз.
+                    if followsTail, !recorder.volatileText.isEmpty {
+                        LiveTextRow(text: recorder.volatileText)
+                            .id("live")
+                    }
+                    if followsTail, appState.isLectureRecording,
+                        paragraphs.isEmpty, recorder.volatileText.isEmpty {
+                        Text("lecture.listening")
+                            .font(.body)
+                            .foregroundStyle(.tertiary)
+                            .id("live")
+                    }
                 }
                 .padding(DesignTokens.detailPanePadding)
                 .textSelection(.enabled)
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    // Уточняемый текст движка: он ещё изменится, поэтому
-                    // приглушён и в абзацы не попадает. У нарезки на окна
-                    // его не бывает вовсе.
-                    if !recorder.volatileText.isEmpty {
-                        Text(recorder.volatileText)
-                            .font(.body)
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, DesignTokens.detailPanePadding)
-                            .padding(.vertical, 10)
-                            .background(.quaternary.opacity(0.5))
-                            .accessibilityIdentifier("lecture-volatile")
-                    }
-                }
             }
-            .onChange(of: paragraphs.count) { _, count in
-                // Лекция идёт — экран держится конца, иначе за говорящим
-                // придётся гоняться руками. У открытой на чтение лекции
-                // прокрутка остаётся за человеком.
-                guard followsTail, appState.isLectureRecording, count > 0 else { return }
+            .onChange(of: recorder.volatileText) { _, _ in
+                // Лекция идёт — экран держится за тем, что говорится сейчас,
+                // иначе за говорящим придётся гоняться руками. У открытой на
+                // чтение лекции прокрутка остаётся за человеком.
+                guard followsTail, appState.isLectureRecording else { return }
+                // Плавно, а не прыжком: текст подъезжает, пока его читают.
+                // При включённом «уменьшить движение» — без анимации.
                 withAnimation(reduceMotion ? nil : .easeOut(duration: DesignTokens.Motion.deliberate)) {
-                    proxy.scrollTo(count - 1, anchor: .bottom)
+                    proxy.scrollTo("live", anchor: .bottom)
                 }
             }
         }
@@ -291,5 +300,27 @@ private struct LectureParagraphRow: View {
     private static func timestamp(_ seconds: Double) -> String {
         let total = Int(seconds)
         return String(format: "%02d:%02d", total / 60, total % 60)
+    }
+}
+
+/// Текст, который говорится прямо сейчас. Приглушён: распознаватель его ещё
+/// уточнит. Время слева пустое — абзаца у него пока нет.
+private struct LiveTextRow: View {
+    let text: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Circle()
+                .fill(.red.opacity(0.8))
+                .frame(width: 6, height: 6)
+                .padding(.top, 7)
+                .frame(width: 48, alignment: .leading)
+                .accessibilityHidden(true)
+            Text(text)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("lecture-volatile")
+        }
     }
 }

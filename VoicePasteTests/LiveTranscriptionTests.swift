@@ -125,6 +125,7 @@ private final class FakeLiveEngine: LiveTranscribing {
     private let continuation: AsyncStream<LiveTranscriptUpdate>.Continuation
     private(set) var receivedSampleCount = 0
     private(set) var didFinish = false
+    private(set) var settleCount = 0
 
     var updates: AsyncStream<LiveTranscriptUpdate> { stream }
 
@@ -140,6 +141,8 @@ private final class FakeLiveEngine: LiveTranscribing {
     }
 
     func append(samples: [Float]) { receivedSampleCount += samples.count }
+
+    func settle() async { settleCount += 1 }
 
     func finish() async {
         didFinish = true
