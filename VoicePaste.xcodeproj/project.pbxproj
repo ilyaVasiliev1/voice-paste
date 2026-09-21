@@ -106,7 +106,9 @@
 		C00000000000000000000803 /* ImportQueueStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000802 /* ImportQueueStore.swift */; };
 		C00000000000000000000805 /* ImportQueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000804 /* ImportQueueView.swift */; };
 		C00000000000000000000806 /* TrailingHallucinationFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000807 /* TrailingHallucinationFilter.swift */; };
+		CA0000000000000000000925 /* SubtitleCreditFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0000000000000000000924 /* SubtitleCreditFilter.swift */; };
 		C00000000000000000000808 /* TrailingHallucinationFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000809 /* TrailingHallucinationFilterTests.swift */; };
+		CA0000000000000000000923 /* SubtitleCreditFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0000000000000000000922 /* SubtitleCreditFilterTests.swift */; };
 		C00000000000000000000900 /* ModelDownloadProgressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000901 /* ModelDownloadProgressTests.swift */; };
 		C00000000000000000000902 /* HotkeyManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000903 /* HotkeyManagerTests.swift */; };
 		C00000000000000000000904 /* AppStateRoutingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000905 /* AppStateRoutingTests.swift */; };
@@ -214,7 +216,9 @@
 		C00000000000000000000802 /* ImportQueueStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportQueueStore.swift; sourceTree = "<group>"; };
 		C00000000000000000000804 /* ImportQueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportQueueView.swift; sourceTree = "<group>"; };
 		C00000000000000000000807 /* TrailingHallucinationFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailingHallucinationFilter.swift; sourceTree = "<group>"; };
+		CA0000000000000000000924 /* SubtitleCreditFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitleCreditFilter.swift; sourceTree = "<group>"; };
 		C00000000000000000000809 /* TrailingHallucinationFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailingHallucinationFilterTests.swift; sourceTree = "<group>"; };
+		CA0000000000000000000922 /* SubtitleCreditFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitleCreditFilterTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000901 /* ModelDownloadProgressTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloadProgressTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000903 /* HotkeyManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManagerTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000905 /* AppStateRoutingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStateRoutingTests.swift; sourceTree = "<group>"; };
@@ -450,6 +454,7 @@
 				C00000000000000000000147 /* WhisperKitTranscriber.swift */,
 				C00000000000000000000200 /* GitHubModelDownloader.swift */,
 				C00000000000000000000807 /* TrailingHallucinationFilter.swift */,
+				CA0000000000000000000924 /* SubtitleCreditFilter.swift */,
 				C0000000000000000000024B /* LocalModelDetection.swift */,
 			);
 			path = Transcription;
@@ -583,6 +588,7 @@
 				CA0000000000000000000911 /* ReadinessModelStateObservationTests.swift */,
 				CA0000000000000000000901 /* ModelLoadFailureClassificationTests.swift */,
 				C00000000000000000000809 /* TrailingHallucinationFilterTests.swift */,
+				CA0000000000000000000922 /* SubtitleCreditFilterTests.swift */,
 				C00000000000000000000901 /* ModelDownloadProgressTests.swift */,
 				C00000000000000000000903 /* HotkeyManagerTests.swift */,
 				C00000000000000000000905 /* AppStateRoutingTests.swift */,
@@ -780,6 +786,7 @@
 				C00000000000000000000148 /* WhisperKitTranscriber.swift in Sources */,
 				C00000000000000000000201 /* GitHubModelDownloader.swift in Sources */,
 				C00000000000000000000806 /* TrailingHallucinationFilter.swift in Sources */,
+				CA0000000000000000000925 /* SubtitleCreditFilter.swift in Sources */,
 				C0000000000000000000024A /* LocalModelDetection.swift in Sources */,
 				C0000000000000000000014A /* AppDatabase.swift in Sources */,
 				C0000000000000000000014C /* HistoryStore.swift in Sources */,
@@ -834,6 +841,7 @@
 				CA0000000000000000000910 /* ReadinessModelStateObservationTests.swift in Sources */,
 				CA0000000000000000000900 /* ModelLoadFailureClassificationTests.swift in Sources */,
 				C00000000000000000000808 /* TrailingHallucinationFilterTests.swift in Sources */,
+				CA0000000000000000000923 /* SubtitleCreditFilterTests.swift in Sources */,
 				C00000000000000000000900 /* ModelDownloadProgressTests.swift in Sources */,
 				C00000000000000000000902 /* HotkeyManagerTests.swift in Sources */,
 				C00000000000000000000904 /* AppStateRoutingTests.swift in Sources */,

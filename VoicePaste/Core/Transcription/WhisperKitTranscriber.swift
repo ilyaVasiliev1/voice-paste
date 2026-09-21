@@ -44,7 +44,9 @@ nonisolated public struct WhisperKitTranscriber: Transcribing {
     ) -> [TranscribedSegment] {
         var cleaned = segments.compactMap { segment -> TranscribedSegment? in
             let text = WhisperSpecialTokens.strip(segment.text)
-            guard !text.isEmpty else { return nil }
+            // Выдуманный титр о субтитрах снимается где угодно, не только в
+            // конце: на музыке он встаёт и посреди записи.
+            guard !text.isEmpty, !SubtitleCreditFilter.isCredit(text) else { return nil }
             return TranscribedSegment(
                 text: text,
                 startSeconds: segment.startSeconds,
@@ -265,11 +267,14 @@ private actor WhisperInferenceWorker {
                 startSeconds: Double($0.start)
             )
         }
-        let text = TrailingHallucinationFilter.filtering(
-            rawText: rawText,
-            segments: segments,
-            samples: request.samples,
-            hadLongTrailingSilence: hadLongTrailingSilence
+        let text = SubtitleCreditFilter.removingCredits(
+            from: TrailingHallucinationFilter.filtering(
+                rawText: rawText,
+                segments: segments,
+                samples: request.samples,
+                hadLongTrailingSilence: hadLongTrailingSilence
+            ),
+            segmentTexts: segments.map { WhisperSpecialTokens.strip($0.text) }
         )
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw TranscribingError.emptyAudio

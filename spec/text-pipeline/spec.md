@@ -168,6 +168,38 @@ SHALL удаляться только при доказательстве из �
 
 ---
 
+### Requirement: Выдуманные титры о субтитрах снимаются в любом месте
+<!-- id: SubtitleCreditFilter -->
+<!-- entities: SubtitleCreditFilter, TranscribedSegment, TranscriptionResult -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/Core/Transcription/SubtitleCreditFilter.swift, VoicePaste/Core/Transcription/WhisperKitTranscriber.swift -->
+<!-- test_macos: VoicePasteTests/SubtitleCreditFilterTests.swift:test_creditLine_isRecognized_realSpeechIsNot -->
+
+Строка-титр о субтитрах («Субтитры делал DimaTorzok», «Редактор субтитров
+А. Семкин», «Субтитры создавал …», «Subtitles by …», «amara.org») SHALL
+сниматься из сегментов и из итогового текста, где бы она ни стояла.
+
+Это не речь, а выдумка Whisper: модель учили на видео, где в конце идут титры
+переводчиков, и на музыке или тишине она их «вспоминает». 21.09.2026 такая
+строка появилась в лекции, записанной на песню, — в середине, а не в конце,
+поэтому правило про концевой наполнитель её не ловило.
+
+Размен сделан сознательно: фраза, действительно продиктованная о том, кто
+делал субтитры, тоже будет снята. Такая фраза в диктовке почти невероятна, а
+выдумка на музыке — частая.
+
+#### Scenario: титр посреди лекции
+<!-- test: SubtitleCreditFilterTests.test_creditSegment_removedFromTheMiddle -->
+- **WHEN** среди сегментов есть строка-титр
+- **THEN** она снята, соседние сегменты на месте
+
+#### Scenario: обычная речь со словом «субтитры»
+<!-- test: SubtitleCreditFilterTests.test_creditLine_isRecognized_realSpeechIsNot -->
+- **WHEN** сказано «включи субтитры к этому видео»
+- **THEN** текст не изменяется
+
+---
+
 ### Requirement: Длинная тишина обрезается до распознавания
 <!-- id: TrailingHallucinationFilter.trimmingLongTrailingSilence -->
 <!-- entities: TrailingHallucinationFilter, TranscriptionRequest -->
