@@ -48,6 +48,7 @@
 		C00000000000000000000925 /* MainWindowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000924 /* MainWindowLayout.swift */; };
 		CA0000000000000000000919 /* MainContentSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0000000000000000000918 /* MainContentSection.swift */; };
 		C00000000000000000000927 /* MainWindowLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000926 /* MainWindowLayoutTests.swift */; };
+		CA000000000000000000091F /* ModelStateInstalledTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA000000000000000000091E /* ModelStateInstalledTests.swift */; };
 		CA000000000000000000091D /* HistoryListModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA000000000000000000091C /* HistoryListModelTests.swift */; };
 		CA0000000000000000000917 /* MainContentSectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0000000000000000000916 /* MainContentSectionTests.swift */; };
 		CA0000000000000000000915 /* SpeechDurationTextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0000000000000000000914 /* SpeechDurationTextTests.swift */; };
@@ -79,6 +80,7 @@
 		C00000000000000000000164 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000163 /* OnboardingView.swift */; };
 		C00000000000000000000166 /* HotkeyRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000165 /* HotkeyRecorderView.swift */; };
 		C00000000000000000000168 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000167 /* SettingsView.swift */; };
+		CA0000000000000000000921 /* ModelLifecycleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0000000000000000000920 /* ModelLifecycleView.swift */; };
 		C0000000000000000000016A /* AppTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000169 /* AppTests.swift */; };
 		C0000000000000000000016C /* DictationStateMachineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000016B /* DictationStateMachineTests.swift */; };
 		C0000000000000000000016E /* TextNormalizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000016D /* TextNormalizerTests.swift */; };
@@ -187,6 +189,7 @@
 		C00000000000000000000163 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		C00000000000000000000165 /* HotkeyRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyRecorderView.swift; sourceTree = "<group>"; };
 		C00000000000000000000167 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		CA0000000000000000000920 /* ModelLifecycleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelLifecycleView.swift; sourceTree = "<group>"; };
 		C00000000000000000000169 /* AppTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTests.swift; sourceTree = "<group>"; };
 		C0000000000000000000016B /* DictationStateMachineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationStateMachineTests.swift; sourceTree = "<group>"; };
 		C0000000000000000000016D /* TextNormalizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextNormalizerTests.swift; sourceTree = "<group>"; };
@@ -224,6 +227,7 @@
 		C00000000000000000000924 /* MainWindowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowLayout.swift; sourceTree = "<group>"; };
 		CA0000000000000000000918 /* MainContentSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainContentSection.swift; sourceTree = "<group>"; };
 		C00000000000000000000926 /* MainWindowLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowLayoutTests.swift; sourceTree = "<group>"; };
+		CA000000000000000000091E /* ModelStateInstalledTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelStateInstalledTests.swift; sourceTree = "<group>"; };
 		CA000000000000000000091C /* HistoryListModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryListModelTests.swift; sourceTree = "<group>"; };
 		CA0000000000000000000916 /* MainContentSectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainContentSectionTests.swift; sourceTree = "<group>"; };
 		CA0000000000000000000914 /* SpeechDurationTextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechDurationTextTests.swift; sourceTree = "<group>"; };
@@ -533,6 +537,7 @@
 			children = (
 				C00000000000000000000165 /* HotkeyRecorderView.swift */,
 				C00000000000000000000167 /* SettingsView.swift */,
+				CA0000000000000000000920 /* ModelLifecycleView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -587,6 +592,7 @@
 				C00000000000000000000915 /* WhisperDecodingPlanTests.swift */,
 				C00000000000000000000922 /* AppSettingsLaunchAtLoginTests.swift */,
 				C00000000000000000000926 /* MainWindowLayoutTests.swift */,
+				CA000000000000000000091E /* ModelStateInstalledTests.swift */,
 				CA000000000000000000091C /* HistoryListModelTests.swift */,
 				CA0000000000000000000916 /* MainContentSectionTests.swift */,
 				CA0000000000000000000914 /* SpeechDurationTextTests.swift */,
@@ -791,6 +797,7 @@
 				C00000000000000000000164 /* OnboardingView.swift in Sources */,
 				C00000000000000000000166 /* HotkeyRecorderView.swift in Sources */,
 				C00000000000000000000168 /* SettingsView.swift in Sources */,
+				CA0000000000000000000921 /* ModelLifecycleView.swift in Sources */,
 				C00000000000000000000501 /* UsageStats.swift in Sources */,
 				C00000000000000000000503 /* DashboardView.swift in Sources */,
 				CA0000000000000000000913 /* SpeechDurationText.swift in Sources */,
@@ -836,6 +843,7 @@
 				C00000000000000000000914 /* WhisperDecodingPlanTests.swift in Sources */,
 				C00000000000000000000923 /* AppSettingsLaunchAtLoginTests.swift in Sources */,
 				C00000000000000000000927 /* MainWindowLayoutTests.swift in Sources */,
+				CA000000000000000000091F /* ModelStateInstalledTests.swift in Sources */,
 				CA000000000000000000091D /* HistoryListModelTests.swift in Sources */,
 				CA0000000000000000000917 /* MainContentSectionTests.swift in Sources */,
 				CA0000000000000000000915 /* SpeechDurationTextTests.swift in Sources */,

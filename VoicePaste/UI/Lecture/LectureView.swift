@@ -61,7 +61,7 @@ struct LectureListColumn: View {
     }
 
     private var currentRow: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: DesignTokens.Spacing.sm) {
             Image(systemName: appState.isLectureRecording ? "record.circle.fill" : "plus.circle")
                 .foregroundStyle(appState.isLectureRecording ? Color.red : Color.accentColor)
             Text(appState.isLectureRecording ? "lecture.recordingNow" : "lecture.new")
@@ -72,7 +72,7 @@ struct LectureListColumn: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(.vertical, 3)
+        .padding(.vertical, DesignTokens.Spacing.xs)
     }
 }
 
@@ -81,7 +81,7 @@ private struct SavedLectureRow: View {
     let lecture: Lecture
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
             Text(lecture.title)
                 .lineLimit(2)
             Text(lecture.createdAtDate.formatted(date: .abbreviated, time: .shortened))
@@ -91,7 +91,7 @@ private struct SavedLectureRow: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 3)
+        .padding(.vertical, DesignTokens.Spacing.xs)
     }
 }
 
@@ -121,14 +121,14 @@ struct LectureView: View {
     // MARK: - Шапка
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             Text(title)
                 .font(.title2.weight(.semibold))
             statusLine
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, DesignTokens.detailPanePadding)
-        .padding(.vertical, 16)
+        .padding(.vertical, DesignTokens.Spacing.lg)
     }
 
     private var title: String {
@@ -139,9 +139,9 @@ struct LectureView: View {
     /// Строка состояния. Таймер записи стоит здесь крупно и первым: прежде он
     /// терялся в ряду приглушённых списков, и не было видно, что запись идёт.
     private var statusLine: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: DesignTokens.Spacing.md) {
             if appState.isLectureRecording {
-                HStack(spacing: 8) {
+                HStack(spacing: DesignTokens.Spacing.sm) {
                     Circle()
                         .fill(.red)
                         .frame(width: 9, height: 9)
@@ -308,7 +308,7 @@ struct LectureView: View {
     ) -> some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 18) {
+                LazyVStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
                     ForEach(Array(paragraphs.enumerated()), id: \.offset) { index, paragraph in
                         LectureParagraphRow(paragraph: paragraph)
                         .id(index)
@@ -427,7 +427,7 @@ private struct LectureParagraphRow: View {
     let paragraph: LectureParagraph
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
+        HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
             Text(Self.timestamp(paragraph.startSeconds))
                 .font(.system(.caption, design: .monospaced))
                 .foregroundStyle(.secondary)
@@ -459,11 +459,11 @@ private struct LiveTextRow: View {
     let text: String
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
+        HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
             Circle()
                 .fill(.red.opacity(0.8))
                 .frame(width: 6, height: 6)
-                .padding(.top, 7)
+                .padding(.top, DesignTokens.Spacing.sm)
                 .frame(width: 48, alignment: .leading)
                 .accessibilityHidden(true)
             Text(text)

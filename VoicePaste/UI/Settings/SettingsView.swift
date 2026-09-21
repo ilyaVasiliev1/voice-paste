@@ -170,20 +170,10 @@ private struct SettingsBody: View {
                     fromByteCount: ModelCatalog.approximateSizeBytes,
                     countStyle: .file
                 ))
-            LabeledContent("settings.model.status", value: modelStatusDescription)
-            Picker("settings.model.downloadSource", selection: $settings.modelDownloadSource) {
-                Text("settings.model.downloadSource.github").tag(ModelDownloadSource.github)
-                Text("settings.model.downloadSource.mirror").tag(ModelDownloadSource.mirror)
-                Text("settings.model.downloadSource.official").tag(ModelDownloadSource.official)
+            LabeledContent("settings.model.status") {
+                ModelLifecycleView(showsSourcePicker: false)
             }
-            Text("settings.model.downloadSource.explanation")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            if !isModelPresentOnDisk {
-                Button("settings.model.loadOrRetry") {
-                    Task { _ = try? await appState.modelManager.installModel() }
-                }
-            }
+            ModelSourcePicker(settings: settings)
             Stepper(value: $settings.modelUnloadMinutes, in: 0...60) {
                 LabeledContent("settings.model.unloadAfter", value: unloadMinutesDescription)
             }
@@ -198,7 +188,7 @@ private struct SettingsBody: View {
             } label: {
                 Text("settings.model.delete")
             }
-            .disabled(!isModelPresentOnDisk)
+            .disabled(!appState.modelManager.state.isInstalled)
             .confirmationDialog(
                 "settings.model.deleteConfirmTitle",
                 isPresented: $showingDeleteModelConfirmation
@@ -212,18 +202,6 @@ private struct SettingsBody: View {
             }
         }
         .formStyle(.grouped)
-    }
-
-    /// `AT-094`: the delete button is only actionable once a model actually
-    /// exists to delete — either resident in memory (`.ready`) or verified on
-    /// disk but idle (`.unloaded`). Any other state (`.notPrepared`,
-    /// `.downloading`, `.verifying`, `.failed`) has no `Models` directory
-    /// contents worth confirming a deletion for.
-    private var isModelPresentOnDisk: Bool {
-        switch appState.modelManager.state {
-        case .ready, .unloaded, .preparing: return true
-        case .notPrepared, .downloading, .verifying, .failed: return false
-        }
     }
 
     private var historySection: some View {
@@ -272,7 +250,7 @@ private struct SettingsBody: View {
                         Text(entry.replacement ?? entry.spokenForm)
                             .lineLimit(1)
                             .truncationMode(.tail)
-                        HStack(spacing: 8) {
+                        HStack(spacing: DesignTokens.Spacing.sm) {
                             Toggle("Включено", isOn: binding(for: entry))
                                 .labelsHidden()
                                 .toggleStyle(.switch)
@@ -328,18 +306,6 @@ private struct SettingsBody: View {
             }
         }
         .task { appState.refreshReadiness() }
-    }
-
-    private var modelStatusDescription: String {
-        switch appState.modelManager.state {
-        case .ready, .unloaded: return NSLocalizedString("model.status.ready", comment: "")
-        // On-disk model being brought into memory — not a download.
-        case .preparing: return NSLocalizedString("model.status.preparing", comment: "")
-        case .downloading: return NSLocalizedString("model.status.downloading", comment: "")
-        case .verifying: return NSLocalizedString("model.status.verifying", comment: "")
-        case .notPrepared: return NSLocalizedString("model.status.notPrepared", comment: "")
-        case .failed: return NSLocalizedString("model.status.failed", comment: "")
-        }
     }
 
     private var unloadMinutesDescription: String {

@@ -17,7 +17,7 @@ struct DetailEditor: View {
     @State private var didFailToSave = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
             metadata
             TextEditor(text: $editedText)
                 .font(.body)
@@ -30,7 +30,7 @@ struct DetailEditor: View {
     }
 
     private var metadata: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: DesignTokens.Spacing.md) {
             Label(sourceText, systemImage: transcript.source == .file ? "doc" : "mic")
             Text(durationString)
             if let language = transcript.language {

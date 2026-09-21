@@ -16,6 +16,16 @@ public enum ModelState: Equatable, Sendable {
     case ready
     case unloaded
     case failed(ModelError)
+
+    /// Модель на диске: в памяти, выгружена или поднимается с диска.
+    /// Один признак на настройки (кнопка удаления) и онбординг (можно ли
+    /// завершить) — прежде это были два одинаковых `switch` в двух экранах.
+    public var isInstalled: Bool {
+        switch self {
+        case .ready, .unloaded, .preparing: true
+        case .notPrepared, .downloading, .verifying, .failed: false
+        }
+    }
 }
 
 /// Byte-level detail behind `.downloading` (`AT-086`, `L-010`, `UI-002`).

@@ -15,7 +15,7 @@ struct DashboardView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
                 header
                 if appState.importManager.activeQueueCount > 0 { queueStatus }
                 metrics
@@ -32,7 +32,7 @@ struct DashboardView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
             Text(period.title).font(.title2.weight(.semibold))
             Text("Локально на этом Mac").font(.caption).foregroundStyle(.secondary)
         }
@@ -40,7 +40,7 @@ struct DashboardView: View {
 
     private var queueStatus: some View {
         Button { appState.openImportQueue() } label: {
-            HStack(spacing: 10) {
+            HStack(spacing: DesignTokens.Spacing.sm) {
                 Image(systemName: "arrow.down.doc").foregroundStyle(Color.accentColor)
                 Text("В очереди: \(appState.importManager.activeQueueCount)")
                 if let job = appState.importManager.currentJob {
@@ -49,14 +49,14 @@ struct DashboardView: View {
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
             }
-            .padding(.horizontal, 12).padding(.vertical, 9)
+            .padding(.horizontal, DesignTokens.Spacing.md).padding(.vertical, DesignTokens.Spacing.sm)
         }
         .buttonStyle(.plain)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: DesignTokens.cardCornerRadius, style: .continuous))
+        .cardSurface()
     }
 
     private var metrics: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: DesignTokens.Spacing.sm) {
             metric(stats.totalWordCount.formatted(), "Слов")
             metric(SpeechDurationText.text(milliseconds: stats.totalDurationMilliseconds), "Время речи")
             metric(stats.totalTranscriptCount.formatted(), "Расшифровок")
@@ -64,17 +64,17 @@ struct DashboardView: View {
     }
 
     private func metric(_ value: String, _ title: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
             Text(value).font(.title2.weight(.semibold)).monospacedDigit()
             Text(title).font(.caption).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: DesignTokens.cardCornerRadius, style: .continuous))
+        .padding(DesignTokens.Spacing.lg)
+        .cardSurface()
     }
 
     private var chart: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             HStack {
                 Text(period == .day ? "Речь по часам" : "Речь по дням").font(.headline)
                 Spacer()
@@ -132,8 +132,8 @@ struct DashboardView: View {
                 : "Активных дней: \(stats.activeDayCount) из \(period.dayCount)")
                 .font(.caption).foregroundStyle(.secondary)
         }
-        .padding(14)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: DesignTokens.cardCornerRadius, style: .continuous))
+        .padding(DesignTokens.Spacing.lg)
+        .cardSurface()
     }
 
     private func tooltip(for day: DailyUsageStat) -> some View {

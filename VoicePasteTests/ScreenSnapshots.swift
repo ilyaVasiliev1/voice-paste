@@ -172,6 +172,34 @@ final class ScreenSnapshots: XCTestCase {
         }
     }
 
+    /// Общий вид состояния модели — в форме настроек и на шаге онбординга.
+    /// Во временном каталоге модели нет: виден путь «загрузить».
+    func test_modelLifecycle_inSettingsAndOnboarding() async throws {
+        try skipUnlessRequested()
+        for dark in [true, false] {
+            let app = try await makeAppState()
+            let settingsForm = Form {
+                LabeledContent("settings.model.status") { ModelLifecycleView(showsSourcePicker: false) }
+                ModelSourcePicker(settings: app.settings)
+            }
+            .formStyle(.grouped)
+            .environmentObject(app)
+            try await snapshot(settingsForm, size: CGSize(width: 720, height: 300), dark: dark,
+                               name: "model-settings-\(dark ? "dark" : "light")")
+
+            let onboarding = VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
+                Text("onboarding.model.title").font(.title2.bold())
+                Text("onboarding.model.body")
+                ModelLifecycleView()
+            }
+            .padding(DesignTokens.Spacing.xl)
+            .frame(width: 480, height: 360, alignment: .topLeading)
+            .environmentObject(app)
+            try await snapshot(onboarding, size: CGSize(width: 480, height: 360), dark: dark,
+                               name: "model-onboarding-\(dark ? "dark" : "light")")
+        }
+    }
+
     func test_lectureScreen_liveRecording() async throws {
         try skipUnlessRequested()
         for dark in [true, false] {

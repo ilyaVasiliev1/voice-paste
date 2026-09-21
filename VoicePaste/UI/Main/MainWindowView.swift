@@ -46,8 +46,8 @@ struct MainWindowView: View {
                 .font(.callout)
                 .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+                .padding(.horizontal, DesignTokens.Spacing.lg)
+                .padding(.vertical, DesignTokens.Spacing.sm)
                 .background(.orange.opacity(0.14))
                 .overlay(alignment: .bottom) { Divider() }
                 .accessibilityIdentifier("storage-unavailable-banner")

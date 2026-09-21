@@ -42,11 +42,57 @@ nonisolated enum DesignTokens {
         static func fill(isTargeted: Bool) -> Color { isTargeted ? activeFill : idleFill }
     }
 
-    /// Плоская карточка: Dashboard и строка очереди импорта. Прежде 10 и 12
-    /// без причины.
+    /// Шкала отступов — пять шагов по 4.
+    ///
+    /// До неё в интерфейсе стояло двенадцать разных `spacing:` и одиннадцать
+    /// разных `padding`, половина не кратна 4 (3, 5, 7, 9, 14, 18): числа
+    /// брались на глаз и расходились. Ноль — не шаг шкалы, а «без отступа»,
+    /// и пишется нулём. Плашку диктовки шкала не трогает: у неё свои
+    /// `HUDLayout`, и ею владелец доволен.
+    enum Spacing {
+        /// Подпись к заголовку, строки внутри одной ячейки списка.
+        static let xs: CGFloat = 4
+        /// Элементы в одном ряду, значок рядом с текстом.
+        static let sm: CGFloat = 8
+        /// Внутренний отступ карточки, ряды внутри блока.
+        static let md: CGFloat = 12
+        /// Между блоками одного экрана.
+        static let lg: CGFloat = 16
+        /// Край детали и окна онбординга.
+        static let xl: CGFloat = 24
+    }
+
+    /// Крупный значок-приглашение: зона приёма файла. Прежде 29 — вне шкалы
+    /// и вне системы.
+    enum IconSize {
+        static let invitation: CGFloat = 28
+    }
+
+    /// Карточка: показатели и график статистики, строка очереди в статистике.
+    /// Прежде 10 и 12 без причины.
     static let cardCornerRadius: CGFloat = 12
 
     /// Внешний отступ правой части главного окна. Два экрана из четырёх уже
     /// держали 24 — остальные подведены под них.
-    static let detailPanePadding: CGFloat = 24
+    static let detailPanePadding: CGFloat = Spacing.xl
+}
+
+extension View {
+    /// Поверхность карточки. На macOS 26 — стекло, как у панели инструментов
+    /// и боковой колонки: иначе карточки остаются единственными плоскими
+    /// плашками в окне из стекла. До macOS 26 — прежняя плоская заливка.
+    func cardSurface() -> some View {
+        modifier(CardSurface())
+    }
+}
+
+private struct CardSurface: ViewModifier {
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: DesignTokens.cardCornerRadius, style: .continuous)
+        if #available(macOS 26.0, *) {
+            content.glassEffect(.regular, in: shape)
+        } else {
+            content.background(.quaternary, in: shape)
+        }
+    }
 }

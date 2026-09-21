@@ -11,7 +11,7 @@ struct ImportQueueView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
                 header
                 dropStage
             }
@@ -32,7 +32,7 @@ struct ImportQueueView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
             Text("Добавить файл")
                 .font(.title2.weight(.semibold))
             Text("Аудио и видео обрабатываются локально и по очереди.")
@@ -42,9 +42,9 @@ struct ImportQueueView: View {
 
     private var dropStage: some View {
         Button(action: openPanel) {
-            VStack(spacing: 10) {
+            VStack(spacing: DesignTokens.Spacing.sm) {
                 Image(systemName: "arrow.down.doc")
-                    .font(.system(size: 29, weight: .medium))
+                    .font(.system(size: DesignTokens.IconSize.invitation, weight: .medium))
                     .foregroundStyle(isDropTargeted ? Color.accentColor : .secondary)
                 Text("Перетащите аудио или видео сюда")
                     .font(.headline)
@@ -56,7 +56,7 @@ struct ImportQueueView: View {
                     .foregroundStyle(.tertiary)
             }
             .frame(maxWidth: .infinity, minHeight: 190)
-            .padding(20)
+            .padding(DesignTokens.Spacing.xl)
             .contentShape(RoundedRectangle(cornerRadius: DesignTokens.DropZone.cornerRadius, style: .continuous))
         }
         .buttonStyle(.plain)
@@ -140,11 +140,11 @@ private struct QueueRow: View {
     let onRemove: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: DesignTokens.Spacing.md) {
             Image(systemName: job.mediaKind == .video ? "film" : "waveform")
                 .foregroundStyle(.secondary)
                 .frame(width: 20)
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
                 Text(job.fileName)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -155,7 +155,7 @@ private struct QueueRow: View {
                         .font(.caption)
                         .foregroundStyle(.red)
                 } else {
-                    HStack(spacing: 7) {
+                    HStack(spacing: DesignTokens.Spacing.sm) {
                         Text(job.displayStage)
                         if job.state.isActive { Text(remainingText).monospacedDigit() }
                     }
@@ -190,7 +190,7 @@ private struct QueueRow: View {
                 .help("Отменить")
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, DesignTokens.Spacing.xs)
     }
 
     private var remainingText: String {

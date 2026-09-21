@@ -32,7 +32,7 @@ struct OnboardingView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
             stepContent
             Spacer()
             HStack {
@@ -47,7 +47,7 @@ struct OnboardingView: View {
                 .disabled(step == .model && !canFinishModelStep)
             }
         }
-        .padding(24)
+        .padding(DesignTokens.Spacing.xl)
         .frame(width: 480, height: 360)
         .task { appState.refreshReadiness() }
         // System Settings does not send VoicePaste a dedicated “privacy
@@ -91,14 +91,14 @@ struct OnboardingView: View {
     }
 
     private var purposeStep: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
             Text("onboarding.purpose.title").font(.title2.bold())
             Text("onboarding.purpose.body")
         }
     }
 
     private var microphoneStep: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
             Text("onboarding.microphone.title").font(.title2.bold())
             Text("onboarding.microphone.body")
             if appState.readiness.microphoneAuthorization != .authorized {
@@ -138,7 +138,7 @@ struct OnboardingView: View {
     }
 
     private var accessibilityStep: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
             Text("onboarding.accessibility.title").font(.title2.bold())
             Text("onboarding.accessibility.body")
             if !appState.readiness.isAccessibilityTrusted {
@@ -181,121 +181,19 @@ struct OnboardingView: View {
     }
 
     private var modelStep: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
             Text("onboarding.model.title").font(.title2.bold())
             Text("onboarding.model.body")
-            modelStateBody
+            ModelLifecycleView()
         }
     }
-
-    @ViewBuilder
-    private var modelStateBody: some View {
-        switch appState.modelManager.state {
-        case .ready, .unloaded, .preparing:
-            // `.unloaded`/`.preparing` here mean "verified on disk" (not
-            // resident yet / being brought into memory) — `L-001`/`AT-004`:
-            // onboarding treats both as done, never as a re-download prompt.
-            Label("onboarding.model.ready", systemImage: "checkmark.circle.fill")
-        case .downloading(let progress):
-            modelDownloadingBody(progress)
-        case .verifying:
-            ProgressView()
-            Text("onboarding.model.verifying")
-        case .failed:
-            Text("onboarding.model.failed").foregroundStyle(.red)
-            ModelSourcePicker(settings: appState.settings)
-            Button("onboarding.model.retry") {
-                Task { _ = try? await appState.modelManager.installModel() }
-            }
-        case .notPrepared:
-            ModelSourcePicker(settings: appState.settings)
-            Button("onboarding.model.download") {
-                Task { _ = try? await appState.modelManager.installModel() }
-            }
-        }
-    }
-
-    /// `AT-086`/`L-010`/`UI-002`: honest download progress — percent and
-    /// "N из 626 МБ" read straight from `ModelDownloadProgress`'s byte
-    /// counters, plus current speed and an ETA that only appears once the
-    /// smoothed speed is a trustworthy signal (until then, "Считаем
-    /// время…", mirroring `AT-062`'s import progress wording).
-    private func modelDownloadingBody(_ progress: ModelDownloadProgress) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ProgressView(value: progress.fraction)
-            HStack {
-                Text(Self.byteCountFormatter.string(fromByteCount: progress.completedBytes)
-                     + " " + String(format: NSLocalizedString("onboarding.model.ofTotal", comment: ""),
-                                     Self.byteCountFormatter.string(fromByteCount: progress.totalBytes)))
-                Spacer()
-                Text(Self.percentFormatter.string(from: NSNumber(value: progress.fraction)) ?? "")
-                    .monospacedDigit()
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            Text(speedAndETAText(progress))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            // `L-010`: cancel the in-flight download and clear whatever was
-            // written, dropping back to `.notPrepared` so the source can be
-            // switched and the download restarted from the chosen host.
-            Button("onboarding.model.cancelDownload") {
-                appState.modelManager.cancelDownload()
-                Task { await appState.modelManager.deleteModel() }
-            }
-            .buttonStyle(.link)
-            .font(.caption)
-        }
-    }
-
-    private func speedAndETAText(_ progress: ModelDownloadProgress) -> String {
-        guard let speed = progress.speedBytesPerSecond, speed > 0 else {
-            return NSLocalizedString("onboarding.model.calculatingTime", comment: "")
-        }
-        let speedText = String(
-            format: NSLocalizedString("onboarding.model.speed", comment: ""),
-            Self.byteCountFormatter.string(fromByteCount: Int64(speed))
-        )
-        guard let eta = progress.etaSeconds, eta.isFinite, eta >= 0 else {
-            return speedText
-        }
-        let etaText = String(
-            format: NSLocalizedString("onboarding.model.eta", comment: ""),
-            Self.durationText(eta)
-        )
-        return speedText + " · " + etaText
-    }
-
-    private static func durationText(_ seconds: TimeInterval) -> String {
-        let value = Int(seconds.rounded())
-        return value >= 60 ? "\(value / 60) мин" : "\(value) с"
-    }
-
-    private static let byteCountFormatter: ByteCountFormatter = {
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        formatter.allowedUnits = [.useMB, .useGB]
-        return formatter
-    }()
-
-    private static let percentFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .percent
-        formatter.maximumFractionDigits = 0
-        return formatter
-    }()
 
     /// The wizard cannot be dismissed while the model is absent, failed, or
     /// still downloading. `.unloaded` means the verified files are installed
     /// locally but the engine is not resident, so it is a valid completed
     /// onboarding state just like `.ready`/`.preparing`.
     private var canFinishModelStep: Bool {
-        switch appState.modelManager.state {
-        case .ready, .unloaded, .preparing:
-            return true
-        case .notPrepared, .downloading, .verifying, .failed:
-            return false
-        }
+        appState.modelManager.state.isInstalled
     }
 
     private func goNext() {
@@ -371,28 +269,5 @@ struct OnboardingView: View {
     private func stopAccessibilityPolling() {
         accessibilityPollTask?.cancel()
         accessibilityPollTask = nil
-    }
-}
-
-/// `AT-096`/`UI-002`: the same download-source setting exposed on the
-/// model step — not a separate piece of state. Mirrors `SettingsView`'s
-/// `Picker`/tags so `settings.modelDownloadSource` (`AT-093`, `L-010`)
-/// stays the single source of truth; `@ObservedObject` here (like
-/// `SettingsBody`) is what makes the shared `AppSettings` instance drive
-/// this control's live state.
-private struct ModelSourcePicker: View {
-    @ObservedObject var settings: AppSettings
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Picker("settings.model.downloadSource", selection: $settings.modelDownloadSource) {
-                Text("settings.model.downloadSource.github").tag(ModelDownloadSource.github)
-                Text("settings.model.downloadSource.mirror").tag(ModelDownloadSource.mirror)
-                Text("settings.model.downloadSource.official").tag(ModelDownloadSource.official)
-            }
-            Text("onboarding.model.sourceRecommendation")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
     }
 }

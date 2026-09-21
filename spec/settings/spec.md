@@ -203,6 +203,34 @@ command, option, control, shift: сочетание без модификато�
 
 ---
 
+### Requirement: Состояние модели отрисовано одним видом в настройках и онбординге
+<!-- id: ModelLifecycleView -->
+<!-- entities: ModelState, ModelLifecycleView, SettingsBody, OnboardingView -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/UI/Settings/ModelLifecycleView.swift, VoicePaste/Core/Transcription/ModelState.swift -->
+<!-- test_macos: VoicePasteTests/ModelStateInstalledTests.swift:test_installed_onlyWhenModelIsOnDisk -->
+
+Состояние модели — установлена, загружается с прогрессом и скоростью, проверяется,
+не удалась, отсутствует — SHALL показываться одним видом и в настройках, и на
+шаге модели в онбординге, вместе с выбором источника и кнопкой загрузки или
+повтора. Признак «модель на диске» SHALL выводиться из состояния в одном месте:
+от него зависят и кнопка удаления в настройках, и завершение онбординга.
+
+Прежде это было написано дважды и разошлось: в настройках загрузка показывалась
+одной строкой статуса без прогресса и без отмены, а онбординг показывал прогресс,
+скорость и остаток времени.
+
+#### Scenario: модель на диске
+<!-- test: ModelStateInstalledTests.test_installed_onlyWhenModelIsOnDisk -->
+- **WHEN** состояние `ready`, `unloaded` или `preparing`
+- **THEN** модель считается установленной; в остальных состояниях — нет
+
+#### Scenario: загрузка из настроек
+- **WHEN** загрузка запущена из настроек
+- **THEN** в настройках видны прогресс, скорость и кнопка отмены — как в онбординге
+
+---
+
 ### Requirement: Разрешения видны и ведут в нужную панель системы
 <!-- id: SettingsBody.permissionsControls -->
 <!-- entities: ReadinessCoordinator, AppSettings -->

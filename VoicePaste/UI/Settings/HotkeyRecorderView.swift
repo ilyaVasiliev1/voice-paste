@@ -21,7 +21,7 @@ struct HotkeyRecorderView: View {
     @Binding var shortcut: HotkeyShortcut
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
             HotkeyRecorderCapsule(shortcut: $shortcut)
             Text("settings.hotkey.changeHint")
                 .font(.caption)

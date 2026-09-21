@@ -139,17 +139,17 @@ private struct HistoryRow: View {
     let item: TranscriptListItem
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
             Text(item.preview.isEmpty ? " " : item.preview)
                 .lineLimit(2)
-            HStack(spacing: 8) {
+            HStack(spacing: DesignTokens.Spacing.sm) {
                 Text(item.createdAt.formattedHistoryDate())
                 Text(durationString(item.durationMilliseconds))
             }
             .font(.caption)
             .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, DesignTokens.Spacing.xs)
     }
 
     private func durationString(_ milliseconds: Int) -> String {
@@ -167,8 +167,8 @@ private struct ProcessingImportRow: View {
 
     var body: some View {
         Button(action: openQueue) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                HStack(spacing: DesignTokens.Spacing.sm) {
                     Image(systemName: job.mediaKind == .video ? "film" : "waveform")
                         .foregroundStyle(.secondary)
                     Text(job.fileName)
@@ -180,7 +180,7 @@ private struct ProcessingImportRow: View {
                         .foregroundStyle(.secondary)
                 }
                 .font(.callout)
-                HStack(spacing: 7) {
+                HStack(spacing: DesignTokens.Spacing.sm) {
                     Text(job.displayStage)
                     ProgressView(value: job.progress)
                         .progressViewStyle(.linear)
@@ -189,7 +189,7 @@ private struct ProcessingImportRow: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
-            .padding(.vertical, 3)
+            .padding(.vertical, DesignTokens.Spacing.xs)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
