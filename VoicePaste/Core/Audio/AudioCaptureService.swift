@@ -22,6 +22,9 @@ nonisolated final class AudioSampleAccumulator: @unchecked Sendable {
     private var sumOfSquares: Double = 0
     private var sampleCount = 0
     private(set) var lastLevel: Float = 0
+    /// Куда отдавать каждый пришедший кусок 16 кГц моно. Ставится на время
+    /// записи лекции потоковым движком.
+    nonisolated(unsafe) var onChunk: (@Sendable ([Float]) -> Void)?
 
     func append(_ chunk: [Float]) {
         guard !chunk.isEmpty else { return }
@@ -147,6 +150,11 @@ nonisolated final class AudioTapProcessor: @unchecked Sendable {
         let frameCount = Int(outBuffer.frameLength)
         let chunk = Array(UnsafeBufferPointer(start: channelData[0], count: frameCount))
         accumulator.append(chunk)
+        // Потоковому распознавателю звук нужен по ходу, а не накопленным
+        // буфером: он и существует затем, чтобы не ждать конца записи.
+        // Накопитель при этом продолжает копить — конец записи нужен целиком
+        // и фильтру хвоста, и проверке громкости, и запасному пути Whisper.
+        accumulator.onChunk?(chunk)
     }
 }
 
@@ -184,6 +192,13 @@ public final class AudioCaptureService {
     /// Fires roughly on every audio buffer with the current peak amplitude
     /// (0...1) for the HUD level indicator. Always called on the main actor.
     public var onLevel: ((Float) -> Void)?
+
+    /// Каждый пришедший кусок звука: 16 кГц, моно, Float32. Зовётся с
+    /// аудиопотока, не с главного актора. Пусто — никто не слушает.
+    public var onAudioChunk: (@Sendable ([Float]) -> Void)? {
+        get { accumulator.onChunk }
+        set { accumulator.onChunk = newValue }
+    }
     private var levelPollTask: Task<Void, Never>?
 
     public init() {}

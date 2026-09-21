@@ -18,6 +18,7 @@ public final class AppSettings: ObservableObject {
         static let lectureParagraphPauseSeconds = "lectureParagraphPauseSeconds"
         static let lectureWindowSeconds = "lectureWindowSeconds"
         static let lectureLanguage = "lectureLanguage"
+        static let lectureEngine = "lectureEngine"
     }
 
     private let defaults: UserDefaults
@@ -72,6 +73,11 @@ public final class AppSettings: ObservableObject {
     /// Пауза, с которой в учебном режиме начинается новый абзац. От 1 до 10
     /// секунд, по умолчанию 2 — у разных говорящих разный темп, поэтому это
     /// настройка, а не константа.
+    /// Движок распознавания лекции. `nil` — следовать за языком: на
+    /// китайском система вчетверо быстрее и вдвое точнее, на русском Whisper
+    /// точнее в разы. Замеры — в `docs/status.md`.
+    @Published public var lectureEngine: LectureEngine? { didSet { persist() } }
+
     /// Язык лекции. Отдельно от языка диктовки: диктуют на одном языке,
     /// а лекции слушают на другом.
     ///
@@ -161,6 +167,7 @@ public final class AppSettings: ObservableObject {
         // that could drift from it.
         self.launchAtLogin = Self.isEnabled(loginItemRegistry.status)
         self.showInDock = defaults.object(forKey: Keys.showInDock) as? Bool ?? true
+        self.lectureEngine = (defaults.string(forKey: Keys.lectureEngine)).flatMap(LectureEngine.init(rawValue:))
         self.lectureLanguage = TranscriptionLanguage(
             rawValue: defaults.string(forKey: Keys.lectureLanguage) ?? ""
         ) ?? .zh
@@ -190,6 +197,11 @@ public final class AppSettings: ObservableObject {
         defaults.set(showInDock, forKey: Keys.showInDock)
         defaults.set(modelDownloadSource.rawValue, forKey: Keys.modelDownloadSource)
         defaults.set(lectureLanguage.rawValue, forKey: Keys.lectureLanguage)
+        if let lectureEngine {
+            defaults.set(lectureEngine.rawValue, forKey: Keys.lectureEngine)
+        } else {
+            defaults.removeObject(forKey: Keys.lectureEngine)
+        }
         defaults.set(lectureParagraphPauseSeconds, forKey: Keys.lectureParagraphPauseSeconds)
         defaults.set(lectureWindowSeconds, forKey: Keys.lectureWindowSeconds)
     }

@@ -56,26 +56,61 @@ extension AppState {
     /// Ждать модель нужно асинхронно: запись уже идёт, звук копится, и к
     /// моменту готовности первые окна будут посчитаны разом.
     private func startLectureTranscription() {
+        let language = settings.lectureLanguage
+        if activeLectureEngine == .system, #available(macOS 26.0, *) {
+            startSystemLectureTranscription(language: language)
+        } else {
+            startWhisperLectureTranscription(language: language)
+        }
+    }
+
+    /// Движок для этой лекции: выбранный владельцем, а если он не выбирал —
+    /// разумный для языка. Система до macOS 26 его не знает вовсе.
+    var activeLectureEngine: LectureEngine {
+        settings.lectureEngine ?? LectureEngine.default(for: settings.lectureLanguage)
+    }
+
+    @available(macOS 26.0, *)
+    private func startSystemLectureTranscription(language: TranscriptionLanguage) {
+        let recorder = SystemLiveTranscriber()
         Task { [weak self] in
             guard let self else { return }
-            let engine: any Transcribing
             do {
-                engine = try await modelManager.ensureLoaded()
+                try await lectureRecorder.beginStreaming(
+                    engine: recorder,
+                    language: language,
+                    pauseSeconds: settings.lectureParagraphPauseSeconds
+                )
             } catch {
+                // Язык, которого система не знает, или отказ подготовки —
+                // не повод остаться без расшифровки. Уходим на Whisper.
                 await DiagnosticLog.shared.log(
-                    "lecture.liveTranscriptionUnavailable",
+                    "lecture.systemEngineUnavailable",
                     detail: String(describing: error)
                 )
+                startWhisperLectureTranscription(language: language)
                 return
             }
-            // Пока модель грузилась, запись могли остановить.
+            guard isLectureRecording else { return }
+            // Звук подаётся по ходу. Замыкание зовётся с аудиопотока, поэтому
+            // переход на главный актор здесь, а не у получателя.
+            audioCapture.onAudioChunk = { [weak self] chunk in
+                Task { @MainActor in self?.lectureRecorder.appendStreamingAudio(chunk) }
+            }
+        }
+    }
+
+    private func startWhisperLectureTranscription(language: TranscriptionLanguage) {
+        Task { [weak self] in
+            guard let self else { return }
+            guard let engine = try? await modelManager.ensureLoaded() else {
+                await DiagnosticLog.shared.log("lecture.liveTranscriptionUnavailable")
+                return
+            }
             guard isLectureRecording else { return }
             lectureRecorder.begin(
                 transcriber: engine,
-                // Язык лекции, а не диктовки: диктуют на одном, слушают на
-                // другом. Заданный явно действует на все окна и не зависит
-                // от того, что модель услышала в первых секундах.
-                language: settings.lectureLanguage,
+                language: language,
                 pauseSeconds: settings.lectureParagraphPauseSeconds,
                 availableSamples: { [audioCapture] in audioCapture.capturedSampleCount },
                 readSamples: { [audioCapture] range in audioCapture.capturedSamples(in: range) }
@@ -91,8 +126,12 @@ extension AppState {
         let startedAt = lectureStartedAt ?? Date()
         lectureStartedAt = nil
 
+        audioCapture.onAudioChunk = nil
         let paragraphs: [LectureParagraph]
-        if let engine = try? await modelManager.ensureLoaded() {
+        if activeLectureEngine == .system, #available(macOS 26.0, *) {
+            // Потоковому движку досчитывать нечего: он шёл вровень с речью.
+            paragraphs = await lectureRecorder.finishStreaming()
+        } else if let engine = try? await modelManager.ensureLoaded() {
             paragraphs = await lectureRecorder.finish(
                 transcriber: engine,
                 language: settings.lectureLanguage,

@@ -71,6 +71,18 @@ struct LectureView: View {
             .disabled(appState.isLectureRecording)
             .accessibilityIdentifier("lecture-language")
 
+            if LectureEngine.isSystemEngineAvailable {
+                Picker("lecture.engine", selection: $settings.lectureEngine) {
+                    Text("lecture.engine.auto").tag(LectureEngine?.none)
+                    Text("lecture.engine.system").tag(LectureEngine?.some(.system))
+                    Text("lecture.engine.whisper").tag(LectureEngine?.some(.whisper))
+                }
+                .labelsHidden()
+                .frame(width: 170)
+                .disabled(appState.isLectureRecording)
+                .accessibilityIdentifier("lecture-engine")
+            }
+
             if appState.isLectureRecording {
                 Text(Self.clock(appState.lectureElapsedSeconds))
                     .font(.system(.body, design: .monospaced))
@@ -216,6 +228,21 @@ struct LectureView: View {
                 }
                 .padding(DesignTokens.detailPanePadding)
                 .textSelection(.enabled)
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    // Уточняемый текст движка: он ещё изменится, поэтому
+                    // приглушён и в абзацы не попадает. У нарезки на окна
+                    // его не бывает вовсе.
+                    if !recorder.volatileText.isEmpty {
+                        Text(recorder.volatileText)
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, DesignTokens.detailPanePadding)
+                            .padding(.vertical, 10)
+                            .background(.quaternary.opacity(0.5))
+                            .accessibilityIdentifier("lecture-volatile")
+                    }
+                }
             }
             .onChange(of: paragraphs.count) { _, count in
                 // Лекция идёт — экран держится конца, иначе за говорящим

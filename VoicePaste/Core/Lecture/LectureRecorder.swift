@@ -37,11 +37,16 @@ public final class LectureRecorder: ObservableObject {
     /// придумывать несуществующий «уточняемый» текст.
     @Published public private(set) var isCatchingUp = false
     @Published public private(set) var detectedLanguage: String?
+    /// Текст, который движок ещё уточняет. Он перепишется следующим
+    /// обновлением, поэтому в абзацы не попадает и показывается приглушённо.
+    /// У нарезки на окна его не бывает: там текст либо есть, либо нет.
+    @Published public private(set) var volatileText = ""
 
     private var planner: DictationWindowPlanner
     private var segments: [TranscribedSegment] = []
     private var languageCounts: [String: Int] = [:]
     private var pump: Task<Void, Never>?
+    private var liveEngine: (any LiveTranscribing)?
     private var pauseSeconds: Double = LectureParagraphBuilder.defaultPauseSeconds
     private let pollInterval: Duration
 
@@ -111,14 +116,65 @@ public final class LectureRecorder: ObservableObject {
 
     /// Отменённая лекция не оставляет следов.
     public func cancel() {
+        liveEngine?.cancel()
+        liveEngine = nil
         pump?.cancel()
         pump = nil
+        volatileText = ""
         planner = Self.makePlanner(windowSeconds: windowSeconds)
         segments = []
         languageCounts = [:]
         paragraphs = []
         detectedLanguage = nil
         isCatchingUp = false
+    }
+
+    // MARK: - Потоковый движок
+
+    /// Ведёт лекцию потоковым распознавателем: звук подаётся по ходу, текст
+    /// приходит обновлениями. Нарезка на окна здесь не участвует вовсе.
+    public func beginStreaming(
+        engine: any LiveTranscribing,
+        language: TranscriptionLanguage,
+        pauseSeconds: Double
+    ) async throws {
+        cancel()
+        self.pauseSeconds = pauseSeconds
+        try await engine.prepare(language: language)
+        liveEngine = engine
+        pump = Task { [weak self] in
+            for await update in engine.updates {
+                guard let self else { return }
+                self.absorb(update)
+            }
+        }
+    }
+
+    /// Отдаёт потоковому движку очередной кусок звука.
+    public func appendStreamingAudio(_ samples: [Float]) {
+        liveEngine?.append(samples: samples)
+    }
+
+    /// Закрывает поток и отдаёт окончательные абзацы.
+    public func finishStreaming() async -> [LectureParagraph] {
+        isCatchingUp = true
+        defer { isCatchingUp = false }
+        await liveEngine?.finish()
+        liveEngine = nil
+        pump?.cancel()
+        pump = nil
+        volatileText = ""
+        return paragraphs
+    }
+
+    private func absorb(_ update: LiveTranscriptUpdate) {
+        guard let settled = update.settledSegment else {
+            volatileText = update.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            return
+        }
+        volatileText = ""
+        segments.append(settled)
+        paragraphs = LectureParagraphBuilder.build(from: segments, pauseSeconds: pauseSeconds)
     }
 
     // MARK: - Механика

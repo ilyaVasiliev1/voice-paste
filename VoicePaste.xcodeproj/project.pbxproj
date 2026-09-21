@@ -8,6 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		C0000000000000000000011C /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000011B /* App.swift */; };
+		C00000000000000000000A21 /* LiveTranscriptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A20 /* LiveTranscriptionTests.swift */; };
+		C00000000000000000000A13 /* SystemLiveTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A12 /* SystemLiveTranscriber.swift */; };
+		C00000000000000000000A11 /* LiveTranscribing.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A10 /* LiveTranscribing.swift */; };
 		C000000000000000000009E1 /* AppSettingsLecturePersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C000000000000000000009E0 /* AppSettingsLecturePersistenceTests.swift */; };
 		C000000000000000000009D3 /* WhisperSpecialTokensTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C000000000000000000009D2 /* WhisperSpecialTokensTests.swift */; };
 		C000000000000000000009D1 /* WhisperSpecialTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = C000000000000000000009D0 /* WhisperSpecialTokens.swift */; };
@@ -120,6 +123,9 @@
 		A10000000000000000000015 /* VoicePaste.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoicePaste.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000016 /* VoicePasteTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VoicePasteTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C0000000000000000000011B /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
+		C00000000000000000000A20 /* LiveTranscriptionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTranscriptionTests.swift; sourceTree = "<group>"; };
+		C00000000000000000000A12 /* SystemLiveTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemLiveTranscriber.swift; sourceTree = "<group>"; };
+		C00000000000000000000A10 /* LiveTranscribing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTranscribing.swift; sourceTree = "<group>"; };
 		C000000000000000000009E0 /* AppSettingsLecturePersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsLecturePersistenceTests.swift; sourceTree = "<group>"; };
 		C000000000000000000009D2 /* WhisperSpecialTokensTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperSpecialTokensTests.swift; sourceTree = "<group>"; };
 		C000000000000000000009D0 /* WhisperSpecialTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperSpecialTokens.swift; sourceTree = "<group>"; };
@@ -266,6 +272,8 @@
 		C000000000000000000009A0 /* Lecture */ = {
 			isa = PBXGroup;
 			children = (
+				C00000000000000000000A12 /* SystemLiveTranscriber.swift */,
+				C00000000000000000000A10 /* LiveTranscribing.swift */,
 				C00000000000000000000982 /* LectureRecorder.swift */,
 				C00000000000000000000980 /* LectureParagraphBuilder.swift */,
 			);
@@ -535,6 +543,7 @@
 		C0000000000000000000011A /* VoicePasteTests */ = {
 			isa = PBXGroup;
 			children = (
+				C00000000000000000000A20 /* LiveTranscriptionTests.swift */,
 				C000000000000000000009E0 /* AppSettingsLecturePersistenceTests.swift */,
 				C000000000000000000009D2 /* WhisperSpecialTokensTests.swift */,
 				C000000000000000000009B2 /* LectureRecorderTests.swift */,
@@ -705,6 +714,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C00000000000000000000A13 /* SystemLiveTranscriber.swift in Sources */,
+				C00000000000000000000A11 /* LiveTranscribing.swift in Sources */,
 				C000000000000000000009D1 /* WhisperSpecialTokens.swift in Sources */,
 				C000000000000000000009C1 /* DesignTokens.swift in Sources */,
 				C0000000000000000000098B /* LectureView.swift in Sources */,
@@ -772,6 +783,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C00000000000000000000A21 /* LiveTranscriptionTests.swift in Sources */,
 				C000000000000000000009E1 /* AppSettingsLecturePersistenceTests.swift in Sources */,
 				C000000000000000000009D3 /* WhisperSpecialTokensTests.swift in Sources */,
 				C000000000000000000009B3 /* LectureRecorderTests.swift in Sources */,

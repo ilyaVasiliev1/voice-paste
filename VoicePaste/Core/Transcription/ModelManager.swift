@@ -27,13 +27,6 @@ public final class ModelManager: ObservableObject {
 
   private var transcriber: Transcribing?
 
-  /// Модель, если она уже в памяти. Ничего не грузит и ничего не ждёт —
-  /// в отличие от `ensureLoaded()`.
-  ///
-  /// Нужна нарезке окон во время записи: она имеет право считать только на
-  /// готовой модели. Начать загрузку оттуда было бы вредно — `prewarm()` уже
-  /// этим занят, а вторая отняла бы память у идущей записи.
-  public var loadedTranscriber: (any Transcribing)? { transcriber }
   private var unloadTask: Task<Void, Never>?
   /// The single in-flight load, shared by every concurrent `ensureLoaded()`
   /// caller (launch pre-warm + a dictation started while it runs).

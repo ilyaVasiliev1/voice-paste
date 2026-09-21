@@ -208,6 +208,10 @@
 "lecture.delete" = "Удалить лекцию";
 "lecture.backToList" = "К списку";
 "lecture.language" = "Язык лекции";
+"lecture.engine" = "Движок";
+"lecture.engine.auto" = "По языку";
+"lecture.engine.system" = "Системный (быстрый)";
+"lecture.engine.whisper" = "Whisper (точнее на русском)";
 "lecture.language.autoWarning" = "На автоматическом модель может ошибиться и передать речь словами чужого языка";
 "lecture.row.summary" = "%@ · %d слов";
 "lecture.copyAll" = "Скопировать лекцию";
