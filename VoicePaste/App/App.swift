@@ -164,7 +164,7 @@ struct VoicePasteApp: App {
         // `UI-004`/`UI-007`: one permanent window. The menu bar opens its
         // statistics detail; it never becomes a second application window.
         Window("main.window.title", id: "main") {
-            MainWindowView()
+            MainWindowView(historyStore: appState.historyStore)
                 .environmentObject(appState)
                 .environmentObject(appState.importManager)
         }

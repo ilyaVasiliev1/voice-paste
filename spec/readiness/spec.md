@@ -379,9 +379,14 @@ SHALL принудительно оставаться обычной (значо
 - **THEN** слева четыре раздела в порядке Лекции, История, Импорт, Статистика, у каждого подпись
 
 #### Scenario: переход из строки меню или плашки
-<!-- test: HistoryListModelTests.test_selectionMadeBeforeStoreIsAttached_stillLoadsTheRecord -->
+<!-- test: HistoryListModelTests.test_selectionMadeFirst_loadsTheRecord -->
 - **WHEN** строка меню просит статистику, а плашка — очередь или запись истории
 - **THEN** окно открывается на этом разделе, запись истории выбрана в списке
+
+#### Scenario: окно открыто на истории
+<!-- test: HistoryListModelTests.test_loadingStartedFirst_fillsTheList -->
+- **WHEN** окно появилось, в каком бы порядке SwiftUI ни запустил загрузку
+- **THEN** список истории заполнен сохранёнными записями
 
 #### Scenario: выбор записи истории
 - **WHEN** в списке истории выбрана запись

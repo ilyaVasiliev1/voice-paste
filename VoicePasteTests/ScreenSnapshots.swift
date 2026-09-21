@@ -81,7 +81,7 @@ final class ScreenSnapshots: XCTestCase {
     /// Главное окно на нужном разделе — то, что видит владелец.
     private func mainWindow(_ app: AppState, section: MainContentSection) -> some View {
         app.requestedMainContentSection = section
-        return MainWindowView()
+        return MainWindowView(historyStore: app.historyStore)
             .environmentObject(app)
             .environmentObject(app.importManager)
     }

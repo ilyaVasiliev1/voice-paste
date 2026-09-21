@@ -21,22 +21,19 @@ final class HistoryListModel: ObservableObject {
     }
     @Published var detail: Transcript?
 
-    private var store: (any HistoryStoring)?
+    private let store: any HistoryStoring
     private var nextCursor: TranscriptCursor?
     private var searchTask: Task<Void, Never>?
 
-    /// Хранилище приходит из окружения вида, а не при создании: модель
-    /// создаётся раньше, чем вид получает `AppState`.
+    /// Хранилище приходит при создании, а не подключается потом.
     ///
-    /// Выбор, сделанный до подключения, догружается здесь: «Открыть в истории»
-    /// из плашки выбирает запись при появлении окна, и загрузка по этому выбору
-    /// могла пройти ещё без хранилища — деталь оставалась пустой навсегда.
-    func attach(_ store: any HistoryStoring) {
-        guard self.store == nil else { return }
+    /// Прежде подключалось в `onAppear`, а загрузка шла из `.task`, и SwiftUI
+    /// не обещает, что `onAppear` выполнится первым. 21.09.2026 на живой
+    /// машине `.task` успел раньше: загрузка увидела пустое хранилище, вышла,
+    /// и история не появилась вовсе. Порядка, от которого зависит результат,
+    /// теперь нет.
+    init(store: any HistoryStoring) {
         self.store = store
-        if let selection, detail == nil {
-            Task { await loadDetail(id: selection) }
-        }
     }
 
     /// Bug fix: the main `Window` scene is long-lived — without this, a list
@@ -45,14 +42,13 @@ final class HistoryListModel: ObservableObject {
     /// `HistoryStoring.changes()` ticks immediately on subscribe (covering the
     /// first load) and again after every `save`/`edit`/`delete`/`clearAll`.
     func observeChanges() async {
-        guard let store else { return }
         for await _ in store.changes() {
             await refreshCurrentQuery()
         }
     }
 
     func loadNextPageIfNeeded(current: TranscriptListItem) {
-        guard current.id == items.last?.id, let cursor = nextCursor, let store else { return }
+        guard current.id == items.last?.id, let cursor = nextCursor else { return }
         Task {
             guard let page = try? await store.fetchPage(after: cursor) else { return }
             items.append(contentsOf: page.items)
@@ -61,7 +57,6 @@ final class HistoryListModel: ObservableObject {
     }
 
     func delete(id transcriptID: UUID) {
-        guard let store else { return }
         Task {
             try? await store.delete(id: transcriptID)
             if selection == transcriptID {
@@ -80,13 +75,13 @@ final class HistoryListModel: ObservableObject {
             await loadFirstPage()
             return
         }
-        guard let page = try? await store?.search(query: searchText, after: nil) else { return }
+        guard let page = try? await store.search(query: searchText, after: nil) else { return }
         items = page.items
         nextCursor = page.nextCursor
     }
 
     private func loadFirstPage() async {
-        guard let page = try? await store?.fetchPage(after: nil) else { return }
+        guard let page = try? await store.fetchPage(after: nil) else { return }
         items = page.items
         nextCursor = page.nextCursor
     }
@@ -96,7 +91,7 @@ final class HistoryListModel: ObservableObject {
             detail = nil
             return
         }
-        detail = try? await store?.fetchDetail(id: id)
+        detail = try? await store.fetchDetail(id: id)
     }
 
     /// `L-008`: 250 ms debounce, cancels the stale request before it ever
@@ -110,7 +105,7 @@ final class HistoryListModel: ObservableObject {
                 await loadFirstPage()
                 return
             }
-            guard let page = try? await store?.search(query: query, after: nil) else { return }
+            guard let page = try? await store.search(query: query, after: nil) else { return }
             guard !Task.isCancelled else { return }
             items = page.items
             nextCursor = page.nextCursor

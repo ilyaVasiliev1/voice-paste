@@ -3,10 +3,9 @@ import XCTest
 
 @testable import VoicePaste
 
-/// «Открыть в истории» из плашки выбирает запись, когда окно только
-/// появляется. Модель обязана показать её текст независимо от того, что
-/// случилось раньше — выбор или подключение хранилища: порядок `onAppear` и
-/// `.task` SwiftUI не гарантирует.
+/// Модель раздела истории обязана работать при любом порядке `onAppear` и
+/// `.task`: SwiftUI его не гарантирует. 21.09.2026 `.task` на живой машине
+/// успел раньше подключения хранилища, и история не появилась вовсе.
 @MainActor
 final class HistoryListModelTests: XCTestCase {
     private let tempDirectory = FileManager.default.temporaryDirectory
@@ -41,30 +40,26 @@ final class HistoryListModelTests: XCTestCase {
         }
     }
 
-    func test_selectionMadeBeforeStoreIsAttached_stillLoadsTheRecord() async throws {
+    func test_loadingStartedFirst_fillsTheList() async throws {
         let id = UUID()
-        let store = try await makeStoreWithRecord(id: id)
-        let model = HistoryListModel()
+        let model = HistoryListModel(store: try await makeStoreWithRecord(id: id))
 
-        model.selection = id
-        // Загрузка по выбору успевает отработать впустую — как в окне, где
-        // `onAppear` прошёл, а `.task` с подключением ещё не начался.
-        try await Task.sleep(for: .milliseconds(100))
-        model.attach(store)
-        try await waitForDetail(model)
+        let observing = Task { await model.observeChanges() }
+        defer { observing.cancel() }
+        for _ in 0..<50 where model.items.isEmpty {
+            try await Task.sleep(for: .milliseconds(20))
+        }
 
-        XCTAssertEqual(model.detail?.id, id, "выбор до подключения хранилища оставил деталь пустой")
+        XCTAssertEqual(model.items.map(\.id), [id], "загрузка, начатая первой, оставила историю пустой")
     }
 
-    func test_selectionAfterAttach_loadsTheRecord() async throws {
+    func test_selectionMadeFirst_loadsTheRecord() async throws {
         let id = UUID()
-        let store = try await makeStoreWithRecord(id: id)
-        let model = HistoryListModel()
+        let model = HistoryListModel(store: try await makeStoreWithRecord(id: id))
 
-        model.attach(store)
         model.selection = id
         try await waitForDetail(model)
 
-        XCTAssertEqual(model.detail?.id, id)
+        XCTAssertEqual(model.detail?.id, id, "«Открыть в истории» оставило деталь пустой")
     }
 }

@@ -5,9 +5,13 @@ import SwiftUI
 /// а его действия стоят в панели инструментов.
 struct MainWindowView: View {
     @EnvironmentObject private var appState: AppState
-    @StateObject private var history = HistoryListModel()
+    @StateObject private var history: HistoryListModel
     @State private var section: MainContentSection = .history
     @State private var period: StatisticsPeriod = .month
+
+    init(historyStore: any HistoryStoring) {
+        _history = StateObject(wrappedValue: HistoryListModel(store: historyStore))
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -55,11 +59,6 @@ struct MainWindowView: View {
         }
         .task { await history.observeChanges() }
         .onAppear {
-            // Хранилище подключается здесь, синхронно и до выбора записи:
-            // `.task` может стартовать позже `onAppear`, и тогда «Открыть в
-            // истории» выбирало запись при ещё пустой модели — деталь
-            // оставалась пустой навсегда.
-            history.attach(appState.historyStore)
             consumeRequestedSection()
             consumeRequestedHistorySelection()
         }
