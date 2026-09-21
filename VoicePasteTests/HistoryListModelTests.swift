@@ -9,18 +9,16 @@ import XCTest
 /// `.task` SwiftUI не гарантирует.
 @MainActor
 final class HistoryListModelTests: XCTestCase {
-    private var tempDirectory: URL!
+    private let tempDirectory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("HistoryListModelTests-\(UUID().uuidString)", isDirectory: true)
 
     override func setUp() async throws {
         try await super.setUp()
-        tempDirectory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("HistoryListModelTests-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
     }
 
     override func tearDown() async throws {
-        if let tempDirectory { try? FileManager.default.removeItem(at: tempDirectory) }
-        tempDirectory = nil
+        try? FileManager.default.removeItem(at: tempDirectory)
         try await super.tearDown()
     }
 
