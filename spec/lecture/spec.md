@@ -157,6 +157,38 @@
 
 ---
 
+### Requirement: Запись продолжает сохранённую лекцию
+<!-- id: LectureContinuation.appending -->
+<!-- entities: LectureContinuation, LectureDetail, AppState -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/Core/Lecture/LectureContinuation.swift, VoicePaste/App/AppState+Lecture.swift, VoicePaste/UI/Lecture/LectureView.swift -->
+<!-- test_macos: VoicePasteTests/LectureContinuationTests.swift:test_newParagraphs_followTheLectureInTimeAndOrder -->
+
+У открытой сохранённой лекции SHALL быть действие «Продолжить запись». Новые
+абзацы дописываются в конец той же лекции, а не в новую: время идёт дальше от
+конца лекции, порядок продолжается, длительность и число слов пересчитываются,
+название и дата создания остаются прежними.
+
+Просьба владельца 21.09.2026: лекция не обязана заканчиваться первой остановкой
+— после перерыва её дописывают.
+
+#### Scenario: продолжение после перерыва
+<!-- test: LectureContinuationTests.test_newParagraphs_followTheLectureInTimeAndOrder -->
+- **WHEN** лекция длиной 46:00 продолжена, и новый абзац начался на 0:05 новой записи
+- **THEN** он стоит последним со временем 46:05, длительность — сумма обеих записей
+
+#### Scenario: продолжение без новой речи
+<!-- test: LectureContinuationTests.test_nothingNew_keepsTheLectureUnchanged -->
+- **WHEN** продолжение остановлено, а новых абзацев нет
+- **THEN** лекция не меняется
+
+#### Scenario: название и дата
+<!-- test: LectureContinuationTests.test_newParagraphs_followTheLectureInTimeAndOrder -->
+- **WHEN** лекция продолжена
+- **THEN** её название и дата создания прежние, отметка изменения новая
+
+---
+
 ### Invariant: Окно лекции короче окна диктовки
 <!-- entities: LectureRecorder -->
 <!-- platforms: macos -->

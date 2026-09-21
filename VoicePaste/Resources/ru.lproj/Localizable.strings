@@ -188,6 +188,7 @@
 "lecture.section" = "Лекции";
 "lecture.start" = "Начать лекцию";
 "lecture.stop" = "Остановить";
+"lecture.continue" = "Продолжить запись";
 "lecture.elapsed" = "Идёт запись";
 "lecture.catchingUp" = "распознаётся…";
 "lecture.empty.title" = "Здесь появится расшифровка лекции";

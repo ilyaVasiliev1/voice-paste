@@ -200,6 +200,21 @@ final class ScreenSnapshots: XCTestCase {
         }
     }
 
+    func test_lectureScreen_continuing() async throws {
+        try skipUnlessRequested()
+        let app = try await makeAppState()
+        await app.openSavedLecture(id: try XCTUnwrap(app.savedLectures.first?.id))
+        let engine = SnapshotEngine()
+        try await app.lectureRecorder.beginStreaming(engine: engine, language: .zh, pauseSeconds: 2)
+        app.continuingLectureID = app.openedLecture?.lecture.id
+        app.isLectureRecording = true
+        app.lectureElapsedSeconds = 41
+        engine.emit(.init(text: "我们继续讲执行者模式。", isFinal: true, startSeconds: 3, endSeconds: 6))
+        engine.emit(.init(text: "下一个例子是", isFinal: false, startSeconds: 8, endSeconds: 9))
+        try await Task.sleep(for: .milliseconds(200))
+        try await snapshot(mainWindow(app, section: .lecture), size: windowSize, dark: true, name: "lecture-continuing-dark")
+    }
+
     func test_lectureScreen_liveRecording() async throws {
         try skipUnlessRequested()
         for dark in [true, false] {

@@ -18,6 +18,7 @@
 		C000000000000000000009C1 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = C000000000000000000009C0 /* DesignTokens.swift */; };
 		C000000000000000000009B3 /* LectureRecorderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C000000000000000000009B2 /* LectureRecorderTests.swift */; };
 		C000000000000000000009B1 /* LectureStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C000000000000000000009B0 /* LectureStoreTests.swift */; };
+		CA0000000000000000000927 /* LectureContinuationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0000000000000000000926 /* LectureContinuationTests.swift */; };
 		C0000000000000000000098D /* LectureParagraphBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000098C /* LectureParagraphBuilderTests.swift */; };
 		C0000000000000000000098B /* LectureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000098A /* LectureView.swift */; };
 		C00000000000000000000989 /* AppState+Lecture.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000988 /* AppState+Lecture.swift */; };
@@ -25,6 +26,7 @@
 		C00000000000000000000985 /* Lecture.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000984 /* Lecture.swift */; };
 		C00000000000000000000983 /* LectureRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000982 /* LectureRecorder.swift */; };
 		C00000000000000000000981 /* LectureParagraphBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000980 /* LectureParagraphBuilder.swift */; };
+		CA0000000000000000000929 /* LectureContinuation.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0000000000000000000928 /* LectureContinuation.swift */; };
 		C0000000000000000000011E /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000011D /* AppState.swift */; };
 		C00000000000000000000120 /* AudioCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000011F /* AudioCaptureService.swift */; };
 		C00000000000000000000122 /* DictationStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000121 /* DictationStateMachine.swift */; };
@@ -144,6 +146,7 @@
 		C000000000000000000009C0 /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
 		C000000000000000000009B2 /* LectureRecorderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureRecorderTests.swift; sourceTree = "<group>"; };
 		C000000000000000000009B0 /* LectureStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureStoreTests.swift; sourceTree = "<group>"; };
+		CA0000000000000000000926 /* LectureContinuationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureContinuationTests.swift; sourceTree = "<group>"; };
 		C0000000000000000000098C /* LectureParagraphBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureParagraphBuilderTests.swift; sourceTree = "<group>"; };
 		C0000000000000000000098A /* LectureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureView.swift; sourceTree = "<group>"; };
 		C00000000000000000000988 /* AppState+Lecture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState+Lecture.swift"; sourceTree = "<group>"; };
@@ -151,6 +154,7 @@
 		C00000000000000000000984 /* Lecture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Lecture.swift; sourceTree = "<group>"; };
 		C00000000000000000000982 /* LectureRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureRecorder.swift; sourceTree = "<group>"; };
 		C00000000000000000000980 /* LectureParagraphBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureParagraphBuilder.swift; sourceTree = "<group>"; };
+		CA0000000000000000000928 /* LectureContinuation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureContinuation.swift; sourceTree = "<group>"; };
 		C0000000000000000000011D /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		C0000000000000000000011F /* AudioCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioCaptureService.swift; sourceTree = "<group>"; };
 		C00000000000000000000121 /* DictationStateMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationStateMachine.swift; sourceTree = "<group>"; };
@@ -298,6 +302,7 @@
 				C00000000000000000000A10 /* LiveTranscribing.swift */,
 				C00000000000000000000982 /* LectureRecorder.swift */,
 				C00000000000000000000980 /* LectureParagraphBuilder.swift */,
+				CA0000000000000000000928 /* LectureContinuation.swift */,
 			);
 			path = Lecture;
 			sourceTree = "<group>";
@@ -574,6 +579,7 @@
 				C000000000000000000009D2 /* WhisperSpecialTokensTests.swift */,
 				C000000000000000000009B2 /* LectureRecorderTests.swift */,
 				C000000000000000000009B0 /* LectureStoreTests.swift */,
+				CA0000000000000000000926 /* LectureContinuationTests.swift */,
 				C0000000000000000000098C /* LectureParagraphBuilderTests.swift */,
 				C00000000000000000000169 /* AppTests.swift */,
 				C0000000000000000000016B /* DictationStateMachineTests.swift */,
@@ -757,6 +763,7 @@
 				C00000000000000000000985 /* Lecture.swift in Sources */,
 				C00000000000000000000983 /* LectureRecorder.swift in Sources */,
 				C00000000000000000000981 /* LectureParagraphBuilder.swift in Sources */,
+				CA0000000000000000000929 /* LectureContinuation.swift in Sources */,
 				C0000000000000000000011C /* App.swift in Sources */,
 				C0000000000000000000011E /* AppState.swift in Sources */,
 				C00000000000000000000301 /* AppDelegate.swift in Sources */,
@@ -827,6 +834,7 @@
 				C000000000000000000009D3 /* WhisperSpecialTokensTests.swift in Sources */,
 				C000000000000000000009B3 /* LectureRecorderTests.swift in Sources */,
 				C000000000000000000009B1 /* LectureStoreTests.swift in Sources */,
+				CA0000000000000000000927 /* LectureContinuationTests.swift in Sources */,
 				C0000000000000000000098D /* LectureParagraphBuilderTests.swift in Sources */,
 				C0000000000000000000016A /* AppTests.swift in Sources */,
 				C0000000000000000000016C /* DictationStateMachineTests.swift in Sources */,

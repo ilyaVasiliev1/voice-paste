@@ -196,6 +196,7 @@ struct LectureView: View {
                     Label("lecture.rename", systemImage: "pencil")
                 }
                 .help("lecture.rename")
+                .disabled(appState.isLectureRecording)
             } else if !appState.isLectureRecording, !recorder.paragraphs.isEmpty {
                 Button {
                     TextInserter.copyToClipboard(recorder.paragraphs.map(\.text).joined(separator: "\n\n"))
@@ -249,24 +250,35 @@ struct LectureView: View {
             }
 
             Button {
-                // Новая запись начинается с чистой детали, а не поверх
-                // открытой сохранённой лекции.
-                if !appState.isLectureRecording { appState.closeOpenedLecture() }
-                appState.toggleLectureRecording()
+                if appState.isLectureRecording {
+                    appState.toggleLectureRecording()
+                } else if appState.openedLecture != nil {
+                    // У открытой лекции запись её продолжает. Новая лекция —
+                    // строкой «Новая лекция» в списке.
+                    appState.continueOpenedLecture()
+                } else {
+                    appState.toggleLectureRecording()
+                }
             } label: {
                 // `waveform` — общий значок голосового ввода в продукте.
-                Label(
-                    appState.isLectureRecording ? "lecture.stop" : "lecture.start",
-                    systemImage: appState.isLectureRecording ? "stop.fill" : "waveform"
-                )
-                .labelStyle(.titleAndIcon)
+                Label(startStopTitle, systemImage: appState.isLectureRecording ? "stop.fill" : "waveform")
+                    .labelStyle(.titleAndIcon)
             }
             .keyboardShortcut("l", modifiers: [.command, .shift])
             .accessibilityIdentifier("lecture-toggle")
         }
     }
 
+    private var startStopTitle: LocalizedStringKey {
+        if appState.isLectureRecording { return "lecture.stop" }
+        return appState.openedLecture == nil ? "lecture.start" : "lecture.continue"
+    }
+
     // MARK: - Содержимое
+
+    private func isContinuing(_ opened: LectureDetail) -> Bool {
+        appState.isLectureRecording && appState.continuingLectureID == opened.lecture.id
+    }
 
     /// Идёт запись — показываем живую расшифровку, даже пустую. Прежде экран
     /// переключался на неё только после первого устоявшегося абзаца, а
@@ -279,13 +291,28 @@ struct LectureView: View {
     @ViewBuilder
     private var content: some View {
         if let opened = appState.openedLecture {
-            paragraphList(opened.paragraphs.map {
+            let saved = opened.paragraphs.map {
                 LectureParagraph(
                     text: $0.text,
                     startSeconds: Double($0.startMilliseconds) / 1_000,
                     endSeconds: Double($0.endMilliseconds) / 1_000
                 )
-            }, followsTail: false)
+            }
+            if isContinuing(opened) {
+                // Дописываемое встаёт за сохранённым, со временем от конца
+                // лекции — так же, как оно будет сохранено.
+                let offset = Double(opened.lecture.durationMilliseconds) / 1_000
+                let added = recorder.paragraphs.map {
+                    LectureParagraph(
+                        text: $0.text,
+                        startSeconds: offset + $0.startSeconds,
+                        endSeconds: offset + $0.endSeconds
+                    )
+                }
+                paragraphList(saved + added, followsTail: true)
+            } else {
+                paragraphList(saved, followsTail: false)
+            }
         } else if showsLiveTranscript {
             paragraphList(recorder.paragraphs, followsTail: true)
         } else {

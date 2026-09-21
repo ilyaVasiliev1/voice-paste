@@ -18,6 +18,16 @@ extension AppState {
         }
     }
 
+    /// Дописывает открытую сохранённую лекцию новой записью: абзацы встанут в
+    /// её конец со временем от её конца (`LectureContinuation`).
+    public func continueOpenedLecture() {
+        guard !isLectureRecording, let opened = openedLecture else { return }
+        continuingLectureID = opened.lecture.id
+        beginLectureRecording()
+        // Запись не началась (занят микрофон, идёт диктовка) — и продолжения нет.
+        if !isLectureRecording { continuingLectureID = nil }
+    }
+
     private func beginLectureRecording() {
         guard !isLectureRecording else { return }
         // Обратный запрет — в `beginRecording()`. Здесь отказ объясняется:
@@ -151,7 +161,13 @@ extension AppState {
     }
 
     private func persistLecture(paragraphs: [LectureParagraph], startedAt: Date, samples: Int) async {
+        let continuingID = continuingLectureID
+        continuingLectureID = nil
         guard let lectureStore, !paragraphs.isEmpty else { return }
+        if let continuingID, let opened = openedLecture, opened.lecture.id == continuingID {
+            await persistContinuation(of: opened, paragraphs: paragraphs, samples: samples, in: lectureStore)
+            return
+        }
         let now = Int64(Date().timeIntervalSince1970 * 1_000)
         let id = UUID()
         let detail = LectureDetail(
@@ -194,6 +210,33 @@ extension AppState {
         }
     }
 
+    private func persistContinuation(
+        of opened: LectureDetail,
+        paragraphs: [LectureParagraph],
+        samples: Int,
+        in lectureStore: any LectureStoring
+    ) async {
+        let continued = LectureContinuation.appending(
+            paragraphs,
+            recordedMilliseconds: samples * 1_000 / 16_000,
+            to: opened,
+            now: Int64(Date().timeIntervalSince1970 * 1_000)
+        )
+        do {
+            try await lectureStore.save(continued)
+            await refreshSavedLectures()
+            openedLecture = continued
+            lectureRecorder.cancel()
+        } catch {
+            // Дописанное остаётся на экране в записывающем — отказ виден в
+            // журнале, как и при сохранении новой лекции.
+            await DiagnosticLog.shared.log(
+                "lecture.continueSaveFailed",
+                detail: String(describing: error)
+            )
+        }
+    }
+
     // MARK: - Сохранённые лекции
 
     /// Перечитывает список сохранённых лекций.
@@ -225,6 +268,9 @@ extension AppState {
     }
 
     public func closeOpenedLecture() {
+        // Продолжаемую лекцию не закрыть посреди записи: дописывать было бы
+        // некуда, и запись ушла бы в новую лекцию.
+        guard continuingLectureID == nil else { return }
         openedLecture = nil
     }
 

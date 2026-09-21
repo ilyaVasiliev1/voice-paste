@@ -97,6 +97,8 @@ public final class AppState: ObservableObject {
     @Published public internal(set) var openedLecture: LectureDetail?
     let lectureStore: (any LectureStoring)?
     var lectureStartedAt: Date?
+    /// Идущая запись дописывает эту сохранённую лекцию, а не создаёт новую.
+    @Published public internal(set) var continuingLectureID: UUID?
     var lectureTimerTask: Task<Void, Never>?
 
     // MARK: - HUD import drop zone (UI-006, second spec-required surface)
