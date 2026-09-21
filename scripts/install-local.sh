@@ -25,16 +25,15 @@ set -euo pipefail
 #
 #   scripts/install-local.sh [путь/к/VoicePaste.app]
 #
-# Без аргумента собирается свежая Debug-сборка в каталог гейта Delta OS
-# (`.tmp/delta-verify` — тот же, что использует `tools/verify.sh`), а не
-# каталог прежней системы. С аргументом сборка не запускается — берётся
-# указанный путь как есть (например, уже готовая сборка стека).
+# Без аргумента собирается свежая Debug-сборка вне ~/Documents: пересобранное
+# приложение внутри Documents macOS считает новым и снова спрашивает доступ.
+# С аргументом сборка не запускается — берётся указанный путь как есть.
 
 PROJECT_ROOT="${0:A:h:h}"
 source "${0:A:h}/lib/update-common.sh"
 
 TARGET_APP="/Applications/VoicePaste.app"
-DERIVED_DATA="${DELTA_DERIVED_DATA:-$PROJECT_ROOT/.tmp/delta-verify}"
+DERIVED_DATA="${VOICEPASTE_INSTALL_DERIVED_DATA:-$HOME/Library/Caches/VoicePaste/Build/install}"
 SOURCE_APP="${1:-}"
 
 print "1/6 Убираю резервные копии прежней реализации обновления…"

@@ -205,10 +205,16 @@ cleanup_legacy_backups() {
 # дерева исходников не зависят, и разрешать их заново незачем.
 build_debug() {
     local project_root="$1" derived_data="$2"
+    # Пакеты — из канонического кэша вне репозитория (см. CLAUDE.md). Без
+    # него xcodebuild при выключенном доразрешении выкачивал пакеты заново в
+    # пустой каталог сборки — и 21.09.2026 упал на подмодуле GRDB через туннель,
+    # уже погасив работающую копию.
+    local source_packages="${SOURCE_PACKAGES_DIR:-$HOME/Library/Caches/VoicePaste/SourcePackages}"
     xcodebuild \
         -project "$project_root/VoicePaste.xcodeproj" -scheme VoicePaste \
         -destination 'platform=macOS,arch=arm64' \
         -derivedDataPath "$derived_data" \
+        -clonedSourcePackagesDirPath "$source_packages" \
         -disableAutomaticPackageResolution -jobs 2 \
         build CODE_SIGNING_ALLOWED=NO >&2
     print -r -- "$derived_data/Build/Products/Debug/VoicePaste.app"

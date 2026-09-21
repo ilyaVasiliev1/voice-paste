@@ -31,7 +31,7 @@ PROJECT_ROOT="${0:A:h:h}"
 source "${0:A:h}/lib/update-common.sh"
 
 TARGET_APP="/Applications/VoicePaste.app"
-DERIVED_DATA="${DELTA_DERIVED_DATA:-$PROJECT_ROOT/.tmp/delta-verify}"
+DERIVED_DATA="${VOICEPASTE_INSTALL_DERIVED_DATA:-$HOME/Library/Caches/VoicePaste/Build/rollback}"
 REQUESTED="${1:-}"
 
 if [[ -z "$REQUESTED" ]]; then
