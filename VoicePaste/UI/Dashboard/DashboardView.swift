@@ -68,7 +68,7 @@ struct DashboardView: View {
     private var metrics: some View {
         HStack(spacing: 10) {
             metric(stats.totalWordCount.formatted(), "Слов")
-            metric(duration(stats.totalDurationMilliseconds), "Время речи")
+            metric(SpeechDurationText.text(milliseconds: stats.totalDurationMilliseconds), "Время речи")
             metric(stats.totalTranscriptCount.formatted(), "Расшифровок")
         }
     }
@@ -102,22 +102,21 @@ struct DashboardView: View {
                     } else {
                         ContentUnavailableView(
                             "Здесь появится статистика",
-                            systemImage: "chart.line.uptrend.xyaxis"
+                            systemImage: "chart.bar"
                         )
                     }
                 }
                 .frame(maxWidth: .infinity, minHeight: 210)
             } else {
+                // Столбцы, а не линия: при редкой речи линия превращалась в
+                // ряд нулей с одним всплеском, а столбец читается и в одиночку.
                 Chart(stats.dailyStats, id: \.day) { item in
-                    AreaMark(x: .value("Период", item.day, unit: period == .day ? .hour : .day), y: .value("Слова", item.wordCount))
-                        .foregroundStyle(Color.accentColor.opacity(0.10).gradient)
-                    LineMark(x: .value("Период", item.day, unit: period == .day ? .hour : .day), y: .value("Слова", item.wordCount))
-                        .interpolationMethod(.linear)
-                        .foregroundStyle(Color.accentColor)
-                        .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-                    PointMark(x: .value("Период", item.day, unit: period == .day ? .hour : .day), y: .value("Слова", item.wordCount))
-                        .foregroundStyle(Color.accentColor)
-                        .symbolSize(selectedDay?.day == item.day ? 44 : 24)
+                    BarMark(
+                        x: .value("Период", item.day, unit: period == .day ? .hour : .day),
+                        y: .value("Слова", item.wordCount)
+                    )
+                    .foregroundStyle(Color.accentColor.opacity(selectedDay == nil || selectedDay?.day == item.day ? 1 : 0.45))
+                    .cornerRadius(2)
                 }
                 .chartYScale(domain: 0...max(1, stats.dailyStats.map(\.wordCount).max() ?? 1))
                 .chartXAxis {
@@ -151,17 +150,12 @@ struct DashboardView: View {
         let pointDate = period == .day
             ? day.day.formatted(date: .omitted, time: .shortened)
             : day.day.formatted(date: .abbreviated, time: .omitted)
-        return Text("\(pointDate) · \(day.wordCount) слов · \(day.transcriptCount) расш. · \(duration(day.durationMilliseconds))")
+        return Text("\(pointDate) · \(day.wordCount) слов · \(day.transcriptCount) расш. · \(SpeechDurationText.text(milliseconds: day.durationMilliseconds))")
             .font(.caption).foregroundStyle(.secondary).monospacedDigit()
     }
 
     private func nearestDay(to date: Date) -> DailyUsageStat? {
         stats.dailyStats.min { abs($0.day.timeIntervalSince(date)) < abs($1.day.timeIntervalSince(date)) }
-    }
-
-    private func duration(_ milliseconds: Int) -> String {
-        let seconds = milliseconds / 1_000
-        return seconds >= 3_600 ? "\(seconds / 3_600) ч \((seconds % 3_600) / 60) мин" : "\(seconds / 60) мин"
     }
 
     private func observeChanges() async {

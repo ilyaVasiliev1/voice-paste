@@ -214,6 +214,29 @@
 
 ---
 
+### Requirement: Время речи не округляется в ноль
+<!-- id: SpeechDurationText.text -->
+<!-- entities: SpeechDurationText, DashboardView -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/UI/Dashboard/SpeechDurationText.swift -->
+<!-- test_macos: VoicePasteTests/SpeechDurationTextTests.swift:test_underAMinute_showsSeconds_notZeroMinutes -->
+
+Статистика SHALL показывать время речи так, чтобы ненулевая длительность не
+выглядела нулём: меньше минуты — в секундах, меньше часа — в минутах, от часа —
+в часах и минутах.
+
+#### Scenario: три записи по нескольку секунд
+<!-- test: SpeechDurationTextTests.test_underAMinute_showsSeconds_notZeroMinutes -->
+- **WHEN** суммарная длительность — 24 секунды
+- **THEN** показано «24 с», а не «0 мин»
+
+#### Scenario: длинная речь
+<!-- test: SpeechDurationTextTests.test_minutesAndHours_keepTheirFormat -->
+- **WHEN** длительность — 5 ч 42 мин или 12 мин
+- **THEN** показано «5 ч 42 мин» и «12 мин»
+
+---
+
 ### Requirement: Миграции схемы только вперёд
 <!-- id: Migrations.migrator -->
 <!-- entities: Migrations, WordCounting, Transcript, ImportJob, VocabularyEntry -->
