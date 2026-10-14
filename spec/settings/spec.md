@@ -332,4 +332,47 @@ command, option, control, shift: сочетание без модификато�
 
 ---
 
+### Requirement: Звук для оценки сохраняется только по включённой настройке и удаляется кнопкой
+<!-- id: EvaluationAudioStore.save -->
+<!-- entities: AppSettings, AppState, EvaluationAudioStore -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/Core/Audio/EvaluationAudioStore.swift, VoicePaste/Core/Settings/AppSettings.swift, VoicePaste/App/AppState.swift -->
+<!-- test_macos: VoicePasteTests/EvaluationAudioTests.swift:savedFileIsAValidWave -->
+<!-- test_macos: VoicePasteTests/EvaluationAudioTests.swift:permissionsAreOwnerOnly -->
+<!-- test_macos: VoicePasteTests/EvaluationAudioTests.swift:deleteAllRemovesOnlyRecordings -->
+<!-- test_macos: VoicePasteTests/EvaluationAudioTests.swift:offByDefault -->
+<!-- test_macos: VoicePasteTests/DictationTractTests.swift:evaluationAudioOffSavesNothing -->
+<!-- test_macos: VoicePasteTests/DictationTractTests.swift:evaluationAudioOnSavesUnderTranscriptID -->
+<!-- test_macos: VoicePasteTests/DictationTractTests.swift:cancelledRecordingLeavesNoEvaluationAudio -->
+
+Настройка `saveAudioForEvaluation` SHALL быть выключена по умолчанию. Пока она
+выключена, звук диктовок нигде не сохраняется. Включённая — сохраняет
+запись целиком (WAV 16 кГц моно 16 бит) в
+`Application Support/VoicePaste/EvaluationAudio/<id записи>.wav`: каталог
+доступен только владельцу (0700), файлы 0600, из резервных копий исключены,
+имя — только идентификатор записи в истории. Сохраняются и записи, в которых
+не нашлось речи (по ним оценивают тишину); отменённые записи — нет. Отказ
+сохранить не ломает диктовку и уходит в журнал как `evaluationAudio.saveFailed`.
+Сохранённое удаляется одним действием `deleteEvaluationAudio()`; чужие файлы
+в каталоге остаются.
+
+#### Scenario: настройка выключена
+<!-- test: DictationTractTests.evaluationAudioOffSavesNothing -->
+- **WHEN** диктовка завершена при `saveAudioForEvaluation == false`
+- **THEN** ни один файл не записан
+
+#### Scenario: настройка включена
+<!-- test: DictationTractTests.evaluationAudioOnSavesUnderTranscriptID -->
+- **WHEN** диктовка завершена при включённой настройке
+- **THEN** сохранён один файл, названный идентификатором записи в истории
+
+#### Scenario: запись отменена
+<!-- test: DictationTractTests.cancelledRecordingLeavesNoEvaluationAudio -->
+- **WHEN** запись отменена до распознавания
+- **THEN** звук не сохранён
+
+> Last verified: 2026-10-14
+
+---
+
 <!-- uncertainty: Экраны настроек (вкладки, диалоги подтверждения, редактор словаря, записыватель сочетания) проверены чтением кода: тестов на SwiftUI/AppKit-слой в VoicePasteTests нет. -->

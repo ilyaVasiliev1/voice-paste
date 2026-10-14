@@ -62,6 +62,9 @@ public final class AppState: ObservableObject {
     private let isDictationReady: (@MainActor () -> Bool)?
     /// Журнал событий тракта: имя и подробности без текста расшифровки.
     private let logEvent: @Sendable (String, String) -> Void
+    /// Звук для оценки: пишется только при включённой настройке.
+    private let evaluationAudio: any EvaluationAudioStoring
+    private(set) var evaluationAudioTask: Task<Void, Never>?
     /// Идущая расшифровка. Внутренний, чтобы тест мог дождаться её конца.
     private(set) var dictationTask: Task<Void, Never>?
     private let normalizer = TextNormalizer()
@@ -149,7 +152,8 @@ public final class AppState: ObservableObject {
             isDictationReady: nil,
             logEvent: { event, detail in
                 Task { await DiagnosticLog.shared.log(event, detail: detail) }
-            }
+            },
+            evaluationAudio: EvaluationAudioStore.makeDefault()
         )
     }
 
@@ -168,13 +172,15 @@ public final class AppState: ObservableObject {
         hud: (any HUDPresenting)?,
         now: @escaping () -> Date,
         isDictationReady: (@MainActor () -> Bool)?,
-        logEvent: @escaping @Sendable (String, String) -> Void
+        logEvent: @escaping @Sendable (String, String) -> Void,
+        evaluationAudio: any EvaluationAudioStoring
     ) {
         self.audioCapture = audioSource ?? AudioCaptureService()
         self.textDelivery = textDelivery ?? SystemTextDelivery()
         self.now = now
         self.isDictationReady = isDictationReady
         self.logEvent = logEvent
+        self.evaluationAudio = evaluationAudio
         // Действия кнопок знает только настоящая плашка; подставной их не имеет.
         let realHUD: HUDWindowController?
         if let hud {
@@ -791,6 +797,10 @@ public final class AppState: ObservableObject {
     private func endRecordingAndProcess() {
         elapsedTimerTask?.cancel()
         let samples = audioCapture.stop()
+        // Имя файла — тот же идентификатор, что у записи в истории: звук и
+        // расшифровка находятся друг по другу. Сохраняется и запись без речи.
+        let recordingID = UUID()
+        saveEvaluationAudioIfEnabled(samples, id: recordingID)
 
         // A very short buffer has too little phonetic context for Whisper and
         // can produce plausible-looking hallucinations such as "Продолжение
@@ -816,11 +826,11 @@ public final class AppState: ObservableObject {
         }
 
         dictationTask = Task { [weak self] in
-            await self?.transcribeAndFinish(samples: samples)
+            await self?.transcribeAndFinish(samples: samples, recordingID: recordingID)
         }
     }
 
-    private func transcribeAndFinish(samples: [Float]) async {
+    private func transcribeAndFinish(samples: [Float], recordingID: UUID) async {
         defer {
             dictationStateMachine.handleProcessingFinished()
             dictationPhase = .idle
@@ -877,7 +887,7 @@ public final class AppState: ObservableObject {
 
             let now = Int64(self.now().timeIntervalSince1970 * 1_000)
             let transcript = Transcript(
-                id: UUID(),
+                id: recordingID,
                 createdAt: now,
                 updatedAt: now,
                 source: .dictation,
@@ -924,6 +934,32 @@ public final class AppState: ObservableObject {
             ))
             Task { await DiagnosticLog.shared.log("dictation.transcriptionFailed", detail: String(describing: error)) }
         }
+    }
+
+    // MARK: - Звук для оценки
+
+    private func saveEvaluationAudioIfEnabled(_ samples: [Float], id: UUID) {
+        guard settings.saveAudioForEvaluation, !samples.isEmpty else { return }
+        let store = evaluationAudio
+        let log = logEvent
+        evaluationAudioTask = Task {
+            do {
+                try await store.save(samples: samples, id: id)
+            } catch {
+                log("evaluationAudio.saveFailed", String(describing: error))
+            }
+        }
+    }
+
+    /// Сколько записей для оценки лежит на этой машине и сколько они весят.
+    public func evaluationAudioSummary() async -> EvaluationAudioSummary {
+        await evaluationAudio.summary()
+    }
+
+    /// Удаляет все сохранённые для оценки записи; возвращает их число.
+    @discardableResult
+    public func deleteEvaluationAudio() async throws -> Int {
+        try await evaluationAudio.deleteAll()
     }
 
     // MARK: - Lifecycle (EC-014, L-010/L-011)

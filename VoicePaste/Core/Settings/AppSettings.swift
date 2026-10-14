@@ -11,6 +11,7 @@ public final class AppSettings: ObservableObject {
         static let modelUnloadMinutes = "modelUnloadMinutes"
         static let historyEnabled = "historyEnabled"
         static let autoInsertEnabled = "autoInsertEnabled"
+        static let saveAudioForEvaluation = "saveAudioForEvaluation"
         static let autoCorrectSafeTypos = "autoCorrectSafeTypos"
         static let languageMode = "languageMode"
         static let showInDock = "showInDock"
@@ -50,6 +51,9 @@ public final class AppSettings: ObservableObject {
     }
     /// Default `true`.
     @Published public var autoInsertEnabled: Bool { didSet { persist() } }
+    /// Сохранять звук диктовок на этой машине для оценки качества. Выключено
+    /// по умолчанию: звук — персональные данные.
+    @Published public var saveAudioForEvaluation: Bool { didSet { persist() } }
     /// Default `true`.
     @Published public var autoCorrectSafeTypos: Bool { didSet { persist() } }
     /// Default `auto`.
@@ -159,6 +163,7 @@ public final class AppSettings: ObservableObject {
         self.modelUnloadMinutes = defaults.object(forKey: Keys.modelUnloadMinutes) as? Int ?? 0
         self.historyEnabled = defaults.object(forKey: Keys.historyEnabled) as? Bool ?? true
         self.autoInsertEnabled = defaults.object(forKey: Keys.autoInsertEnabled) as? Bool ?? true
+        self.saveAudioForEvaluation = defaults.object(forKey: Keys.saveAudioForEvaluation) as? Bool ?? false
         self.autoCorrectSafeTypos = defaults.object(forKey: Keys.autoCorrectSafeTypos) as? Bool ?? true
         // Русский, а не автоопределение: на русской речи с английскими терминами оно
         // давало метку `en`, и такие записи кончались «Thank you».
@@ -194,6 +199,7 @@ public final class AppSettings: ObservableObject {
         defaults.set(modelUnloadMinutes, forKey: Keys.modelUnloadMinutes)
         defaults.set(historyEnabled, forKey: Keys.historyEnabled)
         defaults.set(autoInsertEnabled, forKey: Keys.autoInsertEnabled)
+        defaults.set(saveAudioForEvaluation, forKey: Keys.saveAudioForEvaluation)
         defaults.set(autoCorrectSafeTypos, forKey: Keys.autoCorrectSafeTypos)
         defaults.set(languageMode.rawValue, forKey: Keys.languageMode)
         defaults.set(showInDock, forKey: Keys.showInDock)

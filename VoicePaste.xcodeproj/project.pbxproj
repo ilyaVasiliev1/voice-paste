@@ -30,6 +30,7 @@
 		CA0000000000000000000929 /* LectureContinuation.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0000000000000000000928 /* LectureContinuation.swift */; };
 		C0000000000000000000011E /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000011D /* AppState.swift */; };
 		C00000000000000000000120 /* AudioCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000011F /* AudioCaptureService.swift */; };
+		C00000000000000000000A5D /* EvaluationAudioStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A5C /* EvaluationAudioStore.swift */; };
 		C00000000000000000000122 /* DictationStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000121 /* DictationStateMachine.swift */; };
 		C00000000000000000000A53 /* SpeechGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A52 /* SpeechGate.swift */; };
 		C00000000000000000000A4D /* DictationLanguageJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A4C /* DictationLanguageJournal.swift */; };
@@ -170,6 +171,7 @@
 		CA0000000000000000000928 /* LectureContinuation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureContinuation.swift; sourceTree = "<group>"; };
 		C0000000000000000000011D /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		C0000000000000000000011F /* AudioCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioCaptureService.swift; sourceTree = "<group>"; };
+		C00000000000000000000A5C /* EvaluationAudioStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvaluationAudioStore.swift; sourceTree = "<group>"; };
 		C00000000000000000000121 /* DictationStateMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationStateMachine.swift; sourceTree = "<group>"; };
 		C00000000000000000000A52 /* SpeechGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechGate.swift; sourceTree = "<group>"; };
 		C00000000000000000000A4C /* DictationLanguageJournal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationLanguageJournal.swift; sourceTree = "<group>"; };
@@ -380,6 +382,7 @@
 			isa = PBXGroup;
 			children = (
 				C0000000000000000000011F /* AudioCaptureService.swift */,
+				C00000000000000000000A5C /* EvaluationAudioStore.swift */,
 			);
 			path = Audio;
 			sourceTree = "<group>";
@@ -805,6 +808,7 @@
 				C0000000000000000000011E /* AppState.swift in Sources */,
 				C00000000000000000000301 /* AppDelegate.swift in Sources */,
 				C00000000000000000000120 /* AudioCaptureService.swift in Sources */,
+				C00000000000000000000A5D /* EvaluationAudioStore.swift in Sources */,
 				C00000000000000000000122 /* DictationStateMachine.swift in Sources */,
 				C00000000000000000000A53 /* SpeechGate.swift in Sources */,
 				C00000000000000000000A4D /* DictationLanguageJournal.swift in Sources */,
