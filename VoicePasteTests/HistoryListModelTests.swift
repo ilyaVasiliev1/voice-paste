@@ -241,6 +241,29 @@ final class HistoryListModelTests: XCTestCase {
         XCTAssertTrue(model.didFailToDelete, "отказ базы остался незамеченным")
     }
 
+    // MARK: - Поиск: задержка не больше самого запроса
+
+    func test_searchDebounce_isShortEnoughToFeelInstant() {
+        XCTAssertLessThanOrEqual(
+            HistoryListModel.defaultSearchDebounce, .milliseconds(100),
+            "запрос к 2,4 тыс. записей — около 2 мс (замер 14.10), а ожидание стоило 250"
+        )
+    }
+
+    func test_searchBurst_sendsOnlyTheLastQuery() async throws {
+        let store = FakeHistoryStore(count: 3)
+        let model = HistoryListModel(store: store, searchDebounce: .milliseconds(30))
+
+        model.searchText = "п"
+        model.searchText = "пе"
+        model.searchText = "пер"
+        let sent = await eventually { store.searchQueries.contains("пер") }
+        try await Task.sleep(for: .milliseconds(120))
+
+        XCTAssertTrue(sent)
+        XCTAssertEqual(store.searchQueries, ["пер"], "устаревший запрос дошёл до хранилища")
+    }
+
     // MARK: - Редактор: просмотр не пишет
 
     private func makeTranscript(text: String = "Исходный текст") -> Transcript {
@@ -374,6 +397,7 @@ final class FakeHistoryStore: HistoryStoring {
     private(set) var completedDetailFetches = 0
     private(set) var deleteCalls = 0
     private(set) var editCalls: [(id: UUID, text: String)] = []
+    private(set) var searchQueries: [String] = []
 
     init(
         count: Int,
@@ -444,7 +468,8 @@ final class FakeHistoryStore: HistoryStoring {
     }
 
     func search(query: String, after cursor: TranscriptCursor?) async throws -> TranscriptPage {
-        TranscriptPage(items: [], nextCursor: nil)
+        searchQueries.append(query)
+        return TranscriptPage(items: [], nextCursor: nil)
     }
 
     nonisolated func changes() -> AsyncStream<Void> { broadcaster.stream() }
