@@ -217,13 +217,15 @@ public final class SystemLiveTranscriber: LiveTranscribing {
     private static func stream(from transcriber: SpeechTranscriber) -> AsyncStream<LiveTranscriptUpdate> {
         AsyncStream { continuation in
             Task {
-                for try await result in transcriber.results {
-                    continuation.yield(Self.update(
-                        text: String(result.text.characters),
-                        isFinal: result.isFinal,
-                        range: result.range
-                    ))
-                }
+                do {
+                    for try await result in transcriber.results {
+                        continuation.yield(Self.update(
+                            text: String(result.text.characters),
+                            isFinal: result.isFinal,
+                            range: result.range
+                        ))
+                    }
+                } catch {}
                 continuation.finish()
             }
         }
@@ -232,13 +234,15 @@ public final class SystemLiveTranscriber: LiveTranscribing {
     private static func stream(from transcriber: DictationTranscriber) -> AsyncStream<LiveTranscriptUpdate> {
         AsyncStream { continuation in
             Task {
-                for try await result in transcriber.results {
-                    continuation.yield(Self.update(
-                        text: String(result.text.characters),
-                        isFinal: result.isFinal,
-                        range: result.range
-                    ))
-                }
+                do {
+                    for try await result in transcriber.results {
+                        continuation.yield(Self.update(
+                            text: String(result.text.characters),
+                            isFinal: result.isFinal,
+                            range: result.range
+                        ))
+                    }
+                } catch {}
                 continuation.finish()
             }
         }
