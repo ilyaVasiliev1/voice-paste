@@ -14,6 +14,7 @@ public final class AppSettings: ObservableObject {
         static let saveAudioForEvaluation = "saveAudioForEvaluation"
         static let autoCorrectSafeTypos = "autoCorrectSafeTypos"
         static let languageMode = "languageMode"
+        static let settingsVersion = "settingsVersion"
         static let showInDock = "showInDock"
         static let modelDownloadSource = "modelDownloadSource"
         static let lectureParagraphPauseSeconds = "lectureParagraphPauseSeconds"
@@ -163,8 +164,16 @@ public final class AppSettings: ObservableObject {
         self.autoInsertEnabled = defaults.object(forKey: Keys.autoInsertEnabled) as? Bool ?? true
         self.saveAudioForEvaluation = defaults.object(forKey: Keys.saveAudioForEvaluation) as? Bool ?? false
         self.autoCorrectSafeTypos = defaults.object(forKey: Keys.autoCorrectSafeTypos) as? Bool ?? true
-        // WHY: автоопределение метило русскую речь с английскими терминами как `en`, и запись кончалась «Thank you».
-        self.languageMode = TranscriptionLanguage(rawValue: defaults.string(forKey: Keys.languageMode) ?? "") ?? .ru
+        // WHY: persist() пишет все ключи при любой смене настройки, поэтому сохранённое `auto`
+        // до версии 2 — след умолчания, а не выбора; выбранное позже не трогаем.
+        let storedLanguage = TranscriptionLanguage(rawValue: defaults.string(forKey: Keys.languageMode) ?? "") ?? .ru
+        let needsMigration = defaults.integer(forKey: Keys.settingsVersion) < Self.currentVersion
+        let language: TranscriptionLanguage = needsMigration && storedLanguage == .auto ? .ru : storedLanguage
+        self.languageMode = language
+        if needsMigration {
+            defaults.set(language.rawValue, forKey: Keys.languageMode)
+            defaults.set(Self.currentVersion, forKey: Keys.settingsVersion)
+        }
         // `L-020`: never read from `UserDefaults` — a clean machine has no
         // registration, so the system status (`.notRegistered`) already
         // gives the documented "выключено" default without a stored flag
@@ -190,6 +199,8 @@ public final class AppSettings: ObservableObject {
         // sync to match the value just loaded from `UserDefaults`.
         historyEnabledMirror.value = self.historyEnabled
     }
+
+    private static let currentVersion = 2
 
     private func persist() {
         defaults.set(recordingMode.rawValue, forKey: Keys.recordingMode)

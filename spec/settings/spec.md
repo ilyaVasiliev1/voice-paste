@@ -15,7 +15,8 @@
 <!-- enforced_macos: VoicePaste/Core/Settings/AppSettings.swift, VoicePaste/Core/Hotkey/HotkeyShortcut.swift -->
 <!-- test_macos: VoicePasteTests/AppSettingsModelDownloadSourceTests.swift:test_default_isGitHub_onEmptyDefaults -->
 <!-- test_macos: VoicePasteTests/DictationLanguageTests.swift:freshInstallPinsRussian -->
-<!-- test_macos: VoicePasteTests/DictationLanguageTests.swift:storedAutoIsKept -->
+<!-- test_macos: VoicePasteTests/DictationLanguageTests.swift:savedAutoBeforeMigrationBecomesRussian -->
+<!-- test_macos: VoicePasteTests/DictationLanguageTests.swift:autoChosenAfterMigrationIsKept -->
 <!-- test_macos: VoicePasteTests/DictationLanguageTests.swift:unrecognisedStoredValueFallsBackToRussian -->
 
 На чистой машине приложение SHALL стартовать с сочетанием ⌥Space, режимом
@@ -32,7 +33,25 @@
 #### Scenario: язык на чистой установке
 <!-- test: DictationLanguageTests.freshInstallPinsRussian -->
 - **WHEN** сохранённого значения языка нет
-- **THEN** язык — русский; ранее сохранённое «автоматически» не перезаписывается
+- **THEN** язык — русский
+
+#### Scenario: «автоматически», сохранённое до версии настроек 2
+<!-- test: DictationLanguageTests.savedAutoBeforeMigrationBecomesRussian -->
+- **WHEN** в хранилище лежит `auto`, а версии настроек нет или она меньше 2
+- **THEN** язык становится русским и записывается сразу; версия настроек — 2
+
+Основание: `persist()` записывает все ключи при любой смене настройки, поэтому
+`auto` до этой версии — след умолчания, а не выбор человека.
+
+#### Scenario: «автоматически», выбранное после миграции
+<!-- test: DictationLanguageTests.autoChosenAfterMigrationIsKept -->
+- **WHEN** версия настроек уже 2 и в хранилище `auto`
+- **THEN** значение не меняется
+
+#### Scenario: английский и китайский
+<!-- test: DictationLanguageTests.otherSavedLanguagesAreUntouched -->
+- **WHEN** сохранён `en` или `zh`
+- **THEN** значение не меняется
 
 #### Scenario: нераспознанное сохранённое значение
 <!-- test: AppSettingsModelDownloadSourceTests.test_unrecognizedStoredValue_fallsBackToGitHub -->
