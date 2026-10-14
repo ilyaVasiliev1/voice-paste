@@ -646,8 +646,8 @@ public final class AppState: ObservableObject {
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.allowedContentTypes = ImportPanelPresenter.allowedContentTypes
-        DispatchQueue.main.async {
-            panel.begin { [weak self] response in
+        DispatchQueue.main.async { [weak self] in
+            panel.begin { response in
                 guard response == .OK, let url = panel.url else { return }
                 self?.beginFileImport(url: url)
             }
