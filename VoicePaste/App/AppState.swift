@@ -227,23 +227,7 @@ public final class AppState: ObservableObject {
             self?.dictation.handleCaptureInterruption(event)
         }
 
-        // `UI-003`: the HUD's mouse controls call back into the same
-        // dictation logic the hotkey/menu drive — never a separate path.
-        realHUD?.configureActions(
-            onFinish: { [weak self] in self?.finishDictationFromHUD() },
-            onCancel: { [weak self] in self?.cancelDictationFromHUD() },
-            onRetry: { [weak self] in self?.retryDictationFromHUD() },
-            onSelectMicrophone: { [weak self] in self?.openSettingsToPermissions() },
-            onDismiss: { [weak self] in self?.dismissHUD() },
-            onImportFileDropped: { [weak self] url in self?.beginFileImport(url: url) },
-            onChooseImportFile: { [weak self] in self?.chooseFileForImportFromHUD() },
-            onOpenHistoryRecord: { [weak self] id in self?.openHistoryRecord(id) },
-            onSwitchToImport: { [weak self] in self?.switchToFileImportFromHUD() },
-            onResumeRecording: { [weak self] in self?.resumeDictationAfterEscape() },
-            onImportResultCopied: { [weak self] in self?.presentHUD(.copied) },
-            onImportResultOpened: { [weak self] in self?.presentHUD(.importOpened) },
-            onCancelPausedDictation: { [weak self] in self?.cancelPausedDictationFromHUD() }
-        )
+        if let realHUD { connectHUDActions(of: realHUD) }
 
         // `L-001`: the user grants mic/Accessibility access in System
         // Settings, a *different* app, then switches back to us — that's a
@@ -260,6 +244,26 @@ public final class AppState: ObservableObject {
                 self.refreshReadiness()
             }
         }
+    }
+
+    /// `UI-003`: the HUD's mouse controls call back into the same
+    /// dictation logic the hotkey/menu drive — never a separate path.
+    private func connectHUDActions(of hud: HUDWindowController) {
+        hud.configureActions(
+            onFinish: { [weak self] in self?.finishDictationFromHUD() },
+            onCancel: { [weak self] in self?.cancelDictationFromHUD() },
+            onRetry: { [weak self] in self?.retryDictationFromHUD() },
+            onSelectMicrophone: { [weak self] in self?.openSettingsToPermissions() },
+            onDismiss: { [weak self] in self?.dismissHUD() },
+            onImportFileDropped: { [weak self] url in self?.beginFileImport(url: url) },
+            onChooseImportFile: { [weak self] in self?.chooseFileForImportFromHUD() },
+            onOpenHistoryRecord: { [weak self] id in self?.openHistoryRecord(id) },
+            onSwitchToImport: { [weak self] in self?.switchToFileImportFromHUD() },
+            onResumeRecording: { [weak self] in self?.resumeDictationAfterEscape() },
+            onImportResultCopied: { [weak self] in self?.presentHUD(.copied) },
+            onImportResultOpened: { [weak self] in self?.presentHUD(.importOpened) },
+            onCancelPausedDictation: { [weak self] in self?.cancelPausedDictationFromHUD() }
+        )
     }
 
     /// Call after any Settings change (`AT-011`, mode switch) and whenever

@@ -49,6 +49,26 @@ nonisolated public enum PipelineOutcome: Sendable, Equatable {
     case rejected(PipelineRejection)
 }
 
+/// Вход конвейера: звук и всё, что нужно для приведения текста.
+nonisolated public struct DictationInput: Sendable {
+    public var samples: [Float]
+    public var language: TranscriptionLanguage
+    public var vocabulary: [VocabularyEntry]
+    public var autoCorrectSafeTypos: Bool
+
+    public init(
+        samples: [Float],
+        language: TranscriptionLanguage,
+        vocabulary: [VocabularyEntry],
+        autoCorrectSafeTypos: Bool
+    ) {
+        self.samples = samples
+        self.language = language
+        self.vocabulary = vocabulary
+        self.autoCorrectSafeTypos = autoCorrectSafeTypos
+    }
+}
+
 /// Шаги диктовки от записанного звука до черновика: страж, распознавание,
 /// приведение текста. Доставка и история — снаружи: конвейер не знает ни
 /// буфера обмена, ни базы, ни окна.
@@ -82,24 +102,22 @@ nonisolated public struct DictationPipeline: Sendable {
     /// `onSpeechConfirmed` вызывается один раз после того, как речь найдена, и
     /// до распознавания: там приложение показывает «обработка» и загружает модель.
     public func run(
-        samples: [Float],
-        language: TranscriptionLanguage,
-        vocabulary: [VocabularyEntry],
-        autoCorrectSafeTypos: Bool,
+        _ input: DictationInput,
         recognizer: any Recognizing,
         onSpeechConfirmed: @Sendable () async -> Void
     ) async throws -> PipelineOutcome {
+        let samples = input.samples
         guard await SpeechGate.analyzeOffMain(samples).hasSpeech else {
             return .rejected(.noSpeech)
         }
         await onSpeechConfirmed()
 
-        let recognized = try await recognizer.recognize(samples: samples, language: language)
+        let recognized = try await recognizer.recognize(samples: samples, language: input.language)
         let (text, _) = await normalizer.normalizeInBackground(
             rawText: recognized.rawText,
-            language: language,
-            vocabulary: vocabulary,
-            autoCorrectSafeTypos: autoCorrectSafeTypos
+            language: input.language,
+            vocabulary: input.vocabulary,
+            autoCorrectSafeTypos: input.autoCorrectSafeTypos
         )
         return .draft(Draft(
             rawText: recognized.rawText,

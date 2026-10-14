@@ -381,11 +381,14 @@ final class DictationCoordinator {
         do {
             let vocabulary = (try? await historyStore.fetchVocabulary()) ?? []
             let language = settings.languageMode
-            let outcome = try await pipeline.run(
+            let input = DictationInput(
                 samples: samples,
                 language: language,
                 vocabulary: vocabulary,
-                autoCorrectSafeTypos: settings.autoCorrectSafeTypos,
+                autoCorrectSafeTypos: settings.autoCorrectSafeTypos
+            )
+            let outcome = try await pipeline.run(
+                input,
                 recognizer: LiveRecognizer(modelManager: modelManager, streaming: streamingTranscriber),
                 onSpeechConfirmed: { @MainActor [weak self] in self?.host?.presentHUD(.processing) }
             )
