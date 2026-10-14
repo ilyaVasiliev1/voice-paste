@@ -259,7 +259,7 @@ public final class ImportManager: ObservableObject {
             }
             // The decoder awaits this closure before retaining the next
             // window. A three-hour file therefore has the same PCM footprint
-            // as a short file (`INV-018`, `AT-100`).
+            // as a short file.
             let uniqueSampleCount = try await decoder.decodeInChunks(
                 url: sourceURL,
                 onProgress: mediaProgress

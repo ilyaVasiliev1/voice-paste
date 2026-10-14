@@ -2,7 +2,7 @@ import XCTest
 
 @testable import VoicePaste
 
-/// `AT-093`/`L-010` — endpoint mapping and end-to-end propagation from the
+/// — endpoint mapping and end-to-end propagation from the
 /// selected source down to the loader's factory call. Proof mode `auto`/
 /// `integration`: no network, mock `Transcribing` factory that only
 /// *records* which endpoint it was asked to use.
@@ -21,7 +21,7 @@ final class ModelDownloadSourceTests: XCTestCase {
 
   func test_catalogDefaultEndpoint_matchesMirror() {
     // `ModelCatalog.downloadEndpoint` is the documented fallback for
-    // "пользователь не менял настройку" (`L-010`) — it must stay in
+    // "пользователь не менял настройку" — it must stay in
     // lockstep with `.mirror.endpoint`.
     XCTAssertEqual(ModelCatalog.downloadEndpoint, ModelDownloadSource.mirror.endpoint)
   }
@@ -69,7 +69,7 @@ final class ModelDownloadSourceTests: XCTestCase {
     XCTAssertEqual(capturedEndpoint, "https://hf-mirror.com")
   }
 
-  /// `AT-093`/`L-010`: "по умолчанию — зеркало" at the loader boundary —
+  /// "по умолчанию — зеркало" at the loader boundary —
   /// omitting `downloadEndpointProvider` entirely (the real production
   /// default) must still resolve to the mirror URL, without any Settings
   /// object involved.
@@ -89,13 +89,13 @@ final class ModelDownloadSourceTests: XCTestCase {
     XCTAssertEqual(capturedEndpoint, "https://hf-mirror.com")
   }
 
-  /// `L-010`: "Смена применяется к следующей загрузке" — a provider backed
+  /// "Смена применяется к следующей загрузке" — a provider backed
   /// by a mutable box, switched *after* construction but *before* the
   /// first `installModel()` call, must be read live at load time, not
   /// captured once at `ModelManager.init`. This is the closest an `auto`
   /// test can get to "смена источника применяется к следующей загрузке"
   /// without a real second download (unloading and reloading the *same*
-  /// verified model is explicitly out of scope per `L-010`: a source
+  /// verified model is explicitly out of scope per a source
   /// change never re-fetches an already-verified local model).
   func test_changingProviderValue_beforeFirstLoad_isReadLiveNotCapturedAtInit() async throws {
     final class SourceBox: @unchecked Sendable {

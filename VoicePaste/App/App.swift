@@ -62,7 +62,7 @@ struct VoicePasteApp: App {
         } else {
             do {
                 let pool = try AppDatabase.makePool()
-                // `L-008`: must read the *live* setting on every save, not a
+                // must read the *live* setting on every save, not a
                 // value captured once at launch — otherwise toggling history on
                 // mid-session silently keeps failing saves with
                 // `HistoryError.historyDisabled`. `settings.isHistoryEnabledNow`
@@ -118,26 +118,26 @@ struct VoicePasteApp: App {
         } label: {
             // The label is a view SwiftUI keeps alive for the whole app
             // lifetime — it's the natural place to run the one-time launch
-            // check. `L-001`/`UI-002`/`AT-001`: if permissions/model aren't
+            // check. if permissions/model aren't
             // in place yet, onboarding must be reachable without the user
             // first knowing to open the menu and find a way in.
             Image(systemName: appState.menuBarSymbolName)
                 .foregroundStyle(appState.menuBarSymbolColor)
                 .task {
                     guard !ProcessRuntime.isRunningTests else { return }
-                    // `UI-001`: wire the AppKit-side delegate to this
+                    // wire the AppKit-side delegate to this
                     // instance's `appState` and its `openWindow`/`openSettings`
                     // actions (captured here since `AppDelegate` itself has no
                     // SwiftUI environment access, and `AppState.openSettings()`
                     // has none either) so Dock-icon "reopen" clicks with no
                     // visible windows, and the menu bar's "Настройки…", can
-                    // resurface the right window (`AT-091`).
+                    // resurface the right window.
                     windowRouter.openWindowAction = { id in openWindow(id: id) }
                     windowRouter.openSettingsAction = { openSettings() }
                     appDelegate.appState = appState
                     appDelegate.windowRouter = windowRouter
 
-                    // `L-001`/`UI-002`: the model's on-disk check runs in the
+                    // the model's on-disk check runs in the
                     // background from `ModelManager.init`. Until it reports
                     // back, model state is `.notPrepared` — i.e. readiness says
                     // "нужна загрузка модели" even on a machine where the model
@@ -147,7 +147,7 @@ struct VoicePasteApp: App {
                     // makes the launch decision deterministic.
                     await appState.modelManager.awaitInitialModelDiscovery()
 
-                    // `INV-015`/`AT-089`: `refreshReadiness()` both computes
+                    // `refreshReadiness()` both computes
                     // `readiness.state` and applies the Dock policy it gates
                     // (`applyDockVisibility()`, called from inside it) — a
                     // single call, no separate policy application here, so
@@ -170,7 +170,7 @@ struct VoicePasteApp: App {
                 .environmentObject(appState)
         }
 
-        // `UI-004`/`UI-007`: one permanent window. The menu bar opens its
+        // one permanent window. The menu bar opens its
         // statistics detail; it never becomes a second application window.
         Window("main.window.title", id: "main") {
             MainWindowView(historyStore: appState.historyStore)

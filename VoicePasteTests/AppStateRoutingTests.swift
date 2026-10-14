@@ -85,7 +85,7 @@ final class AppStateRoutingTests: XCTestCase {
         try body({ openedWindowIDs }, { settingsOpenCount })
     }
 
-    // MARK: - AT-088: linear gating before readiness
+    // MARK: - linear gating before readiness
 
     /// `openMainOrOnboarding` is the single router behind "Открыть VoicePaste"
     /// and "Статистика" (`AppState.openStatistics`). While not ready it must
@@ -158,7 +158,7 @@ final class AppStateRoutingTests: XCTestCase {
         XCTAssertTrue(appState.readiness.state != .ready)
     }
 
-    // MARK: - AT-089: forced `.regular` while not ready
+    // MARK: - forced `.regular` while not ready
 
     /// `applyDockVisibility()` must force `.regular` while not ready
     /// regardless of `showInDock` — regression this catches: dropping the
@@ -183,7 +183,7 @@ final class AppStateRoutingTests: XCTestCase {
         XCTAssertEqual(NSApp.activationPolicy(), .regular)
     }
 
-    // MARK: - AT-091: "Настройки…" mechanism never opens main
+    // MARK: - "Настройки…" mechanism never opens main
 
     /// `openSettings()` must always go through `WindowRouter.openSettings()`
     /// (the documented `@Environment(\.openSettings)` action captured at

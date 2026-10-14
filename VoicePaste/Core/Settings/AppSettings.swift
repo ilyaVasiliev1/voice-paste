@@ -1,7 +1,7 @@
 import Foundation
 import ServiceManagement
 
-/// `DM-001` — the single small-footprint settings record, backed by
+/// — the single small-footprint settings record, backed by
 /// `UserDefaults`. Every default below mirrors `data-model.md` exactly.
 @MainActor
 public final class AppSettings: ObservableObject {
@@ -24,7 +24,7 @@ public final class AppSettings: ObservableObject {
     }
 
     private let defaults: UserDefaults
-    /// `L-020`: the only path allowed to touch Login Items — a real
+    /// the only path allowed to touch Login Items — a real
     /// `SystemLoginItemRegistry` in production, a fake under
     /// `ProcessRuntime.isRunningTests` or an injected test double.
     private let loginItemRegistry: any LoginItemRegistering
@@ -39,7 +39,7 @@ public final class AppSettings: ObservableObject {
     /// Default `toggle`.
     @Published public var recordingMode: RecordingMode { didSet { persist() } }
     /// `0...60` minutes of idle time before the model is released. Default
-    /// `0` = keep it warm (`L-010`): a fixed idle timer made every later
+    /// `0` = keep it warm: a fixed idle timer made every later
     /// dictation pay a reload, so the model is now given back on system
     /// memory pressure instead. Non-zero is an explicit user choice.
     @Published public var modelUnloadMinutes: Int { didSet { persist() } }
@@ -57,7 +57,7 @@ public final class AppSettings: ObservableObject {
     @Published public var autoCorrectSafeTypos: Bool { didSet { persist() } }
     /// Default `auto`.
     @Published public var languageMode: TranscriptionLanguage { didSet { persist() } }
-    /// `L-020`: source of truth is `SMAppService.mainApp.status`, not this
+    /// source of truth is `SMAppService.mainApp.status`, not this
     /// property's own storage — it is never read back from `UserDefaults`.
     /// Setting it from user interaction (`didSet` below) asks the system to
     /// register/unregister; setting it from `syncLaunchAtLoginFromSystem()`
@@ -117,29 +117,29 @@ public final class AppSettings: ObservableObject {
             persist()
         }
     }
-    /// Default `.github` (`AT-093`, `L-010`) — the project's own release is
+    /// Default `.github` — the project's own release is
     /// the only source reachable from mainland China. Applies to the *next* model
     /// download (and any tokenizer/config re-fetch); never re-downloads an
     /// already-verified local model.
     @Published public var modelDownloadSource: ModelDownloadSource { didSet { persist() } }
 
-    /// v1 ships exactly one model (`INV-004`); not user-editable.
+    /// v1 ships exactly one model; not user-editable.
     public let modelID: String = ModelCatalog.modelID
 
     /// Convenience read path for the endpoint matching the current
-    /// `modelDownloadSource` (`AT-093`).
+    /// `modelDownloadSource`.
     public var modelDownloadEndpoint: String { modelDownloadSource.endpoint }
 
     /// Thread-safe mirror of `historyEnabled`, kept in sync via `didSet`
     /// above. `HistoryStore` is a plain `actor` (not `@MainActor`), so its
     /// `historyEnabled: @Sendable () -> Bool` gate can't read the
-    /// `@MainActor`-isolated `@Published` property directly (`L-008`) —
+    /// `@MainActor`-isolated `@Published` property directly —
     /// this lock-protected box is the live, cross-isolation-safe read path
     /// `App.swift` hands it instead of a value captured once at launch.
     private let historyEnabledMirror = LockedBool(true)
 
     /// `@Sendable`, callable from any isolation domain (e.g. `HistoryStore`'s
-    /// actor) — always reflects the *current* `historyEnabled` (`L-008`).
+    /// actor) — always reflects the *current* `historyEnabled`.
     public nonisolated var isHistoryEnabledNow: @Sendable () -> Bool {
         let mirror = historyEnabledMirror
         return { mirror.value }
@@ -154,7 +154,7 @@ public final class AppSettings: ObservableObject {
         self.loginItemRegistry = loginItemRegistry
         self.hotkey = Self.loadHotkey(defaults) ?? .default
         self.recordingMode = RecordingMode(rawValue: defaults.string(forKey: Keys.recordingMode) ?? "") ?? .toggle
-        // `L-010`: keep the model resident by default. Unloading it after an
+        // keep the model resident by default. Unloading it after an
         // idle timeout made every later dictation pay a reload (and, on the
         // first load after an app update, the multi-minute Core ML compile),
         // which reads as "the app is stuck". Users who want the ~600 MB back
@@ -174,7 +174,7 @@ public final class AppSettings: ObservableObject {
             defaults.set(language.rawValue, forKey: Keys.languageMode)
             defaults.set(Self.currentVersion, forKey: Keys.settingsVersion)
         }
-        // `L-020`: never read from `UserDefaults` — a clean machine has no
+        // never read from `UserDefaults` — a clean machine has no
         // registration, so the system status (`.notRegistered`) already
         // gives the documented "выключено" default without a stored flag
         // that could drift from it.
@@ -232,16 +232,16 @@ public final class AppSettings: ObservableObject {
         return try? JSONDecoder().decode(HotkeyShortcut.self, from: data)
     }
 
-    // MARK: - Launch at login (L-020)
+    // MARK: - Launch at login
 
     /// Called from `launchAtLogin`'s `didSet` when the user actually flips
     /// the switch (never for a mere system-status refresh). The blocking
-    /// `SMAppService` call runs off the main actor (`INV-009`), and either
+    /// `SMAppService` call runs off the main actor, and either
     /// way it finishes, the published value is resynced from whatever the
     /// system reports afterwards — on success that just confirms the
     /// requested state; on failure or a mismatched result it snaps the
     /// switch back to reality within the same interaction instead of
-    /// leaving it wherever the user left it (`L-020`).
+    /// leaving it wherever the user left it.
     private func requestLoginItemChange(enable: Bool) {
         let registry = loginItemRegistry
         loginItemRequestTask = Task.detached(priority: .userInitiated) { [weak self] in
@@ -285,7 +285,7 @@ public final class AppSettings: ObservableObject {
         isApplyingSystemLoginItemStatus = false
     }
 
-    /// `L-020`: the system is the single source of truth for this switch's
+    /// the system is the single source of truth for this switch's
     /// position. `SettingsView` calls this whenever its "Основное" tab
     /// becomes visible so a change made outside the app (System Settings →
     /// Login Items) is reflected without a restart.

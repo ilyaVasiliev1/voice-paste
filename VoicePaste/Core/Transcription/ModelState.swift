@@ -1,6 +1,6 @@
 import Foundation
 
-/// `API-local-model` result type (`INV-004`, `L-010`, `L-011`).
+/// `API-local-model` result type.
 public enum ModelState: Equatable, Sendable {
     case notPrepared
     /// A real network download of the ~626 MB model is in flight.
@@ -10,7 +10,7 @@ public enum ModelState: Equatable, Sendable {
     /// `.downloading`: nothing is being fetched, it takes ~1 s once compiled,
     /// and the app stays `ready` throughout — labelling this "Загрузка
     /// модели…" made a routine warm-up look like a 626 MB download and
-    /// knocked the app out of its ready state for no reason (`L-010`).
+    /// knocked the app out of its ready state for no reason.
     case preparing
     case verifying
     case ready
@@ -28,7 +28,7 @@ public enum ModelState: Equatable, Sendable {
     }
 }
 
-/// Byte-level detail behind `.downloading` (`AT-086`, `L-010`, `UI-002`).
+/// Byte-level detail behind `.downloading`.
 ///
 /// `completedBytes`/`totalBytes` are *derived*, not read from the loader's
 /// own counters: WhisperKit's multi-file download reports progress in file
@@ -72,7 +72,7 @@ public enum ModelError: Error, Equatable, Sendable {
     case insufficientStorage(requiredBytes: Int64, availableBytes: Int64)
 }
 
-/// v1 ships exactly one open WhisperKit model (`INV-004`).
+/// v1 ships exactly one open WhisperKit model.
 /// Immutable catalog data is read by the background model loader and must not
 /// force that loader back onto the SwiftUI main actor.
 nonisolated public enum ModelCatalog {
@@ -100,7 +100,7 @@ nonisolated public enum ModelCatalog {
     /// ever receives an HTTPS endpoint.
     public static let offlineEndpoint = "voicepaste-offline://local"
 
-    /// Direct GitHub-Release download for the `.github` source (`L-010`). Used
+    /// Direct GitHub-Release download for the `.github` source. Used
     /// from mainland China where both HuggingFace hosts are unreachable but
     /// GitHub is. The model is an open, static artifact (Whisper, OpenAI)
     /// re-hosted on the project's own release, so this is a plain HTTPS `.zip`
@@ -125,8 +125,8 @@ nonisolated public enum ModelCatalog {
     public static let tokenizerRepoPath = "models/openai/whisper-large-v3"
 }
 
-/// User-selectable Hugging Face host for model/tokenizer/config downloads
-/// (`AT-093`, `L-010`). Persisted in `DM-001` via `AppSettings.modelDownloadSource`;
+/// User-selectable Hugging Face host for model/tokenizer/config downloads.
+/// Persisted in `DM-001` via `AppSettings.modelDownloadSource`;
 /// applies to the *next* download only — an already-verified local model
 /// (`ModelState.unloaded`/`.ready`) is never re-fetched on a source change.
 public enum ModelDownloadSource: String, CaseIterable, Sendable {

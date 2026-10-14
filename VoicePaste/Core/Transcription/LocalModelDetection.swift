@@ -1,7 +1,7 @@
 import Foundation
 
 /// Single shared criterion for "is a verified WhisperKit model already on
-/// disk" (`L-001`/`AT-004`), used by both `ModelManager` (startup readiness
+/// disk", used by both `ModelManager` (startup readiness
 /// check) and `WhisperKitTranscriber` (actual load path) so the two can never
 /// drift apart — a readiness state that disagrees with what WhisperKit
 /// itself would actually load is exactly the `AT-004` regression this type

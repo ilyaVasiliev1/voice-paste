@@ -1,7 +1,7 @@
 import Foundation
 import ServiceManagement
 
-/// Abstraction over `SMAppService.mainApp` (`L-020`) so `AppSettings` never
+/// Abstraction over `SMAppService.mainApp` so `AppSettings` never
 /// hard-codes the real system registry. Tests substitute a fake conforming
 /// to this protocol instead of ever touching the actual Login Items
 /// registry — `SMAppService.mainApp.register()`/`unregister()` are real
@@ -9,7 +9,7 @@ import ServiceManagement
 /// `nonisolated` throughout: the project defaults undeclared isolation to
 /// `@MainActor` (`SWIFT_DEFAULT_ACTOR_ISOLATION`), but `register()`/
 /// `unregister()` are blocking system/XPC round-trips that `AppSettings`
-/// deliberately calls off the main actor (`INV-009`) — the protocol must not
+/// deliberately calls off the main actor — the protocol must not
 /// force them back onto it.
 public protocol LoginItemRegistering: Sendable {
     /// The system's own answer for whether VoicePaste is registered — the
@@ -26,7 +26,7 @@ public protocol LoginItemRegistering: Sendable {
 
 /// The real system registry — a thin pass-through to `SMAppService.mainApp`.
 /// Both calls are synchronous system/XPC round-trips, so callers must invoke
-/// them off the main actor (`INV-009`); this type itself has no opinion on
+/// them off the main actor; this type itself has no opinion on
 /// which queue it runs on.
 public struct SystemLoginItemRegistry: LoginItemRegistering {
     public init() {}

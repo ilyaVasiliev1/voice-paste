@@ -2,7 +2,7 @@ import XCTest
 @testable import VoicePaste
 
 /// Gate 2 integration test for `AudioDecoder` against a **real** Telegram
-/// OGG/Opus voice-message fixture (`L-009`, `DEP-008`, `US-007`) — no
+/// OGG/Opus voice-message fixture — no
 /// network, no third-party OGG/Opus library, purely `AVAudioFile` +
 /// `AVAudioConverter`.
 ///
@@ -114,7 +114,7 @@ final class AudioDecoderOggTests: XCTestCase {
         XCTAssertFalse(request.samples.isEmpty)
     }
 
-    // MARK: - EC-009/EC-010: decoder-level error handling (no history, honest error)
+    // MARK: - decoder-level error handling (no history, honest error)
 
     func test_unsupportedExtension_throwsUnsupportedFormat() async throws {
         let decoder = AudioDecoder()
@@ -130,7 +130,7 @@ final class AudioDecoderOggTests: XCTestCase {
         }
     }
 
-    /// `EC-010`: "при повреждённом файле показать точную диагностируемую
+    /// "при повреждённом файле показать точную диагностируемую
     /// ошибку" — a corrupted `.ogg` must fail with `decodeFailed`, not crash
     /// and not silently produce empty/garbage samples.
     func test_corruptedOggFile_throwsDecodeFailed_notCrash() async throws {

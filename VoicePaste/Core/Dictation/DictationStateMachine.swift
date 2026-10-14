@@ -20,20 +20,20 @@ public enum DictationPhase: Equatable, Sendable {
 /// stays a pure, synchronous, easily unit-testable value type (`_tests.md`:
 /// "Unit-тесты: state machine диктовки").
 public enum DictationEffect: Equatable, Sendable {
-    /// Start `AVAudioEngine` capture and show the HUD (`L-004`).
+    /// Start `AVAudioEngine` capture and show the HUD.
     case startCapture
-    /// Stop capture and hand the buffer to the transcriber (`L-005`).
+    /// Stop capture and hand the buffer to the transcriber.
     case stopCaptureAndProcess
-    /// `UI-003` HUD "Отменить" button: stop capture and discard the buffer
+    /// HUD "Отменить" button: stop capture and discard the buffer
     /// entirely — no transcription, no history row.
     case cancelCapture
-    /// `EC-003`: a hotkey press arrived while `processing`; ignore it and
+    /// a hotkey press arrived while `processing`; ignore it and
     /// surface "Расшифровка уже идёт" without touching the current job.
     case alreadyProcessing
     case none
 }
 
-/// Pure toggle/hold dictation state machine (`L-002`, `L-003`, `INV-005`).
+/// Pure toggle/hold dictation state machine.
 /// Contains no I/O; `DictationController` drives real audio/transcription
 /// side effects from the `DictationEffect` values this type returns.
 public struct DictationStateMachine: Equatable, Sendable {
@@ -101,7 +101,7 @@ public struct DictationStateMachine: Equatable, Sendable {
         pressedAt = nil
     }
 
-    /// `UI-003` HUD "Готово"/✓ button — mode-independent equivalent of the
+    /// HUD "Готово"/✓ button — mode-independent equivalent of the
     /// hotkey's stop trigger. Deliberately separate from
     /// `handleHotkeyDown()`: in `.hold` mode a second key-*down* while
     /// already `.recording` is a harmless key-repeat no-op (the session
@@ -114,7 +114,7 @@ public struct DictationStateMachine: Equatable, Sendable {
         return .stopCaptureAndProcess
     }
 
-    /// `UI-003` HUD "Отменить"/✕ button — discards the in-flight recording
+    /// HUD "Отменить"/✕ button — discards the in-flight recording
     /// entirely and returns straight to `.idle`, skipping `.processing`
     /// (there is nothing to transcribe: the caller must drop the captured
     /// audio without handing it to the transcriber or saving history).

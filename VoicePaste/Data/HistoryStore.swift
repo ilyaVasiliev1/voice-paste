@@ -1,20 +1,20 @@
 import Foundation
 import GRDB
 
-/// Concrete `HistoryStoring` over a GRDB `DatabasePool` (`L-008`).
+/// Concrete `HistoryStoring` over a GRDB `DatabasePool`.
 ///
 /// Every method runs the underlying SQLite access through `DatabasePool`'s
 /// async `read`/`write` (never the synchronous variants), so the actor never
 /// blocks its executor on file I/O: reads happen on GRDB's concurrent reader
 /// pool (WAL), and writes are serialized both by this `actor` and by
-/// `DatabasePool`'s single writer connection (`L-008`).
+/// `DatabasePool`'s single writer connection.
 ///
 /// `DatabasePool.write` wraps every call in a SQLite transaction (see
 /// `DatabaseWriter.write` docs): combined with the `transcripts_fts`
 /// synchronization triggers registered in `Migrations.swift`, a single
 /// `write` block that touches `transcripts` therefore also updates
 /// `transcripts_fts` atomically — `save`/`edit`/`delete`/`clearAll` never
-/// leave a row without its FTS counterpart (`AT-031`).
+/// leave a row without its FTS counterpart.
 public actor HistoryStore: HistoryStoring {
     // `nonisolated`: `changes()` (below) must read this from outside the
     // actor's isolation, without an `await` hop, to hand it straight to
@@ -170,15 +170,15 @@ public actor HistoryStore: HistoryStoring {
         }
     }
 
-    // MARK: - Writing (L-008: one transaction per operation)
+    // MARK: - Writing
 
     public func save(_ transcript: Transcript) async throws {
         guard historyEnabled() else { throw HistoryError.historyDisabled }
         try await dbPool.write { db in
             // Insert alone is enough: the `transcripts_fts` synchronization
-            // trigger (DM-003) updates the FTS index in the same
+            // trigger updates the FTS index in the same
             // transaction, and `preview` already arrived precomputed on
-            // `transcript` (DM-002).
+            // `transcript`.
             try transcript.insert(db)
         }
     }
@@ -192,13 +192,13 @@ public actor HistoryStore: HistoryStoring {
                     SET text = ?, preview = ?, updatedAt = ?, wordCount = ?
                     WHERE id = ?
                     """,
-                // `DM-006`: recomputed from the edited `text` — this path
+                // recomputed from the edited `text` — this path
                 // never routes through `Transcript.encode(to:)`, so
                 // `wordCount` must be kept in sync here explicitly.
                 arguments: [text, preview, updatedAt, WordCounting.count(in: text), id.uuidString]
             )
             guard db.changesCount > 0 else { throw HistoryError.notFound }
-            // `rawText` is intentionally untouched (`L-008`/`DM-002`); the
+            // `rawText` is intentionally untouched; the
             // FTS row is refreshed by the same synchronization trigger that
             // fires on this `UPDATE`.
         }
@@ -305,7 +305,7 @@ public actor HistoryStore: HistoryStoring {
         )
     }
 
-    // MARK: - Vocabulary (DM-004)
+    // MARK: - Vocabulary
 
     public func fetchVocabulary() async throws -> [VocabularyEntry] {
         try await dbPool.read { db in

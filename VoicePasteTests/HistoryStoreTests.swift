@@ -68,7 +68,7 @@ final class HistoryStoreTests: XCTestCase {
         )
     }
 
-    // MARK: - AT-017: save, "restart" (reopen the same file), still there
+    // MARK: - save, "restart" (reopen the same file), still there
 
     func test_AT017_savedTranscript_survivesReopeningTheDatabase() async throws {
         let id = UUID()
@@ -92,7 +92,7 @@ final class HistoryStoreTests: XCTestCase {
         XCTAssertEqual(page.items[0].id, id)
     }
 
-    /// `L-008`: history disabled -> nothing gets saved.
+    /// history disabled -> nothing gets saved.
     func test_historyDisabled_saveThrows_andNoRowIsCreated() async throws {
         let pool = try makePool()
         let store = HistoryStore(dbPool: pool, historyEnabled: { false })
@@ -110,7 +110,7 @@ final class HistoryStoreTests: XCTestCase {
         XCTAssertTrue(page.items.isEmpty)
     }
 
-    // MARK: - AT-018: edit preserves rawText, updates text/preview/updatedAt
+    // MARK: - edit preserves rawText, updates text/preview/updatedAt
 
     func test_AT018_edit_changesTextAndPreview_butPreservesRawText() async throws {
         let pool = try makePool()
@@ -139,7 +139,7 @@ final class HistoryStoreTests: XCTestCase {
         }
     }
 
-    // MARK: - AT-019/AT-030: FTS5 search over text and sourceFileName
+    // MARK: - FTS5 search over text and sourceFileName
 
     func test_AT019_search_findsByTextPhrase() async throws {
         let pool = try makePool()
@@ -184,7 +184,7 @@ final class HistoryStoreTests: XCTestCase {
         }
     }
 
-    // MARK: - AT-020: delete / clearAll
+    // MARK: - delete / clearAll
 
     func test_AT020_delete_removesOnlyThatRow() async throws {
         let pool = try makePool()
@@ -235,7 +235,7 @@ final class HistoryStoreTests: XCTestCase {
         XCTAssertTrue(searchAfterClear.items.isEmpty)
     }
 
-    // MARK: - AT-029/AT-034: 10k-row scale, keyset pagination, page size 100
+    // MARK: - 10k-row scale, keyset pagination, page size 100
 
     func test_AT029_pagination_returnsExactly100PerPage_newestFirst_neverReadingFullText() async throws {
         let pool = try makePool()
@@ -333,7 +333,7 @@ final class HistoryStoreTests: XCTestCase {
         XCTAssertNil(page.nextCursor)
     }
 
-    // MARK: - AT-031: no row without preview/FTS index (transactional save)
+    // MARK: - no row without preview/FTS index (transactional save)
 
     func test_AT031_everySavedRow_hasNonEmptyPreview_andIsFindableViaFTS() async throws {
         let pool = try makePool()
@@ -348,7 +348,7 @@ final class HistoryStoreTests: XCTestCase {
         XCTAssertEqual(found.items.map(\.id), [id])
     }
 
-    // MARK: - AT-032: migration safety (gap noted — see final report)
+    // MARK: - migration safety (gap noted — see final report)
 
     /// There is currently exactly one migration (`v1_initial_schema`); no
     /// fixture of a *previous* supported schema exists yet to actually
@@ -374,7 +374,7 @@ final class HistoryStoreTests: XCTestCase {
         XCTAssertEqual(page.items[0].preview, "переживает миграцию")
     }
 
-    // MARK: - AT-038: durable FIFO import queue
+    // MARK: - durable FIFO import queue
 
     func test_AT038_importQueuePersistsFIFO_andSafelyRequeuesInterruptedWork() async throws {
         let queue = ImportQueueStore(dbPool: try makePool())
@@ -398,7 +398,7 @@ final class HistoryStoreTests: XCTestCase {
         XCTAssertEqual(restored[1].failureKey, "import.error.decodeFailed")
     }
 
-    // MARK: - AT-036: usage dashboard aggregation (DM-006/UI-007)
+    // MARK: - usage dashboard aggregation
 
     func test_AT036_fetchUsageStats_groupsWordsByDay_andSummaryTotalsMatch() async throws {
         let pool = try makePool()
@@ -468,7 +468,7 @@ final class HistoryStoreTests: XCTestCase {
         XCTAssertEqual(stats.activeDayCount, 0)
     }
 
-    // MARK: - AT-037: wordCount migration + backfill (DM-006)
+    // MARK: - wordCount migration + backfill
 
     func test_AT037_migration_addsWordCountColumn_andBackfillsExistingRows() async throws {
         // Deliberately not `makePool()` (which runs the *full* migrator):
@@ -533,7 +533,7 @@ final class HistoryStoreTests: XCTestCase {
         XCTAssertEqual(stats.totalTranscriptCount, 2)
     }
 
-    // MARK: - Vocabulary (DM-004, feeds AT-016 at the persistence layer)
+    // MARK: - Vocabulary
 
     func test_vocabulary_upsertFetchDelete_roundTrips() async throws {
         let pool = try makePool()

@@ -11,7 +11,7 @@ public enum ReadinessState: Equatable, Sendable {
     case error(ReadinessError)
 
     /// Short, localizable-key reason shown as the disabled explanation in the
-    /// menu (`UI-001`) and in onboarding (`UI-002`). Actual user-facing copy
+    /// menu and in onboarding. Actual user-facing copy
     /// lives in `Localizable.strings`; this only picks the key.
     public var statusLocalizationKey: String {
         switch self {

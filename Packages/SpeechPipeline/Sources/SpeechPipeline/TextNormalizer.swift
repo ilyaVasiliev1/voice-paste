@@ -13,18 +13,18 @@ public struct NormalizationChange: Equatable, Sendable {
     public let kind: Kind
 }
 
-/// Abstraction over `NSSpellChecker` (`DEP-007`) so `TextNormalizer` is
+/// Abstraction over `NSSpellChecker` so `TextNormalizer` is
 /// pure/testable without touching AppKit in unit tests.
 nonisolated public protocol SpellChecking: Sendable {
     /// Ranges of `text` that look misspelled for `language`, or `nil` if
-    /// spellchecking is unavailable for that language (`EC-011`).
+    /// spellchecking is unavailable for that language.
     func misspelledRanges(in text: String, language: String) -> [Range<String.Index>]?
     /// Candidate replacements for one misspelled range. Autocorrect only
-    /// applies when exactly one candidate comes back (`EC-012`, `AT-014`).
+    /// applies when exactly one candidate comes back.
     func guesses(forWordRange range: Range<String.Index>, in text: String, language: String) -> [String]
 }
 
-/// Pure, testable pipeline (`L-006`, `INV-007`): `rawText` → whitespace/
+/// Pure, testable pipeline: `rawText` → whitespace/
 /// typography normalization → exact active vocabulary rules → safe
 /// `NSSpellChecker` corrections → `text`.
 nonisolated public struct TextNormalizer: Sendable {
@@ -96,7 +96,7 @@ nonisolated public struct TextNormalizer: Sendable {
     }
 
     /// Applies only exact, whole-word, case-insensitive active vocabulary
-    /// rules (`US-005`, `AT-016`); rules with an empty/nil `replacement`
+    /// rules; rules with an empty/nil `replacement`
     /// mean "protect this word", not "replace it", so they never fire here.
     nonisolated private func applyVocabulary(
         text: String,
@@ -122,8 +122,8 @@ nonisolated public struct TextNormalizer: Sendable {
     }
 
     /// Applies only unambiguous single-suggestion corrections, skipping
-    /// URLs/numbers/abbreviations (`EC-012`) and skipping entirely when the
-    /// language has no spellchecker installed (`EC-011`).
+    /// URLs/numbers/abbreviations and skipping entirely when the
+    /// language has no spellchecker installed.
     nonisolated private func applySpellcheck(
         text: String,
         language: TranscriptionLanguage,
@@ -171,7 +171,7 @@ nonisolated public struct TextNormalizer: Sendable {
         }
     }
 
-    /// `EC-012`: never silently touch URLs, numbers, or all-caps abbreviations.
+    /// never silently touch URLs, numbers, or all-caps abbreviations.
     nonisolated private func isSafeToAutocorrect(_ word: String) -> Bool {
         let lowered = word.lowercased()
         if lowered.hasPrefix("http") || word.contains("://") || lowered.hasPrefix("www.") { return false }

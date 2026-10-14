@@ -41,7 +41,7 @@ nonisolated public struct TranscriptionRequest: Sendable {
 }
 
 /// Recognition output: capitalization/punctuation come from the model
-/// itself (`L-005`), before any normalization step runs.
+/// itself, before any normalization step runs.
 nonisolated public struct TranscriptionResult: Sendable, Equatable {
     public var rawText: String
     public var detectedLanguage: String?

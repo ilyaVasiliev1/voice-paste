@@ -58,7 +58,7 @@ public enum TrailingHallucinationFilter {
             }
         }
 
-        // WHY: склеенный сегмент по времени не разделить; фраза целиком сохраняется — её могли сказать (AT-053).
+        // WHY: склеенный сегмент по времени не разделить; фраза целиком сохраняется — её могли сказать.
         return canonical(text) == "продолжение следует"
             ? text
             : removingKnownTerminalFiller(text)

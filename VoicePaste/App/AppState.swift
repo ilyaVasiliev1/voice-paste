@@ -28,7 +28,7 @@ public final class AppState: ObservableObject {
     public let persistenceFailureMessage: String?
 
     @Published public private(set) var dictationPhase: DictationPhase = .idle
-    /// `UI-003` "Выбрать микрофон": set right before opening the Settings
+    /// "Выбрать микрофон": set right before opening the Settings
     /// window so it lands on `.permissions` instead of whichever tab was
     /// last shown; `SettingsView` reads and clears it.
     @Published public var requestedSettingsTab: SettingsTab?
@@ -83,12 +83,12 @@ public final class AppState: ObservableObject {
     @Published public internal(set) var continuingLectureID: UUID?
     var lectureTimerTask: Task<Void, Never>?
 
-    // MARK: - HUD import drop zone (UI-006, second spec-required surface)
+    // MARK: - HUD import drop zone
 
     /// Whether the HUD is currently showing the import drop
     /// zone/progress/result surface rather than dictation content — gates
     /// `importJobCancellable`'s effect and `dismissHUD()`'s cancel-on-close
-    /// behavior (`EC-013`).
+    /// behavior.
     private var isImportHUDActive = false
     /// Live `DM-005` progress while `isImportHUDActive`; only reflects the
     /// in-flight phases (`.queued`/`.decoding`/`.transcribing`) — completion
@@ -185,7 +185,7 @@ public final class AppState: ObservableObject {
         // status, model download progress) don't automatically propagate to
         // *this* object's `objectWillChange`, so without forwarding, neither
         // the menu-bar icon nor onboarding's status labels/progress bar would
-        // ever redraw after the initial render (`L-001`, `UI-002`).
+        // ever redraw after the initial render.
         self.readiness.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &forwardingCancellables)
@@ -228,7 +228,7 @@ public final class AppState: ObservableObject {
 
         if let realHUD { connectHUDActions(of: realHUD) }
 
-        // `L-001`: the user grants mic/Accessibility access in System
+        // the user grants mic/Accessibility access in System
         // Settings, a *different* app, then switches back to us — that's a
         // normal app activation, not a workspace-wide app-switch. Without
         // this, `readiness.state` (and the menu-bar icon color/onboarding
@@ -245,7 +245,7 @@ public final class AppState: ObservableObject {
         }
     }
 
-    /// `UI-003`: the HUD's mouse controls call back into the same
+    /// the HUD's mouse controls call back into the same
     /// dictation logic the hotkey/menu drive — never a separate path.
     private func connectHUDActions(of hud: HUDWindowController) {
         hud.configureActions(
@@ -273,7 +273,7 @@ public final class AppState: ObservableObject {
     }
 
     /// Switch between normal Dock presence and a menu-bar-only resident app
-    /// without restarting. `INV-015`/`AT-089`: while the app isn't `ready`
+    /// without restarting. while the app isn't `ready`
     /// yet, it is forced `.regular` (visible in the Dock) regardless of the
     /// saved `showInDock` preference — this is the single call site that
     /// ever mutates `activationPolicy`; nothing else in the app calls
@@ -298,16 +298,16 @@ public final class AppState: ObservableObject {
         applyDockVisibility()
     }
 
-    /// `L-001`: the single place that recomputes `readiness.state` also
-    /// re-applies the Dock policy that state gates (`AT-089`) and the
-    /// registered-hotkey readiness gate (`AT-090`) — callers never need to
+    /// the single place that recomputes `readiness.state` also
+    /// re-applies the Dock policy that state gates and the
+    /// registered-hotkey readiness gate — callers never need to
     /// remember to do either separately, so a permission-granted /
     /// model-ready transition takes effect without a restart.
     public func refreshReadiness() {
         readiness.refresh()
         let isReady = readiness.state == .ready
         hotkeyManager?.setSystemSwallowEnabled(isReady)
-        // `L-010`/`AT-099`: the verified on-disk model should become resident
+        // the verified on-disk model should become resident
         // as soon as onboarding/permissions make the app usable, not only
         // after the user has already finished their first recording.
         // This one-shot process guard also preserves an explicit later unload.
@@ -322,7 +322,7 @@ public final class AppState: ObservableObject {
         applyDockVisibility()
     }
 
-    // MARK: - Menu bar icon (UI-001)
+    // MARK: - Menu bar icon
 
     public var menuBarSymbolName: String {
         switch dictationPhase {
@@ -347,10 +347,10 @@ public final class AppState: ObservableObject {
 
     public func handleHotkeyUp() { dictation.handleHotkeyUp() }
 
-    /// `UI-003` HUD "Готово"/✓ button.
+    /// HUD "Готово"/✓ button.
     public func finishDictationFromHUD() { dictation.finishFromHUD() }
 
-    /// `UI-003` HUD "Отменить"/✕ button.
+    /// HUD "Отменить"/✕ button.
     public func cancelDictationFromHUD() { dictation.cancelFromHUD() }
 
     public func cancelDictationWithEscape() { dictation.cancelWithEscape() }
@@ -366,14 +366,14 @@ public final class AppState: ObservableObject {
 
     public func cancelPausedDictationFromHUD() { dictation.cancelPausedFromHUD() }
 
-    /// `UI-003` error-state "Повторить" button: starts a fresh session the
+    /// error-state "Повторить" button: starts a fresh session the
     /// same way a hotkey press from `.idle` would (readiness is re-checked
     /// there, same as any other hotkey-down).
     public func retryDictationFromHUD() {
         handleHotkeyDown()
     }
 
-    /// `UI-003` error-state "Выбрать микрофон" button: opens this app's own
+    /// error-state "Выбрать микрофон" button: opens this app's own
     /// Settings window to the Разрешения tab. Unlike the HUD's own buttons,
     /// this deliberately *does* activate VoicePaste and steal focus — by
     /// this point the dictation session already ended (successfully or not),
@@ -383,7 +383,7 @@ public final class AppState: ObservableObject {
         openSettings()
     }
 
-    /// `UI-001`/`AT-087`/`AT-091`: the menu bar's "Настройки…" item must
+    /// the menu bar's "Настройки…" item must
     /// reach the front and gain focus even in menu-bar-only (`.accessory`)
     /// mode, and it must open the *Settings* window specifically — never the
     /// main window (history), which `NSApp.activate` alone can otherwise
@@ -400,9 +400,9 @@ public final class AppState: ObservableObject {
         WindowRouter.shared.openSettings()
     }
 
-    /// `UI-003` error-state "×" close button: dismisses the HUD without
+    /// error-state "×" close button: dismisses the HUD without
     /// waiting out its auto-dismiss timer. Also the HUD import surface's
-    /// close button (`UI-006`): if a file is still importing when the user
+    /// close button: if a file is still importing when the user
     /// closes it, the job is cancelled outright so no work keeps running
     /// against a panel nobody can see anymore (`EC-013` — "отмена
     /// освобождает ресурсы").
@@ -432,7 +432,7 @@ public final class AppState: ObservableObject {
         openMainOrOnboarding(section: .importQueue)
     }
 
-    /// `INV-015`/`AT-088`/`AT-089` single router: every entry point that
+    /// single router: every entry point that
     /// wants the app's one permanent window — the menu bar's "Открыть
     /// VoicePaste"/"Статистика", the HUD's "Открыть в истории"/import-queue
     /// hand-offs, and the Dock-icon reopen gesture (`AppDelegate`) — funnels
@@ -451,9 +451,9 @@ public final class AppState: ObservableObject {
         WindowRouter.shared.open("main")
     }
 
-    // MARK: - HUD import (UI-006)
+    // MARK: - HUD import
 
-    /// Menu bar "Транскрибировать файл…" (`UI-001`): raises the HUD as a
+    /// Menu bar "Транскрибировать файл…": raises the HUD as a
     /// drop target waiting for a file. Any other in-progress HUD content
     /// (recording, a status plaque) is replaced, same as any other
     /// `presentHUD` call.
@@ -555,9 +555,9 @@ public final class AppState: ObservableObject {
         try await dictation.deleteEvaluationAudio()
     }
 
-    // MARK: - Lifecycle (EC-014, L-010/L-011)
+    // MARK: - Lifecycle
 
-    /// App quit: releases the model unconditionally (`L-010`).
+    /// App quit: releases the model unconditionally.
     public func prepareForQuit() {
         _ = audioCapture.stop()
         hotkeyManager?.stop()

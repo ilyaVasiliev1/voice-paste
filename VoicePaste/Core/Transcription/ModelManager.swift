@@ -34,7 +34,7 @@ public final class ModelManager: ObservableObject {
   /// Identifies the current load so a late-finishing older one cannot clear
   /// a newer load's slot (`finishLoad(generation:)`).
   private var loadGeneration: UInt64 = 0
-  /// `L-010`: the model is kept resident for instant dictation and given
+  /// the model is kept resident for instant dictation and given
   /// back when *the system* says it needs the memory — not on a fixed timer,
   /// which used to make every later dictation pay a reload for no reason.
   private var memoryPressureSource: DispatchSourceMemoryPressure?
@@ -47,7 +47,7 @@ public final class ModelManager: ObservableObject {
   private let makeTranscriber:
     (URL, String, @escaping @Sendable (Double) -> Void) async throws -> Transcribing
   /// Reads the live download-source setting at the moment a download
-  /// starts (`AT-093`, `L-010`) — a change mid-session takes effect on the
+  /// starts — a change mid-session takes effect on the
   /// *next* `load()`, not retroactively. Defaults to the mirror when no
   /// provider is supplied.
   private let downloadEndpointProvider: @MainActor () -> String
@@ -84,7 +84,7 @@ public final class ModelManager: ObservableObject {
     self.allowsNetworkDownloads = allowsNetworkDownloads
     self.unloadNanosecondsPerMinute = unloadNanosecondsPerMinute
     startMemoryPressureMonitoring()
-    // `L-001`/`AT-004`: a previous run may have already downloaded and
+    // a previous run may have already downloaded and
     // compiled the model into `modelDirectory`. Detect it up front so a
     // restart doesn't ask for a 626 MB re-download — `.unloaded` means
     // "verified on disk, not resident in memory yet", exactly the state
@@ -107,7 +107,7 @@ public final class ModelManager: ObservableObject {
   /// comment). Delegates to `LocalModelDetection`, the single shared
   /// criterion also used by `WhisperKitTranscriber`'s actual load path —
   /// so a positive result here is guaranteed to mean `ensureLoaded()` will
-  /// find everything it needs without re-downloading (`AT-004`), even
+  /// find everything it needs without re-downloading, even
   /// though WhisperKit nests the model a few levels below `modelDirectory`
   /// rather than placing it flatly at the root.
   nonisolated private static func hasVerifiedLocalModel(in directory: URL) -> Bool {
@@ -143,7 +143,7 @@ public final class ModelManager: ObservableObject {
     await waitForInitialModelDiscovery()
   }
 
-  /// `L-001`/`UI-002`: the one place at launch that must *not* race the
+  /// the one place at launch that must *not* race the
   /// startup disk check. Readiness starts at `.notPrepared` (= "модель не
   /// скачана") until the background walk reports back; deciding whether to
   /// show onboarding before that lands makes a fully-configured app flash
@@ -158,7 +158,7 @@ public final class ModelManager: ObservableObject {
     return false
   }
 
-  /// `EC-007`: refuses to start a download when free space is insufficient.
+  /// refuses to start a download when free space is insufficient.
   public func checkStorage() -> ModelError? {
     guard
       let values = try? modelDirectory.resourceValues(forKeys: [
@@ -176,7 +176,7 @@ public final class ModelManager: ObservableObject {
   }
 
   /// Loads/compiles the model if needed and cancels any pending unload timer.
-  /// Called before every dictation/import transcription (`L-010`).
+  /// Called before every dictation/import transcription.
   ///
   /// This operation is deliberately network-ineligible. A subtly corrupt
   /// local model is removed and surfaced to onboarding for an explicit
@@ -199,7 +199,7 @@ public final class ModelManager: ObservableObject {
     if let transcriber, isReady {
       return transcriber
     }
-    // Coalesce concurrent loads (`L-010`): the launch pre-warm and a user
+    // Coalesce concurrent loads: the launch pre-warm and a user
     // dictation that starts while it's still running must share ONE load —
     // otherwise the multi-minute Core ML compile would run twice.
     if let loadTask {
@@ -243,7 +243,7 @@ public final class ModelManager: ObservableObject {
   /// pay the one-time Core ML compile (observed ~45 s on `large-v3`).
   /// Fire-and-forget and idempotent: `ensureLoaded()` coalesces, so a
   /// dictation started mid-pre-warm joins the same load instead of queueing
-  /// a second one. Called once the app reaches `ready` (`L-001`).
+  /// a second one. Called once the app reaches `ready`.
   public func prewarm() {
     guard transcriber == nil, loadTask == nil else { return }
     // Only when the model is already verified on disk. `.notPrepared` must
@@ -288,7 +288,7 @@ public final class ModelManager: ObservableObject {
         throw error
       }
 
-      // `INV-004`: the local model is deleted ONLY when the error proves
+      // the local model is deleted ONLY when the error proves
       // the files themselves are unreadable, and only if it is still
       // there to be deleted.
       //
@@ -465,11 +465,11 @@ public final class ModelManager: ObservableObject {
       : ModelCatalog.offlineEndpoint
     let source = allowNetworkInstall ? downloadSourceProvider() : .official
 
-    // `.github` (`L-010`): lay the model + tokenizer down from the project's
+    // `.github`: lay the model + tokenizer down from the project's
     // own GitHub release before handing off to WhisperKit, which then loads
     // straight from disk with no HuggingFace access. Only when nothing valid
     // is on disk yet — an already-verified local model is never re-fetched
-    // on a source change (`AT-093`). This is the path that works from
+    // on a source change. This is the path that works from
     // mainland China, where both HuggingFace hosts are unreachable.
     // Fetch only what's missing. The tokenizer lives in the app's own
     // directory (`tokenizerFolder`), separate from the model — a user who
@@ -523,7 +523,7 @@ public final class ModelManager: ObservableObject {
 
   /// Fetches the model and tokenizer archives from the project's GitHub
   /// release and unpacks them into the exact on-disk layout WhisperKit's
-  /// local-load path expects (`L-010`). Progress is forwarded through the
+  /// local-load path expects. Progress is forwarded through the
   /// same `handleDownloadProgress` pipeline as the HuggingFace path, so the
   /// HUD/onboarding "N из 626 МБ" UI is identical. Throws on cancel/failure;
   /// `GitHubModelDownloader` cleans its own temp files on every exit.
@@ -648,7 +648,7 @@ public final class ModelManager: ObservableObject {
   /// progress callback via a `Task { @MainActor in ... }` hop.
   private var lastLoggedDownloadDecile = -1
 
-  // `AT-086`/`L-010` honest-progress tracking. All timestamps use
+  // honest-progress tracking. All timestamps use
   // `DispatchTime.now().uptimeNanoseconds` — a monotonic clock that never
   // jumps with wall-clock/NTP adjustments — because speed is defined as a
   // derivative of *downloaded bytes* over *elapsed monotonic time*, not
@@ -693,7 +693,7 @@ public final class ModelManager: ObservableObject {
   private var maxPublishedFraction: Double = 0
 
   /// Derives all displayed download progress from the single reliable
-  /// `Progress.fractionCompleted` value (`L-010`, `AT-086`, `UI-002`).
+  /// `Progress.fractionCompleted` value.
   /// WhisperKit's own `completedUnitCount`/`totalUnitCount` count *files*,
   /// not bytes, in a multi-file download — forwarding those raw counters
   /// is what previously produced "0 из 0 МБ" and a jumpy ETA. `fraction`
@@ -710,7 +710,7 @@ public final class ModelManager: ObservableObject {
     // Capped below 100%: the jump to "done" only happens via the
     // `.verifying` transition in `load()`, never here.
     let cappedFraction = min(max(rawFraction, 0), 0.999)
-    // Monotonic (`L-010`): never publish a fraction lower than the
+    // Monotonic: never publish a fraction lower than the
     // highest one already shown this attempt, even if the raw signal
     // jittered downward.
     let fraction = max(cappedFraction, maxPublishedFraction)
@@ -733,7 +733,7 @@ public final class ModelManager: ObservableObject {
     }
     lastByteSample = (completedBytes, now)
 
-    // Throttle screen updates to ≤4 Hz (`AT-086`); always let the very
+    // Throttle screen updates to ≤4 Hz; always let the very
     // first sample through so the step doesn't sit frozen at 0%.
     if let lastUI = lastUIUpdateNanos,
       Double(now - lastUI) / 1_000_000_000 < Self.uiThrottleSeconds
@@ -768,7 +768,7 @@ public final class ModelManager: ObservableObject {
     }
   }
 
-  /// A recording/import started: cancel any pending unload (`L-010`).
+  /// A recording/import started: cancel any pending unload.
   public func beginTask() {
     unloadTask?.cancel()
     unloadTask = nil
@@ -846,14 +846,14 @@ public final class ModelManager: ObservableObject {
     }
   }
 
-  /// Settings "Удалить модель" (`AT-094`, `L-010`): unloads the model from
+  /// Settings "Удалить модель": unloads the model from
   /// memory (if resident), wipes the on-disk `Models` directory, and drops
   /// back to `.notPrepared` so `ReadinessCoordinator` reports `.needsModel`
-  /// (`INV-015`) until the user explicitly re-downloads. Safe to call from
+  /// until the user explicitly re-downloads. Safe to call from
   /// any `state` — including when nothing is loaded/downloaded yet — since
   /// both `unloadTask` cancellation and `removeModelDirectoryContents()`
-  /// are idempotent. Deliberately doesn't touch history/dictionary/settings
-  /// (`L-010`): those live in separate stores this method never reaches.
+  /// are idempotent. Deliberately doesn't touch history/dictionary/settings:
+  /// those live in separate stores this method never reaches.
   public func deleteModel() async {
     unloadTask?.cancel()
     unloadTask = nil

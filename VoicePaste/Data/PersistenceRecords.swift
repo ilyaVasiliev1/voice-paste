@@ -64,7 +64,7 @@ nonisolated extension Transcript: FetchableRecord, PersistableRecord {
         container["preview"] = preview
         container["status"] = status.rawValue
         container["insertionOutcome"] = insertionOutcome.rawValue
-        // `DM-006`: derived from `text` at encode time (not a stored
+        // derived from `text` at encode time (not a stored
         // `Transcript` property) so it can never drift from `text` on any
         // path that goes through `insert`/`update` — `HistoryStore.edit`
         // additionally sets it directly since that path updates `text` via

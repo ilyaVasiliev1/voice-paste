@@ -165,9 +165,9 @@ nonisolated final class AudioTapProcessor: @unchecked Sendable {
 }
 
 /// Captures microphone audio only for the duration of an active dictation
-/// session (`DEP-003`, `L-004`). Output is always resampled to 16 kHz mono
+/// session. Output is always resampled to 16 kHz mono
 /// Float32 — the format `Transcribing` implementations expect, matching the
-/// DEP-008 import decode path.
+/// import decode path.
 @MainActor
 public final class AudioCaptureService {
     public private(set) var isCapturing = false
@@ -243,7 +243,7 @@ public final class AudioCaptureService {
             lastCaptureRMS = 0
         }
 
-        // Belt-and-suspenders (`EC-004`): `ReadinessCoordinator` already
+        // Belt-and-suspenders: `ReadinessCoordinator` already
         // gates the record command on permission, but re-check here so a
         // revoked/never-granted permission fails cleanly with
         // `.microphoneUnavailable` instead of reaching `AVAudioEngine` and

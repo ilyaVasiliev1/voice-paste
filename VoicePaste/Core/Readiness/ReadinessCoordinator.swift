@@ -14,7 +14,7 @@ public enum AccessibilityTrust {
     }
 }
 
-/// `API-local-readiness` (`L-001`, `US-001`). Recomputes `ReadinessState`
+/// `API-local-readiness`. Recomputes `ReadinessState`
 /// from live permission/model status; never starts a capture or inference
 /// session by itself.
 @MainActor
@@ -121,7 +121,7 @@ public final class ReadinessCoordinator: ObservableObject {
             isNetworkDownloadInFlight = false
             state = .ready
         case .unloaded:
-            // `US-008`/`INV-011`/`L-010`: unloaded-after-idle-timeout still
+            // unloaded-after-idle-timeout still
             // means the model is verified on disk. `ensureLoaded()` reloads
             // it lazily on the next hotkey press, so the app stays `ready`
             // (not `needsModel`) — only a genuinely never-downloaded model
@@ -165,14 +165,14 @@ public final class ReadinessCoordinator: ObservableObject {
         /// (macOS silently declined to present its consent sheet, typically
         /// because the process was not yet the active app). This is *not* a
         /// denial: System Settings has no entry for the app yet, so sending
-        /// the person there would show an empty "Microphone" list
-        /// (`AT-092`). The caller should explain and let the person retry.
+        /// the person there would show an empty "Microphone" list.
+        /// The caller should explain and let the person retry.
         case notPresented
     }
 
     /// Maps a live `AVAuthorizationStatus` to the UI action to take. Pure and
     /// synchronous so it can be unit-tested without touching TCC or a real
-    /// device (`AT-092`): `requestMicrophoneAccess()` re-reads the status
+    /// device: `requestMicrophoneAccess()` re-reads the status
     /// after the request completes and feeds it through this function rather
     /// than trusting the `granted` bool the completion handler returns,
     /// because a silently-skipped consent sheet also reports `granted ==
@@ -263,7 +263,7 @@ public final class ReadinessCoordinator: ObservableObject {
         try? await Task.sleep(nanoseconds: 100_000_000)
     }
 
-    /// Prompts the Accessibility trust dialog (`EC-002`, `AT-003`).
+    /// Prompts the Accessibility trust dialog.
     ///
     /// Just like microphone TCC, the request must come from an active
     /// application. A menu-bar utility can otherwise be technically

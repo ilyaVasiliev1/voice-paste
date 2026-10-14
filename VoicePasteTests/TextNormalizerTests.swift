@@ -7,7 +7,7 @@ import XCTest
 ///
 /// - `supportedLanguages`: languages this fake "has installed"; any other
 ///   language yields `nil` from `misspelledRanges`, exactly like a real
-///   `NSSpellChecker` missing that language (`EC-011`).
+///   `NSSpellChecker` missing that language.
 /// - `guessesByWord`: exact word -> candidate replacements. A word present in
 ///   this text is reported misspelled; its `guesses` are looked up here.
 private struct FakeSpellChecker: SpellChecking {
@@ -32,14 +32,14 @@ private struct FakeSpellChecker: SpellChecking {
     }
 }
 
-/// Gate 1 unit tests for `TextNormalizer` (`L-006`, `INV-007`).
+/// Gate 1 unit tests for `TextNormalizer`.
 /// Pipeline under test: rawText -> whitespace/typography -> vocabulary ->
 /// spellcheck -> text. Every test drives `normalize(...)` directly with a
 /// `FakeSpellChecker`, never `NSSpellChecker.shared`.
 @MainActor
 final class TextNormalizerTests: XCTestCase {
 
-    // MARK: - AT-013: safe whitespace/typography normalization
+    // MARK: - safe whitespace/typography normalization
 
     func test_AT013_collapsesRepeatedSpaces_andRemovesSpaceBeforePunctuation() {
         let normalizer = TextNormalizer(spellChecker: FakeSpellChecker(supportedLanguages: [], guessesByWord: [:]))
@@ -82,7 +82,7 @@ final class TextNormalizerTests: XCTestCase {
         XCTAssertFalse(changes.contains { if case .whitespace = $0.kind { return true }; return false })
     }
 
-    // MARK: - AT-014 / EC-012: never silently guess on URLs/abbreviations/numbers/ambiguous words
+    // MARK: - never silently guess on URLs/abbreviations/numbers/ambiguous words
 
     func test_AT014_doesNotTouch_URL_evenIfSpellcheckerFlagsIt() {
         let checker = FakeSpellChecker(
@@ -136,7 +136,7 @@ final class TextNormalizerTests: XCTestCase {
         XCTAssertEqual(text, "Живу на дом20")
     }
 
-    /// `AT-014`: "слово с несколькими возможными заменами" — never replaced
+    /// "слово с несколькими возможными заменами" — never replaced
     /// silently, unlike the single-guess case which the positive control
     /// below proves does work.
     func test_AT014_wordWithMultipleGuesses_isNotReplaced() {
@@ -184,7 +184,7 @@ final class TextNormalizerTests: XCTestCase {
         })
     }
 
-    // MARK: - AT-015 / EC-011: spellchecker unavailable for the language
+    // MARK: - spellchecker unavailable for the language
 
     func test_AT015_EC011_missingLanguage_skipsSpellcheckStep_withoutBlocking() {
         // `ru` is deliberately absent from `supportedLanguages`, simulating
@@ -225,7 +225,7 @@ final class TextNormalizerTests: XCTestCase {
         XCTAssertEqual(text, "Это оштбка")
     }
 
-    // MARK: - AT-016: personal vocabulary rule application/disabling
+    // MARK: - personal vocabulary rule application/disabling
 
     func test_AT016_activeVocabularyRule_isAppliedCaseInsensitively() {
         let normalizer = TextNormalizer(spellChecker: FakeSpellChecker(supportedLanguages: [], guessesByWord: [:]))

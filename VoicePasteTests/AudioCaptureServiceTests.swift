@@ -4,7 +4,7 @@ import XCTest
 
 /// `AudioCaptureService` wraps a real `AVAudioEngine`/microphone input node
 /// directly (no `Transcribing`-style protocol to substitute), so its actual
-/// capture path (`AT-005`/`AT-006`/`AT-009`/`AT-010`) needs a live microphone
+/// capture path needs a live microphone
 /// and stays a manual test per the gate's scope. This only covers the
 /// non-hardware-dependent, always-safe edges of its public surface.
 @MainActor

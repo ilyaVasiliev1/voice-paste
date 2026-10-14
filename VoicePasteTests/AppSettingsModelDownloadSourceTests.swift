@@ -1,7 +1,7 @@
 import XCTest
 @testable import VoicePaste
 
-/// `AT-093`/`L-010` — storage half of the model-download-source setting.
+/// — storage half of the model-download-source setting.
 /// Proof mode `auto`: pure `AppSettings` + isolated `UserDefaults`, no
 /// network, no WhisperKit, no real download.
 @MainActor
@@ -18,7 +18,7 @@ final class AppSettingsModelDownloadSourceTests: XCTestCase {
         }
     }
 
-    /// `AT-093`/`L-010`: the default source is `.github` — the only host
+    /// the default source is `.github` — the only host
     /// reachable from mainland China (where the app is used), so a fresh
     /// install downloads the model successfully out of the box instead of
     /// stalling against HuggingFace/its mirror.
@@ -31,7 +31,7 @@ final class AppSettingsModelDownloadSourceTests: XCTestCase {
         XCTAssertEqual(settings.modelDownloadSource, .github)
     }
 
-    /// `AT-093`: "Значение сохраняется между запусками" — setting `.official`
+    /// "Значение сохраняется между запусками" — setting `.official`
     /// then constructing a *new* `AppSettings` instance against the same
     /// `UserDefaults` suite (simulating a relaunch) must still read
     /// `.official` back, proving persistence rather than in-memory state.

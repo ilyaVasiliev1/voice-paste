@@ -58,7 +58,7 @@ private nonisolated final class DecodedSampleCollector: @unchecked Sendable {
 /// spike closed 2026-07-19 — no third-party OGG/Opus library).
 ///
 /// Reads and converts in bounded chunks so multi-hour files stay within a
-/// fixed memory footprint and report progress (`EC-013`, `AT-025`); the whole
+/// fixed memory footprint and report progress; the whole
 /// decode loop is a plain `async` function so callers cancel it the normal
 /// `Task.cancel()` way.
 nonisolated public struct AudioDecoder: Sendable {
@@ -81,7 +81,7 @@ nonisolated public struct AudioDecoder: Sendable {
 
     /// Streams bounded windows to `consume`, awaiting recognition before the
     /// next window is retained. Memory is therefore proportional to one
-    /// Whisper window rather than media duration (`INV-018`, `AT-100`).
+    /// Whisper window rather than media duration.
     @discardableResult
     public func decodeInChunks(
         url: URL,

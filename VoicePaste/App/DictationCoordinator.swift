@@ -85,7 +85,7 @@ final class DictationCoordinator {
         refreshRecordingHUD()
     }
 
-    // MARK: - Hotkey / toggle+hold state machine (L-002/L-003, EC-003)
+    // MARK: - Hotkey / toggle+hold state machine
 
     func handleHotkeyDown() {
         if isPaused {
@@ -121,7 +121,7 @@ final class DictationCoordinator {
         case .cancelCapture:
             cancelRecording()
         case .alreadyProcessing:
-            // EC-003: keep the running job, just say so.
+            // keep the running job, just say so.
             host?.presentHUD(.error(
                 message: NSLocalizedString("dictation.alreadyProcessing", comment: "")
             ))
@@ -155,7 +155,7 @@ final class DictationCoordinator {
         host?.setEscapeCancellationEnabled(stateMachine.phase == .recording && !isPaused)
     }
 
-    // MARK: - Recording (L-004, DEP-003)
+    // MARK: - Recording
 
     private func beginRecording() {
         // Микрофон и накопитель в приложении одни. Если идёт лекция, старт
@@ -172,7 +172,7 @@ final class DictationCoordinator {
             return
         }
         frontAppSnapshot = textDelivery.captureFrontApp()
-        // `L-010`: start loading the model the moment recording begins, so it
+        // start loading the model the moment recording begins, so it
         // warms up *while the user is still speaking* if the one-time launch
         // warm-up has not completed (or the model was later unloaded).
         // `ensureLoaded()` coalesces, so the transcription that follows joins
@@ -251,7 +251,7 @@ final class DictationCoordinator {
         ))
     }
 
-    /// `UI-003` HUD "Отменить" button (mode-independent, works alongside the
+    /// HUD "Отменить" button (mode-independent, works alongside the
     /// hotkey): stops capture and discards the buffer outright — no
     /// transcription is ever started and no history row is written, unlike
     /// `endRecordingAndProcess()`.
@@ -339,7 +339,7 @@ final class DictationCoordinator {
         cancelRecording()
     }
 
-    // MARK: - Stop + transcribe (L-005/L-006/L-007/L-008, EC-004/EC-005)
+    // MARK: - Stop + transcribe
 
     private func endRecordingAndProcess() {
         elapsedTimerTask?.cancel()

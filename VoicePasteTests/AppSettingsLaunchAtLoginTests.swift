@@ -3,7 +3,7 @@ import XCTest
 
 @testable import VoicePaste
 
-/// `L-020` — the login-item switch reads its position from
+/// — the login-item switch reads its position from
 /// `SMAppService.mainApp.status` and only ever talks to the system through
 /// `LoginItemRegistering`. Every test substitutes `FakeLoginItemRegistry`;
 /// the real system registry is exercised only by the live verification in

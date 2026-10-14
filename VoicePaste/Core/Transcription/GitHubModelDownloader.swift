@@ -2,7 +2,7 @@ import Foundation
 
 /// Downloads the WhisperKit model (and its tokenizer) from direct GitHub
 /// Release asset URLs and lays them down on disk, as an alternative to
-/// WhisperKit's HuggingFace-Hub download path (`L-010`, `AT-093`).
+/// WhisperKit's HuggingFace-Hub download path.
 ///
 /// Why this exists: from mainland China `huggingface.co` and the `hf-mirror.com`
 /// mirror are unreachable/throttled, so the one-time 626 MB fetch fails or

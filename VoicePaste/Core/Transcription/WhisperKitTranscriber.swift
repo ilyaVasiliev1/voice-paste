@@ -4,7 +4,7 @@ import Foundation
 import WhisperKit
 #endif
 
-/// Concrete WhisperKit-backed transcriber (`DEP-006`, `INV-004`).
+/// Concrete WhisperKit-backed transcriber.
 ///
 /// Kept isolated in this single file: if the WhisperKit package cannot be
 /// resolved in a given build environment, only this file's real
@@ -14,7 +14,7 @@ import WhisperKit
 
 /// Plain-value decoding decision for a `TranscriptionLanguage`, kept free of
 /// any WhisperKit types so it can be unit-tested without linking the
-/// WhisperKit package (`L-005`, `AT-095`).
+/// WhisperKit package.
 nonisolated public struct WhisperDecodingPlan: Equatable, Sendable {
     public let languageCode: String?
     public let detectLanguage: Bool
@@ -144,7 +144,7 @@ nonisolated public struct WhisperKitTranscriber: Transcribing {
         variant: String = ModelCatalog.modelID,
         downloadProgress: (@Sendable (Double) -> Void)? = nil
     ) async throws {
-        // `L-010`/`AT-004`/`US-001`: WhisperKit's `setupModels` takes two
+        // WhisperKit's `setupModels` takes two
         // mutually exclusive branches (see `setupModels` in
         // `WhisperKit/Core/WhisperKit.swift`): if `modelFolder` is non-nil it
         // loads straight from that folder and the `download` branch below it
@@ -166,7 +166,7 @@ nonisolated public struct WhisperKitTranscriber: Transcribing {
             // network involved (`AT-004` — "повторная загрузка не требуется").
             // `modelEndpoint`: even on the on-disk branch WhisperKit may still
             // fetch the tokenizer/config over the network — route that
-            // through the selected endpoint (`AT-093`) so it isn't slow from
+            // through the selected endpoint so it isn't slow from
             // China when the mirror is chosen.
             let config = WhisperKitConfig(
                 model: variant,
@@ -243,7 +243,7 @@ private actor WhisperInferenceWorker {
 
     func transcribe(_ request: TranscriptionRequest) async throws -> SpeechPipeline.TranscriptionResult {
         guard !request.samples.isEmpty else { throw TranscribingError.emptyAudio }
-        // `L-005`/`AT-095`: task is always transcription; `.auto` enables
+        // task is always transcription; `.auto` enables
         // language auto-detection instead of leaving it off by default.
         let plan = WhisperKitTranscriber.decodingPlan(
             for: request.language,

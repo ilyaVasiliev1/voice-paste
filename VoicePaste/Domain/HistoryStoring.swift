@@ -7,10 +7,10 @@ nonisolated public enum HistoryError: Error, Equatable, Sendable {
 }
 
 /// The stable boundary between UI (`UI-004`, menu bar) and the local SQLite
-/// history/vocabulary store (`L-008`, `DM-002`, `DM-003`, `DM-004`).
+/// history/vocabulary store.
 ///
 /// The conforming type MUST be a Swift `actor` running entirely off
-/// `MainActor`, backed by a GRDB `DatabasePool` (`L-008`). This protocol is
+/// `MainActor`, backed by a GRDB `DatabasePool`. This protocol is
 /// the contract the `db` agent implements in `Data/HistoryStore.swift`; UI
 /// code must depend on this protocol only, never on GRDB types directly.
 public protocol HistoryStoring: Sendable {

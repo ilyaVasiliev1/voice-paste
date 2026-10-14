@@ -1,7 +1,7 @@
 import XCTest
 @testable import VoicePaste
 
-/// `AT-095`/`L-002`/`L-005`: the decoding plan derived from `TranscriptionLanguage`
+/// the decoding plan derived from `TranscriptionLanguage`
 /// must never request translation, and must only enable language auto-detection
 /// (leaving `languageCode` unset) for `.auto` — `.ru`/`.en` force their language
 /// explicitly. This is the deterministic slice of AT-095 coverable without
@@ -51,7 +51,7 @@ final class WhisperDecodingPlanTests: XCTestCase {
     }
 
     /// Invariant across every mode: the task is always transcription, never
-    /// translation (`L-005`) — guards against a future regression that flips
+    /// translation — guards against a future regression that flips
     /// `isTranslate` for any `TranscriptionLanguage` case.
     func test_isTranslateIsAlwaysFalseAcrossAllLanguages() {
         for language in TranscriptionLanguage.allCases {

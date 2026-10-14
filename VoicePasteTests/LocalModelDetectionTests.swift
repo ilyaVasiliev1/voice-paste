@@ -1,8 +1,8 @@
 import XCTest
 @testable import VoicePaste
 
-/// Unit tests for `LocalModelDetection`'s "verified on disk" criterion
-/// (`L-001`/`AT-004`), including the hardening against a torn/stub download
+/// Unit tests for `LocalModelDetection`'s "verified on disk" criterion,
+/// including the hardening against a torn/stub download
 /// that only leaves behind empty `.mlmodelc` folder scaffolding (the
 /// real-world regression: "Failed to parse ML Program … model.mil cannot be
 /// read" from a 36 KB placeholder masquerading as the 626 MB model).

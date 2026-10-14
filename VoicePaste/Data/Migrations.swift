@@ -18,7 +18,7 @@ public enum Migrations {
         var migrator = DatabaseMigrator()
 
         migrator.registerMigration("v1_initial_schema") { db in
-            // DM-002: `transcripts`.
+            // `transcripts`.
             try db.create(table: "transcripts") { t in
                 t.column("id", .text).notNull().primaryKey()
                 t.column("createdAt", .integer).notNull()
@@ -43,7 +43,7 @@ public enum Migrations {
                 ON transcripts (createdAt DESC, id DESC)
                 """)
 
-            // DM-003: `transcripts_fts`, external-content FTS5 table over
+            // `transcripts_fts`, external-content FTS5 table over
             // `text` and `sourceFileName`, synchronized with `transcripts` by
             // GRDB-generated INSERT/UPDATE/DELETE triggers
             // (`synchronize(withTable:)`). It stores no content of its own
@@ -55,8 +55,8 @@ public enum Migrations {
                 t.column("sourceFileName")
             }
 
-            // DM-004: `vocabulary_entries`. `spokenForm` is matched
-            // case-insensitively (`DM-004`), but deliberately NOT via SQLite's
+            // `vocabulary_entries`. `spokenForm` is matched
+            // case-insensitively, but deliberately NOT via SQLite's
             // built-in `NOCASE` collation: `NOCASE` only folds ASCII, so it
             // would silently fail to match "Кодекс"/"кодекс" (the primary
             // Russian use case here). `HistoryStore.fetchVocabulary()` loads
@@ -73,12 +73,12 @@ public enum Migrations {
             }
         }
 
-        // DM-006: statistics dashboard (`UI-007`/`US-009`) needs a per-row
+        // statistics dashboard needs a per-row
         // word count without ever loading full `text` at aggregation time.
         // Forward-only, additive migration (see the type doc comment above):
         // adds `wordCount` to the already-shipped `v1_initial_schema` table
         // instead of editing it, then backfills every existing row so
-        // `AT-037` ("открытие базы со старыми строками без wordCount")
+        // ("открытие базы со старыми строками без wordCount")
         // holds for databases created before this migration existed.
         migrator.registerMigration("v2_transcripts_word_count") { db in
             try db.alter(table: "transcripts") { t in
@@ -88,7 +88,7 @@ public enum Migrations {
             // Backfill: word count = number of non-empty whitespace/newline
             // separated tokens in the existing `text`, matching exactly what
             // `WordCounting.count(in:)` computes for freshly saved/edited
-            // rows (`DM-006`). Done in Swift (not raw SQL) so the exact same
+            // rows. Done in Swift (not raw SQL) so the exact same
             // tokenizing rule backs both the backfill and every future
             // write — no risk of the two drifting apart.
             let rows = try Row.fetchCursor(db, sql: "SELECT id, text FROM transcripts")
@@ -102,7 +102,7 @@ public enum Migrations {
             }
         }
 
-        // DM-005: only active/interrupted local media jobs. The staged source
+        // only active/interrupted local media jobs. The staged source
         // itself lives in Caches and is never represented by a path column.
         migrator.registerMigration("v3_import_queue") { db in
             try db.create(table: "import_jobs") { t in
@@ -155,7 +155,7 @@ public enum Migrations {
     }
 }
 
-/// Shared word-counting rule (`DM-006`): words are non-empty tokens split on
+/// Shared word-counting rule: words are non-empty tokens split on
 /// whitespace/newlines. Used identically by this migration's backfill and by
 /// every write path that populates `wordCount` (`HistoryStore.save`/`edit`),
 /// so a historical row's count and a freshly written row's count are always

@@ -14,7 +14,7 @@ private actor ModelFactoryInvocationCounter {
   func get() -> Int { count }
 }
 
-/// Gate 1 unit tests for `ModelManager`'s unload timer (`L-010`, `INV-011`).
+/// Gate 1 unit tests for `ModelManager`'s unload timer.
 ///
 /// Timer tests use the same production `Task.sleep` path with a shorter
 /// injected duration, so the suite checks real cancellation semantics without
@@ -51,7 +51,7 @@ final class ModelManagerTests: XCTestCase {
     XCTAssertEqual(manager.state, .ready)
   }
 
-  /// `AT-099`: once onboarding/readiness schedules a background pre-warm,
+  /// once onboarding/readiness schedules a background pre-warm,
   /// repeated readiness refreshes and an immediately-started dictation must
   /// all join the same model load instead of compiling Core ML twice.
   func test_AT099_repeatedPrewarmAndFirstUseShareOneLoad() async throws {
@@ -129,7 +129,7 @@ final class ModelManagerTests: XCTestCase {
     XCTAssertTrue(manager.isReady)
   }
 
-  /// `AT-027` (`0 == keep warm`): scheduling with `0` minutes must never
+  /// (`0 == keep warm`): scheduling with `0` minutes must never
   /// start an unload timer at all — verified by waiting a short, safe
   /// window and confirming the model is still ready (a real bug that
   /// scheduled e.g. a 0-length timer would already have fired well within
@@ -155,7 +155,7 @@ final class ModelManagerTests: XCTestCase {
     XCTAssertTrue(manager.isReady)
   }
 
-  // MARK: - `AT-094`/`L-010`: "Удалить модель" in Settings
+  // MARK: - "Удалить модель" in Settings
 
   /// From `.ready`: `deleteModel()` must unload from memory and drop the
   /// manager back to `.notPrepared` (`INV-015`: not-ready surface again)
@@ -196,7 +196,7 @@ final class ModelManagerTests: XCTestCase {
     XCTAssertEqual(manager.state, .notPrepared)
   }
 
-  /// `AT-094`: after deletion, `Application Support/VoicePaste/Models`
+  /// after deletion, `Application Support/VoicePaste/Models`
   /// (here, the injected temp `modelDirectory`) must be genuinely empty on
   /// disk, not merely have its in-memory `state` changed. Seeds a stub
   /// model file first so the emptiness check is meaningful.
@@ -298,7 +298,7 @@ final class ModelManagerTests: XCTestCase {
     XCTAssertEqual(manager.state, .failed(.verificationFailed))
   }
 
-  /// `AT-094`/`L-010`: "история/словарь/настройки не затронуты". Simulates
+  /// "история/словарь/настройки не затронуты". Simulates
   /// the real `Application Support/VoicePaste/` layout — a `Models`
   /// subdirectory next to sibling files representing history/dictionary/
   /// settings stores — and asserts `deleteModel()` only reaches inside
@@ -350,7 +350,7 @@ final class ModelManagerTests: XCTestCase {
     }
   }
 
-  // MARK: - Startup detection of an already-downloaded model (`L-001`, `AT-004`)
+  // MARK: - Startup detection of an already-downloaded model
 
   /// A fresh `modelDirectory` with no model files must still start
   /// `.notPrepared` — only a genuinely-missing model blocks readiness.
@@ -368,7 +368,7 @@ final class ModelManagerTests: XCTestCase {
     XCTAssertEqual(manager.state, .notPrepared)
   }
 
-  /// `AT-004`: a previous run's verified model files already on disk must
+  /// a previous run's verified model files already on disk must
   /// be detected at startup as `.unloaded` (verified, lazily reloadable),
   /// never re-triggering the 626 MB download path.
   func test_init_withVerifiedModelFilesOnDisk_startsUnloaded_notNotPrepared() async throws {
@@ -557,7 +557,7 @@ final class ModelManagerTests: XCTestCase {
 
   // MARK: - Timer behavior
 
-  /// `AT-026` (fires) and the cancellation half of `L-010` ("новая
+  /// (fires) and the cancellation half of `L-010` ("новая
   /// запись/импорт отменяет таймер"). Both use the production sleep and
   /// cancellation path with a 20 ms test minute.
   func test_unloadTimer_firesAfterOneMinute_unlessCancelledByNewTask() async throws {
@@ -569,7 +569,7 @@ final class ModelManagerTests: XCTestCase {
     _ = try await cancellingManager.installModel()
     cancellingManager.endTask(unloadMinutes: 1)
     // A new recording/import starts right away: must cancel the pending
-    // unload timer (`L-010`).
+    // unload timer.
     cancellingManager.beginTask()
 
     try await Task.sleep(nanoseconds: 50_000_000)

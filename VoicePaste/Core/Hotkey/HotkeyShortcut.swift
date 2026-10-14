@@ -15,7 +15,7 @@ public struct HotkeyShortcut: Codable, Equatable, Sendable {
         self.modifierFlags = modifierFlags
     }
 
-    /// Default per `DM-001`: ⌥Space.
+    /// Default per ⌥Space.
     public static let `default` = HotkeyShortcut(
         keyCode: UInt32(kVK_Space),
         modifierFlags: NSEventModifierFlagsOption

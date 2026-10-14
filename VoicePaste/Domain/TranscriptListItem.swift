@@ -40,7 +40,7 @@ nonisolated public struct TranscriptListItem: Codable, Identifiable, Equatable, 
     }
 }
 
-/// Stable keyset-pagination cursor: `createdAt DESC, id DESC` (DM-002).
+/// Stable keyset-pagination cursor: `createdAt DESC, id DESC`.
 nonisolated public struct TranscriptCursor: Equatable, Sendable {
     public var createdAt: Int64
     public var id: UUID
@@ -62,7 +62,7 @@ nonisolated public struct TranscriptPage: Equatable, Sendable {
     }
 }
 
-/// Page size mandated everywhere history/search paginates (DM-002/DM-003).
+/// Page size mandated everywhere history/search paginates.
 nonisolated public enum HistoryPaging {
     public static let pageSize = 100
 }

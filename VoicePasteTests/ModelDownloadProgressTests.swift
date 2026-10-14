@@ -2,7 +2,7 @@ import Combine
 import XCTest
 @testable import VoicePaste
 
-/// `AT-086`/`L-010`/`UI-002` unit tests for `ModelManager`'s honest first-run
+/// unit tests for `ModelManager`'s honest first-run
 /// model-download progress: monotonicity, the sub-100% ceiling while
 /// `.downloading`, byte-accurate "N из 626 МБ" *derived from the single
 /// `fractionCompleted` signal*, the ETA gate, the ≤4 Hz UI throttle, and the
@@ -92,7 +92,7 @@ final class ModelDownloadProgressTests: XCTestCase {
 
     // MARK: - 1. Monotonicity, including a downward fraction "jitter"
 
-    /// `L-010`: "Прогресс монотонно растёт" — even if the underlying
+    /// "Прогресс монотонно растёт" — even if the underlying
     /// `Progress.fractionCompleted` momentarily reports a lower fraction than
     /// before (a jitter a multi-file aggregate's child-progress reweighting
     /// could plausibly emit), the *published* `fraction` must never go
@@ -122,7 +122,7 @@ final class ModelDownloadProgressTests: XCTestCase {
 
     // MARK: - 2. Ceiling: never a false 100% while `.downloading`
 
-    /// `L-010`/`UI-002`: the jump to "done" only happens through the
+    /// the jump to "done" only happens through the
     /// `.verifying` transition, never through `.downloading`'s `fraction`
     /// reaching `1.0` — even when the raw callback reports `fractionCompleted
     /// == 1.0`.
@@ -144,7 +144,7 @@ final class ModelDownloadProgressTests: XCTestCase {
 
     // MARK: - 3. "N из 626 МБ" is derived from the fraction, never "0 из 0"
 
-    /// `L-010`/`AT-086`: `completedBytes`/`totalBytes` must be *derived* from
+    /// `completedBytes`/`totalBytes` must be *derived* from
     /// the raw `fraction` times the catalog's advertised constant size — not
     /// read from WhisperKit's own file-count `completedUnitCount`/
     /// `totalUnitCount` (the pre-fix bug this test guards against: "0 из 0
@@ -201,7 +201,7 @@ final class ModelDownloadProgressTests: XCTestCase {
 
     // MARK: - 4. ETA gate: nil until real speed accumulates
 
-    /// `L-010`/`AT-086`: "Считаем время…" (both `speedBytesPerSecond` and
+    /// "Считаем время…" (both `speedBytesPerSecond` and
     /// `etaSeconds` are `nil`) until at least 3 valid byte-delta samples
     /// (derived from `fraction`) *and* ≥1.0s of monotonic time have
     /// accumulated since the first sample; only then do both become non-nil
@@ -238,7 +238,7 @@ final class ModelDownloadProgressTests: XCTestCase {
 
     // MARK: - 4b. Speed stability: a derivative of fraction, not jumpy file counts
 
-    /// `L-010`: because speed/ETA are now derived from the single smooth
+    /// because speed/ETA are now derived from the single smooth
     /// `fraction` signal (not WhisperKit's jumpy per-file counters), a
     /// steady, evenly-spaced fraction feed must produce a stable, positive,
     /// non-jittery speed once the ETA gate opens — guards against a
@@ -268,7 +268,7 @@ final class ModelDownloadProgressTests: XCTestCase {
 
     // MARK: - 5. UI throttle: no more than ~4 Hz
 
-    /// `L-010`/`AT-086`/`UI-002`: however fast the underlying fraction feed
+    /// however fast the underlying fraction feed
     /// fires, published `.downloading` updates must not exceed roughly 4 Hz
     /// (throttle gate is 0.25s, with the very first sample always let
     /// through).
@@ -315,7 +315,7 @@ final class ModelDownloadProgressTests: XCTestCase {
 
     // MARK: - 6. Failed state has no fake progress; retry resets tracking
 
-    /// `AT-086`: a dropped connection that fails on *every* attempt (the
+    /// a dropped connection that fails on *every* attempt (the
     /// factory always throws) must exhaust the auto-retry budget
     /// (`maxAutoDownloadRetries = 2`, so the factory is invoked `1 + 2 = 3`
     /// times total) and only then land in `.failed`, with no `.downloading`
@@ -353,7 +353,7 @@ final class ModelDownloadProgressTests: XCTestCase {
         XCTAssertFalse(recorder.states.contains(.ready), "a failed download must never have reached .ready")
     }
 
-    /// `AT-086`: a transient failure on the *first* auto-retry attempt must
+    /// a transient failure on the *first* auto-retry attempt must
     /// be transparently repaired within a single `installModel()` call — no
     /// user-visible failure, no manual "Повторить" needed. This is the core
     /// promise of `loadWithAutoRetry()`: the factory throws once, then
@@ -382,7 +382,7 @@ final class ModelDownloadProgressTests: XCTestCase {
         XCTAssertEqual(callCount, 2, "one failed attempt, one successful retry — both inside the single installModel() call")
     }
 
-    /// `AT-086`: after a first `installModel()` session whose auto-retry
+    /// after a first `installModel()` session whose auto-retry
     /// budget is *fully exhausted* (fails on all 3 attempts of that
     /// session), the user's "Повторить" (a second, separate `installModel()`
     /// call) must start from a clean tracker — no inherited speed/percentage

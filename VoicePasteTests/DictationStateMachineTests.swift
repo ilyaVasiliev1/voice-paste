@@ -3,12 +3,12 @@ import XCTest
 
 /// Gate 1 unit tests for the pure `DictationStateMachine` (`L-002`, `L-003`,
 /// `INV-005`). Covers `AT-003`'s logic half (toggle start/stop) and
-/// `EC-003` (hotkey pressed again while `processing` is ignored, current job
+/// (hotkey pressed again while `processing` is ignored, current job
 /// preserved). No I/O, no audio, no hotkey manager involved.
 @MainActor
 final class DictationStateMachineTests: XCTestCase {
 
-    // MARK: - Toggle mode (L-002, default)
+    // MARK: - Toggle mode
 
     func test_toggle_firstPress_startsCapture() {
         var machine = DictationStateMachine(mode: .toggle)
@@ -30,7 +30,7 @@ final class DictationStateMachineTests: XCTestCase {
         XCTAssertEqual(machine.phase, .processing)
     }
 
-    /// `EC-003`/`L-002`: "Повторные нажатия в processing игнорируются" — the
+    /// "Повторные нажатия в processing игнорируются" — the
     /// job in flight must not be touched or restarted.
     func test_toggle_pressDuringProcessing_isIgnored_currentJobPreserved() {
         var machine = DictationStateMachine(mode: .toggle)
@@ -67,7 +67,7 @@ final class DictationStateMachineTests: XCTestCase {
         XCTAssertEqual(machine.phase, .idle)
     }
 
-    // MARK: - Hold mode (L-003)
+    // MARK: - Hold mode
 
     func test_hold_keyDown_startsCapture_keyUp_stopsAndProcesses() {
         var machine = DictationStateMachine(mode: .hold)
@@ -104,7 +104,7 @@ final class DictationStateMachineTests: XCTestCase {
         XCTAssertEqual(machine.phase, .processing)
     }
 
-    /// `EC-003` in hold mode too: a key-down while processing is ignored.
+    /// in hold mode too: a key-down while processing is ignored.
     func test_hold_keyDownDuringProcessing_isIgnored() {
         var machine = DictationStateMachine(mode: .hold)
         _ = machine.handleHotkeyDown() // -> recording
@@ -127,7 +127,7 @@ final class DictationStateMachineTests: XCTestCase {
         XCTAssertEqual(machine.phase, .recording)
     }
 
-    // MARK: - Mode switching mid-flight (`AT-011`-adjacent logic)
+    // MARK: - Mode switching mid-flight
 
     func test_changingModeProperty_appliesToSubsequentTransitions() {
         var machine = DictationStateMachine(mode: .toggle)
@@ -141,7 +141,7 @@ final class DictationStateMachineTests: XCTestCase {
         XCTAssertEqual(machine.phase, .processing)
     }
 
-    // MARK: - UI-003: HUD mouse controls ("Готово"/"Отменить")
+    // MARK: - HUD mouse controls ("Готово"/"Отменить")
 
     /// The HUD button must finish a `.hold`-mode session too, unlike a mouse
     /// click routed through `handleHotkeyDown()` (which would be a no-op
