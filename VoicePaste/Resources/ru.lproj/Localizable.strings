@@ -87,6 +87,12 @@
 "onboarding.back" = "Назад";
 "onboarding.next" = "Далее";
 "onboarding.finish" = "Готово";
+"onboarding.step" = "Шаг %d из %d";
+"onboarding.fixPermission" = "Выдать разрешение";
+"main.readiness.configure" = "Настроить";
+"settings.vocabulary.empty" = "Автозамен пока нет";
+"settings.failure.clearHistory" = "Не удалось очистить историю. Повторите позже.";
+"settings.failure.vocabulary" = "Не удалось сохранить автозамену. Повторите позже.";
 "onboarding.openSystemSettings" = "Открыть настройки системы";
 "onboarding.status.granted" = "Разрешение предоставлено";
 "onboarding.status.pending" = "Разрешение ещё не предоставлено";

@@ -38,10 +38,28 @@ struct OnboardingView: View {
                 .id(step)
                 .transition(.opacity)
             Spacer()
+            if step == .model, let missing = missingPermissionStep {
+                HStack(spacing: DesignTokens.Spacing.sm) {
+                    Label(
+                        NSLocalizedString(appState.readiness.state.statusLocalizationKey, comment: ""),
+                        systemImage: "exclamationmark.triangle"
+                    )
+                    .foregroundStyle(.orange)
+                    Spacer()
+                    Button("onboarding.fixPermission") { step = missing }
+                }
+                .font(.callout)
+            }
             HStack {
                 if step != .purpose {
                     Button("onboarding.back") { goBack() }
                 }
+                Text(String(
+                    format: NSLocalizedString("onboarding.step", comment: ""),
+                    step.rawValue + 1, Step.allCases.count
+                ))
+                .font(.caption)
+                .foregroundStyle(.secondary)
                 Spacer()
                 Button(step == .model ? "onboarding.finish" : "onboarding.next") {
                     goNext()
@@ -208,6 +226,15 @@ struct OnboardingView: View {
         }
         if let next = Step(rawValue: step.rawValue + 1) {
             step = next
+        }
+    }
+
+    /// Шаг, на котором не хватает разрешения, — чтобы «Готово» не закрывало окно молча.
+    private var missingPermissionStep: Step? {
+        switch appState.readiness.state {
+        case .needsMicrophonePermission: return .microphone
+        case .needsAccessibilityPermission: return .accessibility
+        default: return nil
         }
     }
 

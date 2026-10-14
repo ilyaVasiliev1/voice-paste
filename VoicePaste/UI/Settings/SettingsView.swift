@@ -27,6 +27,7 @@ private struct SettingsBody: View {
     @State private var newVocabularySpokenForm = ""
     @State private var newVocabularyReplacement = ""
     @State private var selectedTab: SettingsTabItem = .general
+    @State private var actionFailure: String?
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -163,6 +164,9 @@ private struct SettingsBody: View {
                 Toggle("settings.text.autoInsert", isOn: $settings.autoInsertEnabled)
             }
             vocabularyRows
+            if let actionFailure {
+                Text(actionFailure).font(.caption).foregroundStyle(.red)
+            }
         }
         .formStyle(.grouped)
     }
@@ -223,8 +227,17 @@ private struct SettingsBody: View {
                 isPresented: $showingClearHistoryConfirmation
             ) {
                 Button("settings.history.clearConfirmAction", role: .destructive) {
-                    Task { try? await appState.historyStore.clearAll() }
+                    Task {
+                        do {
+                            try await appState.historyStore.clearAll()
+                        } catch {
+                            actionFailure = NSLocalizedString("settings.failure.clearHistory", comment: "")
+                        }
+                    }
                 }
+            }
+            if let actionFailure {
+                Text(actionFailure).font(.caption).foregroundStyle(.red)
             }
             EvaluationAudioSection(appState: appState, settings: settings)
         }
@@ -246,6 +259,14 @@ private struct SettingsBody: View {
                     Color.clear.frame(width: 52)
                 }
 
+                if vocabulary.isEmpty {
+                    GridRow {
+                        Text("settings.vocabulary.empty")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .gridCellColumns(4)
+                    }
+                }
                 ForEach(vocabulary) { entry in
                     GridRow {
                         Text(entry.spokenForm)
@@ -268,6 +289,7 @@ private struct SettingsBody: View {
                             }
                             .buttonStyle(.borderless)
                             .help("Удалить правило")
+                            .accessibilityLabel(Text("Удалить правило"))
                         }
                     }
                 }
@@ -287,6 +309,7 @@ private struct SettingsBody: View {
                     }
                     .disabled(newVocabularySpokenForm.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .help("Добавить правило")
+                    .accessibilityLabel(Text("Добавить правило"))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -342,7 +365,11 @@ private struct SettingsBody: View {
                 Task {
                     var updated = entry
                     updated.isEnabled = newValue
-                    try? await appState.historyStore.upsertVocabulary(updated)
+                    do {
+                        try await appState.historyStore.upsertVocabulary(updated)
+                    } catch {
+                        actionFailure = NSLocalizedString("settings.failure.vocabulary", comment: "")
+                    }
                     await loadVocabulary()
                 }
             }
@@ -359,14 +386,22 @@ private struct SettingsBody: View {
             createdAt: now,
             updatedAt: now
         )
-        try? await appState.historyStore.upsertVocabulary(entry)
+        do {
+            try await appState.historyStore.upsertVocabulary(entry)
+        } catch {
+            actionFailure = NSLocalizedString("settings.failure.vocabulary", comment: "")
+        }
         newVocabularySpokenForm = ""
         newVocabularyReplacement = ""
         await loadVocabulary()
     }
 
     private func deleteVocabularyEntry(_ entry: VocabularyEntry) async {
-        try? await appState.historyStore.deleteVocabulary(id: entry.id)
+        do {
+            try await appState.historyStore.deleteVocabulary(id: entry.id)
+        } catch {
+            actionFailure = NSLocalizedString("settings.failure.vocabulary", comment: "")
+        }
         await loadVocabulary()
     }
 

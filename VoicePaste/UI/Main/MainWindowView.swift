@@ -42,6 +42,24 @@ struct MainWindowView: View {
             minHeight: MainWindowLayout.windowMinHeight
         )
         .safeAreaInset(edge: .top, spacing: 0) {
+            if appState.readiness.state != .ready {
+                HStack(spacing: DesignTokens.Spacing.md) {
+                    Label(
+                        NSLocalizedString(appState.readiness.state.statusLocalizationKey, comment: ""),
+                        systemImage: "exclamationmark.triangle"
+                    )
+                    Spacer()
+                    Button("main.readiness.configure") {
+                        WindowRouter.shared.open("onboarding")
+                    }
+                }
+                .font(.callout)
+                .padding(.horizontal, DesignTokens.Spacing.lg)
+                .padding(.vertical, DesignTokens.Spacing.sm)
+                .background(.orange.opacity(0.14))
+                .overlay(alignment: .bottom) { Divider() }
+                .accessibilityIdentifier("readiness-banner")
+            }
             if appState.persistenceFailureMessage != nil {
                 Label(
                     NSLocalizedString("storage.unavailable", comment: ""),
