@@ -95,6 +95,26 @@ struct DictationTractTests {
         }
     }
 
+    /// Хранилище звука для оценки: что и под каким именем сохранили.
+    actor FakeEvaluationAudio: EvaluationAudioStoring {
+        private(set) var saved: [(id: UUID, sampleCount: Int)] = []
+        var failure: Error?
+
+        func setFailure(_ error: Error?) { failure = error }
+
+        func save(samples: [Float], id: UUID) async throws {
+            if let failure { throw failure }
+            saved.append((id, samples.count))
+        }
+        func summary() async -> EvaluationAudioSummary {
+            EvaluationAudioSummary(fileCount: saved.count, totalBytes: 0)
+        }
+        func deleteAll() async throws -> Int {
+            defer { saved.removeAll() }
+            return saved.count
+        }
+    }
+
     // MARK: - Стенд
 
     struct Rig {
@@ -106,6 +126,7 @@ struct DictationTractTests {
         let store: HistoryStore
         let settings: AppSettings
         let events: EventLog
+        let evaluation: FakeEvaluationAudio
         let cleanup: () -> Void
     }
 
@@ -116,7 +137,8 @@ struct DictationTractTests {
             TranscriptionResult(rawText: "Привет, мир.", detectedLanguage: "ru")
         ),
         autoInsert: Bool = true,
-        ready: Bool = true
+        ready: Bool = true,
+        saveAudio: Bool = false
     ) async throws -> Rig {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("DictationTract-\(UUID().uuidString)", isDirectory: true)
@@ -126,6 +148,7 @@ struct DictationTractTests {
         let settings = AppSettings(defaults: defaults)
         settings.autoInsertEnabled = autoInsert
         settings.historyEnabled = true
+        settings.saveAudioForEvaluation = saveAudio
 
         var configuration = Configuration()
         configuration.prepareDatabase { try $0.execute(sql: "PRAGMA journal_mode = WAL") }
@@ -147,6 +170,7 @@ struct DictationTractTests {
         let delivery = FakeTextDelivery()
         let hud = FakeHUD()
         let events = EventLog()
+        let evaluation = FakeEvaluationAudio()
         let importManager = ImportManager(
             modelManager: modelManager,
             historyStore: store,
@@ -164,11 +188,12 @@ struct DictationTractTests {
             hud: hud,
             now: { Self.fixedNow },
             isDictationReady: { ready },
-            logEvent: { events.append($0, $1) }
+            logEvent: { events.append($0, $1) },
+            evaluationAudio: evaluation
         )
         return Rig(
             state: state, audio: audio, delivery: delivery, hud: hud,
-            engine: engine, store: store, settings: settings, events: events,
+            engine: engine, store: store, settings: settings, events: events, evaluation: evaluation,
             cleanup: { try? FileManager.default.removeItem(at: directory) }
         )
     }
@@ -185,6 +210,7 @@ struct DictationTractTests {
         rig.state.handleHotkeyDown()
         rig.state.handleHotkeyDown()
         await rig.state.dictationTask?.value
+        await rig.state.evaluationAudioTask?.value
     }
 
     func savedItems(_ rig: Rig) async throws -> [TranscriptListItem] {
@@ -251,6 +277,77 @@ struct DictationTractTests {
         #expect(rig.delivery.inserted.isEmpty && rig.delivery.copied.isEmpty)
         #expect(try await savedItems(rig).isEmpty)
         #expect(rig.state.dictationPhase == .idle)
+    }
+
+    @Test("звук для оценки выключен — ничего не сохраняется")
+    func evaluationAudioOffSavesNothing() async throws {
+        let rig = try await makeRig(saveAudio: false)
+        defer { rig.cleanup() }
+
+        await dictate(rig, samples: Self.speech(), rms: 0.07)
+
+        #expect(await rig.evaluation.saved.isEmpty)
+    }
+
+    @Test("звук для оценки включён — файл назван по записи в истории")
+    func evaluationAudioOnSavesUnderTranscriptID() async throws {
+        let rig = try await makeRig(saveAudio: true)
+        defer { rig.cleanup() }
+        let samples = Self.speech()
+
+        await dictate(rig, samples: samples, rms: 0.07)
+
+        let saved = await rig.evaluation.saved
+        #expect(saved.count == 1)
+        #expect(saved.first?.sampleCount == samples.count)
+        #expect(saved.first?.id == (try await savedItems(rig)).first?.id)
+    }
+
+    @Test("запись без речи тоже сохраняется — по ней оценивают тишину")
+    func evaluationAudioOnSavesRecordingsWithoutSpeech() async throws {
+        let rig = try await makeRig(saveAudio: true)
+        defer { rig.cleanup() }
+
+        await dictate(rig, samples: Self.speech(seconds: 2, amplitude: 0.0005), rms: 0.0004)
+
+        #expect(await rig.evaluation.saved.count == 1)
+        #expect(try await savedItems(rig).isEmpty)
+    }
+
+    @Test("отказ сохранить звук не ломает диктовку и попадает в журнал")
+    func evaluationAudioFailureDoesNotBreakDictation() async throws {
+        let rig = try await makeRig(saveAudio: true)
+        defer { rig.cleanup() }
+        await rig.evaluation.setFailure(TranscribingError.underlying("диск полон"))
+
+        await dictate(rig, samples: Self.speech(), rms: 0.07)
+
+        #expect(rig.hud.last == .inserted)
+        #expect(rig.events.details(of: "evaluationAudio.saveFailed").count == 1)
+    }
+
+    @Test("отменённая запись звука не оставляет")
+    func cancelledRecordingLeavesNoEvaluationAudio() async throws {
+        let rig = try await makeRig(saveAudio: true)
+        defer { rig.cleanup() }
+        rig.audio.recording = Self.speech()
+        rig.audio.recordingRMS = 0.07
+
+        rig.state.handleHotkeyDown()
+        rig.state.cancelDictationFromHUD()
+
+        #expect(await rig.evaluation.saved.isEmpty)
+    }
+
+    @Test("сводка и удаление идут через приложение")
+    func summaryAndDeletionGoThroughTheApp() async throws {
+        let rig = try await makeRig(saveAudio: true)
+        defer { rig.cleanup() }
+        await dictate(rig, samples: Self.speech(), rms: 0.07)
+
+        #expect(await rig.state.evaluationAudioSummary().fileCount == 1)
+        #expect(try await rig.state.deleteEvaluationAudio() == 1)
+        #expect(await rig.state.evaluationAudioSummary().fileCount == 0)
     }
 
     @Test("приложение не готово — запись не начинается, плашка называет причину")
