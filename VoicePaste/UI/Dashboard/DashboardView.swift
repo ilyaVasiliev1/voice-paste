@@ -1,33 +1,81 @@
 import Charts
 import SwiftUI
 
+/// Статистика за окно дней: что прочитано и в каком оно состоянии.
+///
+/// «Пусто» показывается только после первой выборки: до неё `stats` — заглушка,
+/// а не честный ноль, и «Здесь появится статистика» мигало до прихода данных.
+@MainActor
+final class UsageStatsModel: ObservableObject {
+    @Published private(set) var stats = UsageStats.empty
+    @Published private(set) var isLoaded = false
+    /// Статистику не удалось прочитать. Поднято, чтобы отказ не
+    /// выдавался за отсутствие данных.
+    @Published private(set) var didFailToLoad = false
+
+    private let store: any HistoryStoring
+
+    init(store: any HistoryStoring) {
+        self.store = store
+    }
+
+    /// Первый сигнал потока приходит сразу при подписке и даёт первую загрузку.
+    func track(dayCount: Int) async {
+        for await _ in store.changes() {
+            await load(dayCount: dayCount)
+        }
+    }
+
+    private func load(dayCount: Int) async {
+        do {
+            stats = try await store.fetchUsageStats(now: Date(), dayCount: dayCount)
+            isLoaded = true
+            didFailToLoad = false
+        } catch {
+            // Прежде отказ базы подменялся пустой статистикой и становился
+            // неотличим от честного «вы ещё ничего не наговорили».
+            didFailToLoad = true
+            await DiagnosticLog.shared.log("dashboard.statsFailed", detail: String(describing: error))
+        }
+    }
+}
+
 /// Local overview with factual daily points, not a generic dashboard.
 struct DashboardView: View {
     /// Период выбирается в списке раздела статистики.
     let period: StatisticsPeriod
 
-    @EnvironmentObject private var appState: AppState
-    @State private var stats = UsageStats.empty
-    /// Статистику не удалось прочитать. Поднято, чтобы отказ не
-    /// выдавался за отсутствие данных.
-    @State private var didFailToLoad = false
+    /// Не наблюдается: нужен для перехода в очередь, а перерисовку от
+    /// лекции и модели вид получать не должен.
+    private let appState: AppState
+    @ObservedObject private var importManager: ImportManager
+    @StateObject private var model: UsageStatsModel
     @State private var selectedDay: DailyUsageStat?
+
+    init(period: StatisticsPeriod, appState: AppState) {
+        self.period = period
+        self.appState = appState
+        _importManager = ObservedObject(wrappedValue: appState.importManager)
+        _model = StateObject(wrappedValue: UsageStatsModel(store: appState.historyStore))
+    }
+
+    private var stats: UsageStats { model.stats }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
                 header
-                if appState.importManager.activeQueueCount > 0 { queueStatus }
+                if importManager.activeQueueCount > 0 { queueStatus }
                 metrics
+                    .redacted(reason: model.isLoaded || model.didFailToLoad ? [] : .placeholder)
                 chart
             }
             .padding(DesignTokens.detailPanePadding)
         }
-        // Смена периода перезапускает и загрузку, и слежение за изменениями.
+        // Смена периода перезапускает слежение, а с ним и загрузку.
         .task(id: period) {
             selectedDay = nil
-            await load()
-            await observeChanges()
+            await model.track(dayCount: period.dayCount)
         }
     }
 
@@ -42,8 +90,8 @@ struct DashboardView: View {
         Button { appState.openImportQueue() } label: {
             HStack(spacing: DesignTokens.Spacing.sm) {
                 Image(systemName: "arrow.down.doc").foregroundStyle(Color.accentColor)
-                Text("В очереди: \(appState.importManager.activeQueueCount)")
-                if let job = appState.importManager.currentJob {
+                Text("В очереди: \(importManager.activeQueueCount)")
+                if let job = importManager.currentJob {
                     Text("· \(job.displayStage)").foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -80,9 +128,11 @@ struct DashboardView: View {
                 Spacer()
                 if let selectedDay { tooltip(for: selectedDay) }
             }
-            if stats.dailyStats.isEmpty || stats.totalTranscriptCount == 0 {
+            if !model.isLoaded && !model.didFailToLoad {
+                Color.clear.frame(maxWidth: .infinity, minHeight: 210)
+            } else if stats.dailyStats.isEmpty || stats.totalTranscriptCount == 0 {
                 Group {
-                    if didFailToLoad {
+                    if model.didFailToLoad {
                         // Отказ базы больше не выдаётся за «записей нет».
                         ContentUnavailableView(
                             "dashboard.statsFailed.title",
@@ -131,6 +181,7 @@ struct DashboardView: View {
                 ? "Активных часов: \(stats.activeDayCount) из 24"
                 : "Активных дней: \(stats.activeDayCount) из \(period.dayCount)")
                 .font(.caption).foregroundStyle(.secondary)
+                .redacted(reason: model.isLoaded || model.didFailToLoad ? [] : .placeholder)
         }
         .padding(DesignTokens.Spacing.lg)
         .cardSurface()
@@ -146,30 +197,6 @@ struct DashboardView: View {
 
     private func nearestDay(to date: Date) -> DailyUsageStat? {
         stats.dailyStats.min { abs($0.day.timeIntervalSince(date)) < abs($1.day.timeIntervalSince(date)) }
-    }
-
-    private func observeChanges() async {
-        for await _ in appState.historyStore.changes() { await load() }
-    }
-
-    private func load() async {
-        do {
-            stats = try await appState.historyStore.fetchUsageStats(
-                now: Date(),
-                dayCount: period.dayCount
-            )
-            didFailToLoad = false
-        } catch {
-            // Прежде отказ базы подменялся пустой статистикой и становился
-            // неотличим от честного «вы ещё ничего не наговорили». Это тот же
-            // класс дефекта, что исправлен в `DetailEditor`: молчаливый отказ
-            // выглядит успехом.
-            didFailToLoad = true
-            await DiagnosticLog.shared.log(
-                "dashboard.statsFailed",
-                detail: String(describing: error)
-            )
-        }
     }
 }
 

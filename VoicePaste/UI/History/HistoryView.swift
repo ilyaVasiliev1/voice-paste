@@ -6,13 +6,27 @@ import SwiftUI
 /// is FTS5-backed with a 250 ms debounce that cancels stale requests
 /// (`L-008`, в `HistoryListModel`).
 struct HistoryListColumn: View {
-    @EnvironmentObject private var appState: AppState
+    /// Не наблюдается: нужен для перехода в очередь, а перерисовку от лекции
+    /// и модели список получать не должен.
+    private let appState: AppState
+    @ObservedObject private var importManager: ImportManager
     @ObservedObject var model: HistoryListModel
     @State private var deleteID: UUID?
+
+    init(model: HistoryListModel, appState: AppState) {
+        self.model = model
+        self.appState = appState
+        _importManager = ObservedObject(wrappedValue: appState.importManager)
+    }
 
     var body: some View {
         list
             .searchable(text: $model.searchText, prompt: Text("history.search.prompt"))
+            .alert("history.deleteFailed.title", isPresented: $model.didFailToDelete) {
+                Button("common.ok", role: .cancel) {}
+            } message: {
+                Text("history.deleteFailed.message")
+            }
             .confirmationDialog(
                 "history.toolbar.deleteConfirmTitle",
                 isPresented: deleteConfirmation
@@ -27,8 +41,10 @@ struct HistoryListColumn: View {
 
     @ViewBuilder
     private var list: some View {
-        let activeImports = appState.importManager.jobs.filter(\.state.isActive)
-        if model.items.isEmpty && activeImports.isEmpty {
+        let activeImports = importManager.jobs.filter(\.state.isActive)
+        if !model.isLoaded && activeImports.isEmpty {
+            HistoryLoadingPlaceholder()
+        } else if model.items.isEmpty && activeImports.isEmpty {
             ContentUnavailableView(
                 model.searchText.isEmpty ? "history.empty.title" : "history.list.empty.title",
                 systemImage: "waveform",
@@ -75,7 +91,6 @@ struct HistoryListColumn: View {
 
 /// Деталь раздела истории: текст выбранной записи и действия над ней.
 struct HistoryDetailColumn: View {
-    @EnvironmentObject private var appState: AppState
     @ObservedObject var model: HistoryListModel
     @State private var showingDeleteConfirmation = false
 
@@ -83,15 +98,7 @@ struct HistoryDetailColumn: View {
         content
             .toolbar {
                 ToolbarItemGroup {
-                    Button {
-                        appState.handleHotkeyDown()
-                    } label: {
-                        Label("history.toolbar.startDictation", systemImage: "waveform")
-                    }
-                    .help("history.toolbar.startDictation")
-                    // `INV-015`/`AT-088`: recording stays a disabled, non-erroring
-                    // control while not ready, not a tap that surfaces an error.
-                    .disabled(appState.dictationPhase == .processing || appState.readiness.state != .ready)
+                    StartDictationButton()
 
                     Button {
                         guard let detail = model.detail else { return }
@@ -127,10 +134,56 @@ struct HistoryDetailColumn: View {
         if let detail = model.detail {
             DetailEditor(
                 transcript: detail,
+                store: model.historyStore,
                 onChange: { updated in model.detail = updated }
             )
+            // Новая запись — новый редактор: текст на первом кадре, а не после .task.
+            .id(detail.id)
         } else {
             ContentUnavailableView("history.detail.empty", systemImage: "text.bubble")
+        }
+    }
+}
+
+/// Единственное место раздела, которому нужно состояние всего приложения:
+/// остальное в детали за этим не следит и не перерисовывается от лекции.
+private struct StartDictationButton: View {
+    @EnvironmentObject private var appState: AppState
+
+    var body: some View {
+        Button {
+            appState.handleHotkeyDown()
+        } label: {
+            Label("history.toolbar.startDictation", systemImage: "waveform")
+        }
+        .help("history.toolbar.startDictation")
+        // `INV-015`/`AT-088`: recording stays a disabled, non-erroring
+        // control while not ready, not a tap that surfaces an error.
+        .disabled(appState.dictationPhase == .processing || appState.readiness.state != .ready)
+    }
+}
+
+/// Заглушка списка на время первой выборки. Показывается не сразу: выборка
+/// обычно короче, и вспышка серых строк была бы тем же мерцанием.
+private struct HistoryLoadingPlaceholder: View {
+    @State private var isVisible = false
+
+    private static let sample = TranscriptListItem(
+        id: UUID(), createdAt: 0, updatedAt: 0, source: .dictation, sourceFileName: nil,
+        durationMilliseconds: 0, language: nil, preview: "Заглушка строки истории на время загрузки",
+        status: .completed, insertionOutcome: .notRequested
+    )
+
+    var body: some View {
+        List {
+            ForEach(0..<7, id: \.self) { _ in HistoryRow(item: Self.sample) }
+        }
+        .redacted(reason: .placeholder)
+        .allowsHitTesting(false)
+        .opacity(isVisible ? 1 : 0)
+        .task {
+            try? await Task.sleep(for: .milliseconds(150))
+            isVisible = true
         }
     }
 }

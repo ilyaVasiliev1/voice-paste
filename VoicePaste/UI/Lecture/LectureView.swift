@@ -7,6 +7,8 @@ import SwiftUI
 struct LectureListColumn: View {
     @EnvironmentObject private var appState: AppState
     @State private var renaming: Lecture?
+    /// Нажатая строка подсвечивается сразу, а не после выборки лекции.
+    @State private var pendingSelection: Item?
 
     enum Item: Hashable {
         case current
@@ -49,11 +51,18 @@ struct LectureListColumn: View {
 
     private var selection: Binding<Item?> {
         Binding(
-            get: { appState.openedLecture.map { .saved($0.lecture.id) } ?? .current },
+            get: { pendingSelection ?? appState.openedLecture.map { .saved($0.lecture.id) } ?? .current },
             set: { item in
                 switch item {
-                case .current: appState.closeOpenedLecture()
-                case .saved(let id): Task { await appState.openSavedLecture(id: id) }
+                case .current:
+                    pendingSelection = nil
+                    appState.closeOpenedLecture()
+                case .saved(let id):
+                    pendingSelection = .saved(id)
+                    Task {
+                        await appState.openSavedLecture(id: id)
+                        if pendingSelection == .saved(id) { pendingSelection = nil }
+                    }
                 case nil: break
                 }
             }
