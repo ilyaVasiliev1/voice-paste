@@ -59,7 +59,7 @@
 Заметки: файлы регистрируются в `project.pbxproj` вручную; тяжёлое (`swift build`) — через `depo-heavy.py run`; соседняя дорожка
 интерфейса делит каталог сборки — скрипт тестов отказывает «жив xcodebuild», ждать.
 Части: пакет `Packages/SpeechPipeline` (шаги, страж, `Draft`); `DictationCoordinator` вынесен из `AppState`;
-три входа (диктовка, импорт, лекция) на одном конвейере.
+два входа (диктовка, импорт) на общих шагах конвейера; лекция — свой разбор по абзацам.
 Навыки: `architecture`, `tdd-workflow`, `swift-concurrency:swift-concurrency`
 Роли: `code-reviewer` — раз по окончании
 Готово когда: пакет собирается без AppKit и GRDB; прежние 275 тестов зелёные; `AppState` меньше 600 строк.

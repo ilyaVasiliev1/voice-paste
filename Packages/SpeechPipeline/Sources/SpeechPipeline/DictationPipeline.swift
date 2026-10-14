@@ -1,10 +1,6 @@
 import Foundation
 
-/// Распознавание как шаг конвейера: звук и язык на входе, сырой текст на выходе.
-///
-/// Тракт диктовки считает окна по ходу записи и не умещается в `Transcribing`
-/// (там нет состояния между вызовами), поэтому конвейер зависит от этого
-/// узкого протокола, а не от движка.
+/// Распознавание как шаг конвейера; диктовка с окнами по ходу записи не умещается в `Transcribing`.
 nonisolated public protocol Recognizing: Sendable {
     func recognize(samples: [Float], language: TranscriptionLanguage) async throws -> TranscriptionResult
 }
@@ -53,29 +49,19 @@ nonisolated public enum PipelineOutcome: Sendable, Equatable {
 nonisolated public struct DictationInput: Sendable {
     public var samples: [Float]
     public var language: TranscriptionLanguage
-    public var vocabulary: [VocabularyEntry]
     public var autoCorrectSafeTypos: Bool
 
-    public init(
-        samples: [Float],
-        language: TranscriptionLanguage,
-        vocabulary: [VocabularyEntry],
-        autoCorrectSafeTypos: Bool
-    ) {
+    public init(samples: [Float], language: TranscriptionLanguage, autoCorrectSafeTypos: Bool) {
         self.samples = samples
         self.language = language
-        self.vocabulary = vocabulary
         self.autoCorrectSafeTypos = autoCorrectSafeTypos
     }
 }
 
-/// Шаги диктовки от записанного звука до черновика: страж, распознавание,
-/// приведение текста. Доставка и история — снаружи: конвейер не знает ни
-/// буфера обмена, ни базы, ни окна.
+/// Шаги диктовки от звука до черновика; доставка и история — снаружи.
 nonisolated public struct DictationPipeline: Sendable {
 
-    /// Меньше — слишком мало звука для модели: она выдаёт правдоподобную
-    /// выдумку вроде «Продолжение следует…».
+    // WHY: на меньшем звуке модель выдаёт правдоподобную выдумку вроде «Продолжение следует…».
     public static let minimumSamples = 8_000
 
     /// Громкость записи, ниже которой это шум микрофона, а не тихая речь.
@@ -89,20 +75,17 @@ nonisolated public struct DictationPipeline: Sendable {
         self.normalizer = normalizer
     }
 
-    /// Дешёвая проверка по тому, что известно сразу после остановки записи.
-    /// Идёт до показа «обработка»: отказ превращает окно в ошибку без промежуточного вида.
+    /// Идёт до показа «обработка»: отказ сразу сменяет окно ошибкой.
     public func admitCapture(sampleCount: Int, captureRMS: Float) -> PipelineRejection? {
         guard sampleCount >= Self.minimumSamples else { return .tooShort }
         guard captureRMS >= Self.minimumCaptureRMS else { return .belowNoiseFloor }
         return nil
     }
 
-    /// Детектор речи, распознавание и приведение текста.
-    ///
-    /// `onSpeechConfirmed` вызывается один раз после того, как речь найдена, и
-    /// до распознавания: там приложение показывает «обработка» и загружает модель.
+    /// `onSpeechConfirmed` — один раз после детектора речи и до распознавания.
     public func run(
         _ input: DictationInput,
+        vocabulary: @Sendable () async -> [VocabularyEntry],
         recognizer: any Recognizing,
         onSpeechConfirmed: @Sendable () async -> Void
     ) async throws -> PipelineOutcome {
@@ -116,7 +99,7 @@ nonisolated public struct DictationPipeline: Sendable {
         let draft = await finish(
             recognized,
             language: input.language,
-            vocabulary: input.vocabulary,
+            vocabulary: await vocabulary(),
             autoCorrectSafeTypos: input.autoCorrectSafeTypos,
             durationMilliseconds: samples.count / Self.samplesPerMillisecond
         )

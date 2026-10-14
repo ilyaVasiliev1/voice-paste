@@ -11,7 +11,7 @@
 <!-- id: DictationStateMachine.handleHotkeyDown -->
 <!-- entities: DictationStateMachine, DictationPhase, RecordingMode -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/Core/Dictation/DictationStateMachine.swift, VoicePaste/App/AppState.swift -->
+<!-- enforced_macos: VoicePaste/Core/Dictation/DictationStateMachine.swift, VoicePaste/App/AppState.swift, VoicePaste/App/DictationCoordinator.swift -->
 <!-- test_macos: VoicePasteTests/DictationStateMachineTests.swift:test_toggle_secondPress_stopsAndProcesses, VoicePasteTests/HoldOrLatchTests.swift:shortTapLatches -->
 
 Приложение SHALL вести диктовку конечным автоматом из трёх фаз (`idle`,
@@ -65,7 +65,7 @@
 <!-- id: DictationStateMachine.handleHotkeyDown -->
 <!-- entities: DictationStateMachine, HUDState -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/Core/Dictation/DictationStateMachine.swift, VoicePaste/App/AppState.swift -->
+<!-- enforced_macos: VoicePaste/Core/Dictation/DictationStateMachine.swift, VoicePaste/App/AppState.swift, VoicePaste/App/DictationCoordinator.swift -->
 <!-- test_macos: VoicePasteTests/DictationStateMachineTests.swift:test_toggle_pressDuringProcessing_isIgnored_currentJobPreserved -->
 
 Пока идёт расшифровка, новое нажатие горячей клавиши SHALL возвращать
@@ -112,7 +112,7 @@
 <!-- id: AppState.handleHotkeyDown -->
 <!-- entities: AppState, ReadinessState, HUDState -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/App/AppState.swift -->
+<!-- enforced_macos: VoicePaste/App/AppState.swift, VoicePaste/App/DictationCoordinator.swift -->
 <!-- test_macos: VoicePasteTests/DictationTractTests.swift:notReadyAppRefusesToStartRecording -->
 
 Если на момент нажатия из фазы `idle` `readiness.state` не равен `.ready`,
@@ -158,7 +158,7 @@
 <!-- id: AppState.beginRecording -->
 <!-- entities: AppState, HUDState, HUDErrorAction -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/App/AppState.swift, VoicePaste/Core/HUD/HUDState.swift -->
+<!-- enforced_macos: VoicePaste/App/AppState.swift, VoicePaste/App/DictationCoordinator.swift, VoicePaste/Core/HUD/HUDState.swift -->
 
 Если захват не удалось начать, приложение SHALL вернуться в `idle`, показать
 `dictation.microphoneError` с единственным действием «Выбрать микрофон»
@@ -175,7 +175,7 @@
 <!-- id: AppState.cancelDictationWithEscape -->
 <!-- entities: AppState, AudioCaptureService, HotkeyManager, HUDState -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/App/AppState.swift, VoicePaste/Core/Audio/AudioCaptureService.swift -->
+<!-- enforced_macos: VoicePaste/App/AppState.swift, VoicePaste/App/DictationCoordinator.swift, VoicePaste/Core/Audio/AudioCaptureService.swift -->
 
 Escape во время записи SHALL останавливать только микрофон, сохраняя
 накопленные сэмплы, и показывать состояние `cancelledWithUndo` с возвратной
@@ -204,7 +204,7 @@ Escape во время записи SHALL останавливать тольк�
 <!-- id: AppState.endRecordingAndProcess -->
 <!-- entities: AppState, AudioCaptureService, HUDState -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/App/AppState.swift -->
+<!-- enforced_macos: VoicePaste/App/AppState.swift, VoicePaste/App/DictationCoordinator.swift -->
 <!-- test_macos: VoicePasteTests/DictationTractTests.swift:tooShortRecordingNeverReachesTheModel -->
 <!-- test_macos: VoicePasteTests/DictationTractTests.swift:silentRecordingNeverReachesTheModel -->
 
@@ -228,7 +228,7 @@ Escape во время записи SHALL останавливать тольк�
 <!-- id: AppState.transcribeAndFinish -->
 <!-- entities: AppState, ModelManager, TextNormalizer, TextInserter, Transcript -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/App/AppState.swift, VoicePaste/App/DictationSeams.swift -->
+<!-- enforced_macos: VoicePaste/App/AppState.swift, VoicePaste/App/DictationCoordinator.swift, VoicePaste/App/DictationSeams.swift -->
 <!-- test_macos: VoicePasteTests/DictationTractTests.swift:speechIsRecognisedDeliveredAndSaved -->
 <!-- test_macos: VoicePasteTests/DictationTractTests.swift:autoInsertOffCopiesInsteadOfPasting -->
 <!-- test_macos: VoicePasteTests/DictationTractTests.swift:recognitionFailureShowsErrorAndKeepsNothing -->
@@ -277,7 +277,7 @@ Escape во время записи SHALL останавливать тольк�
 <!-- id: SpeechGate.analyze -->
 <!-- entities: AppState, SpeechGate, SpeechActivity -->
 <!-- platforms: macos -->
-<!-- enforced_macos: Packages/SpeechPipeline/Sources/SpeechPipeline/SpeechGate.swift, VoicePaste/App/AppState.swift -->
+<!-- enforced_macos: Packages/SpeechPipeline/Sources/SpeechPipeline/SpeechGate.swift, VoicePaste/App/AppState.swift, VoicePaste/App/DictationCoordinator.swift -->
 <!-- test_macos: VoicePasteTests/SpeechGateTests.swift -->
 <!-- test_macos: VoicePasteTests/DictationTractTests.swift:steadyNoiseNeverReachesTheModel -->
 <!-- test_macos: VoicePasteTests/SpeechGateRealSpeechTests.swift:realSpeechIsFound -->
@@ -317,7 +317,7 @@ rms 0.008 над фоном 0.006 — «речи нет»; 0.035 над тем �
 <!-- id: AppState.handleCaptureInterruption -->
 <!-- entities: AppState, AudioCaptureService, AudioCaptureInterruption -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/App/AppState.swift, VoicePaste/Core/Audio/AudioCaptureService.swift -->
+<!-- enforced_macos: VoicePaste/App/AppState.swift, VoicePaste/App/DictationCoordinator.swift, VoicePaste/Core/Audio/AudioCaptureService.swift -->
 <!-- test_macos: VoicePasteTests/DictationTractTests.swift:deviceChangeWithRestartKeepsRecording -->
 <!-- test_macos: VoicePasteTests/DictationTractTests.swift:deviceLossFinishesWithWhatWasRecorded -->
 <!-- test_macos: VoicePasteTests/DictationTractTests.swift:deviceLossWithoutAudioShowsMicrophoneError -->
@@ -358,7 +358,7 @@ rms 0.008 над фоном 0.006 — «речи нет»; 0.035 над тем �
 <!-- id: DictationLanguageJournal.detail -->
 <!-- entities: AppState, DictationLanguageJournal, DiagnosticLog -->
 <!-- platforms: macos -->
-<!-- enforced_macos: Packages/SpeechPipeline/Sources/SpeechPipeline/DictationLanguageJournal.swift, VoicePaste/App/AppState.swift -->
+<!-- enforced_macos: Packages/SpeechPipeline/Sources/SpeechPipeline/DictationLanguageJournal.swift, VoicePaste/App/AppState.swift, VoicePaste/App/DictationCoordinator.swift -->
 <!-- test_macos: VoicePasteTests/DictationLanguageTests.swift:entryNamesModeDetectedLanguageAndScript -->
 <!-- test_macos: VoicePasteTests/DictationLanguageTests.swift:latinTailAfterCyrillicSpeechIsVisible -->
 <!-- test_macos: VoicePasteTests/DictationLanguageTests.swift:entryNeverCarriesTheText -->
@@ -491,7 +491,7 @@ VoicePaste) SHALL считаться не текстовым назначени�
 <!-- id: AppState.prepareForQuit -->
 <!-- entities: AppState, AudioCaptureService, HotkeyManager, ModelManager -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/App/AppState.swift, VoicePaste/UI/MenuBar/MenuBarContentView.swift -->
+<!-- enforced_macos: VoicePaste/App/AppState.swift, VoicePaste/App/DictationCoordinator.swift, VoicePaste/UI/MenuBar/MenuBarContentView.swift -->
 
 Пункт меню «Выйти» SHALL останавливать захват, снимать регистрацию горячих
 клавиш и безусловно выгружать модель до завершения процесса.
@@ -534,7 +534,7 @@ VoicePaste) SHALL считаться не текстовым назначени�
 ### Invariant: HUD во время записи обновляется не чаще десяти раз в секунду
 <!-- entities: AppState, HUDWindowController -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/App/AppState.swift -->
+<!-- enforced_macos: VoicePaste/App/AppState.swift, VoicePaste/App/DictationCoordinator.swift -->
 
 Уровень сигнала опрашивается каждые 100 мс, таймер прошедшего времени —
 каждые 200 мс, а оба источника проходят через общий сток: повторный показ
@@ -562,7 +562,7 @@ VoicePaste) SHALL считаться не текстовым назначени�
 ### Invariant: Приостановленная диктовка не живёт дольше четырёх секунд
 <!-- entities: AppState, HUDState -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/App/AppState.swift, VoicePaste/Core/HUD/HUDState.swift -->
+<!-- enforced_macos: VoicePaste/App/AppState.swift, VoicePaste/App/DictationCoordinator.swift, VoicePaste/Core/HUD/HUDState.swift -->
 
 Пауза по Escape SHALL сама завершаться отменой через 4 секунды; тот же
 интервал задан и как время автоскрытия состояния `cancelledWithUndo`.
@@ -575,7 +575,7 @@ VoicePaste) SHALL считаться не текстовым назначени�
 ### Invariant: Отменённая запись не оставляет следов
 <!-- entities: AppState, Transcript, AudioCaptureService -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/App/AppState.swift -->
+<!-- enforced_macos: VoicePaste/App/AppState.swift, VoicePaste/App/DictationCoordinator.swift -->
 <!-- verified_by_macos: VoicePasteTests/DictationStateMachineTests.swift:test_cancelFromUI_whileRecording_discardsAndReturnsToIdle -->
 
 Отмена SHALL останавливать захват и отбрасывать буфер: распознавание не

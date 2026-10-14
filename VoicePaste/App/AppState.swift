@@ -171,7 +171,6 @@ public final class AppState: ObservableObject {
             readiness: readiness,
             audioCapture: capture,
             textDelivery: textDelivery ?? SystemTextDelivery(),
-            hud: resolvedHUD,
             now: now,
             isDictationReady: isDictationReady,
             logEvent: logEvent,

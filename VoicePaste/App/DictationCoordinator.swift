@@ -23,7 +23,6 @@ final class DictationCoordinator {
     private let readiness: ReadinessCoordinator
     private let audioCapture: any AudioSource
     private let textDelivery: any TextDelivering
-    private let hud: any HUDPresenting
     private let now: () -> Date
     private let isDictationReady: (@MainActor () -> Bool)?
     private let logEvent: @Sendable (String, String) -> Void
@@ -57,7 +56,6 @@ final class DictationCoordinator {
         readiness: ReadinessCoordinator,
         audioCapture: any AudioSource,
         textDelivery: any TextDelivering,
-        hud: any HUDPresenting,
         now: @escaping () -> Date,
         isDictationReady: (@MainActor () -> Bool)?,
         logEvent: @escaping @Sendable (String, String) -> Void,
@@ -70,7 +68,6 @@ final class DictationCoordinator {
         self.readiness = readiness
         self.audioCapture = audioCapture
         self.textDelivery = textDelivery
-        self.hud = hud
         self.now = now
         self.isDictationReady = isDictationReady
         self.logEvent = logEvent
@@ -78,9 +75,6 @@ final class DictationCoordinator {
         self.pipeline = pipeline
         self.stateMachine = DictationStateMachine(mode: settings.recordingMode)
     }
-
-    var phase: DictationPhase { stateMachine.phase }
-    var isDictationPaused: Bool { isPaused }
 
     func recordingModeChanged() {
         stateMachine.mode = settings.recordingMode
@@ -379,16 +373,16 @@ final class DictationCoordinator {
         }
 
         do {
-            let vocabulary = (try? await historyStore.fetchVocabulary()) ?? []
             let language = settings.languageMode
             let input = DictationInput(
                 samples: samples,
                 language: language,
-                vocabulary: vocabulary,
                 autoCorrectSafeTypos: settings.autoCorrectSafeTypos
             )
+            let history = historyStore
             let outcome = try await pipeline.run(
                 input,
+                vocabulary: { (try? await history.fetchVocabulary()) ?? [] },
                 recognizer: LiveRecognizer(modelManager: modelManager, streaming: streamingTranscriber),
                 onSpeechConfirmed: { @MainActor [weak self] in self?.host?.presentHUD(.processing) }
             )

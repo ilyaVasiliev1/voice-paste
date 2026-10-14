@@ -25,10 +25,10 @@ UI не обращается к `AVAudioEngine`, `AXUIElement` и GRDB напр�
 ## Главный путь: горячая клавиша → текст в чужом окне
 
 1. `Core/Hotkey/HotkeyManager.swift` — системная регистрация сочетания, без
-   перехватчика событий. Отдаёт нажатие и отпускание в `App/AppState.swift`.
+   перехватчика событий. Отдаёт нажатие и отпускание в `App/AppState.swift`, дальше ведёт их `App/DictationCoordinator.swift`.
 2. `Core/Dictation/DictationStateMachine.swift` — чистый автомат, режимы
    «переключением» и «удержанием». Возвращает эффект, сам ничего не делает.
-3. `AppState` снимает снимок активного приложения (`Core/Insertion/TextInserter.swift`),
+3. `DictationCoordinator` (из `AppState`) снимает снимок активного приложения (`Core/Insertion/TextInserter.swift`),
    запускает `Core/Audio/AudioCaptureService.swift` и поднимает панель
    `Core/HUD/HUDWindowController.swift` — она не забирает фокус.
 4. Запись длиннее одного окна считается **по ходу**:
@@ -84,7 +84,7 @@ UI не обращается к `AVAudioEngine`, `AXUIElement` и GRDB напр�
 
 | Нужно | Смотреть | Чем проверить |
 |---|---|---|
-| Изменить поведение диктовки | `spec/dictation/spec.md`, затем `Core/Dictation/`, `App/AppState.swift` | `zsh scripts/test-safely.sh`, затем сверка |
+| Изменить поведение диктовки | `spec/dictation/spec.md`, затем `Core/Dictation/`, `App/DictationCoordinator.swift`, `Packages/SpeechPipeline/` | `zsh scripts/test-safely.sh`, затем сверка |
 | Тронуть схему базы | `Data/Migrations.swift`, `Data/PersistenceRecords.swift` | `VoicePasteTests/HistoryStoreTests.swift` |
 | Поменять загрузку модели | `Core/Transcription/ModelManager.swift`, `GitHubModelDownloader.swift` | `ModelManagerTests`, `ModelDownloadProgressTests` |
 | Тронуть вставку текста | `Core/Insertion/TextInserter.swift` | `VoicePasteTests/TextInserterTests.swift` |

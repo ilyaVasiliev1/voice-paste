@@ -1,9 +1,6 @@
 import Foundation
 
-/// Склеивает результаты окон одной записи в один текст.
-///
-/// Язык берётся из первого окна, у которого он определён, и держится: при
-/// определении на каждом окне порознь язык скакал бы внутри одной записи.
+/// Склейка окон записи; язык берётся из первого окна, где он определён.
 nonisolated public struct TranscriptAccumulator: Sendable {
     private var text = ""
     private var detectedLanguage: String?
