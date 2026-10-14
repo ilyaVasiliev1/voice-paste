@@ -335,6 +335,37 @@ struct DictationTractTests {
         #expect(try await savedItems(rig).isEmpty)
     }
 
+    @Test("плашка записи показана до запуска микрофона")
+    func recordingPlaqueIsShownBeforeTheMicrophoneStarts() async throws {
+        let rig = try await makeRig()
+        defer { rig.cleanup() }
+        var statesAtStart: [HUDState] = []
+        rig.audio.onStart = { statesAtStart = rig.hud.states }
+
+        rig.state.handleHotkeyDown()
+
+        guard case .recording = try #require(statesAtStart.last) else {
+            Issue.record("к запуску микрофона плашка записи не показана: \(statesAtStart)")
+            return
+        }
+    }
+
+    @Test("микрофон не запустился — плашка записи сменяется ошибкой микрофона")
+    func microphoneStartFailureReplacesTheRecordingPlaque() async throws {
+        let rig = try await makeRig()
+        defer { rig.cleanup() }
+        rig.audio.startFailure = NSError(domain: "test", code: 1)
+
+        rig.state.handleHotkeyDown()
+
+        #expect(rig.hud.last == .error(
+            message: NSLocalizedString("dictation.microphoneError", comment: ""),
+            action: .selectMicrophone
+        ))
+        #expect(rig.state.dictationPhase == .idle)
+        #expect(rig.delivery.inserted.isEmpty)
+    }
+
     @Test("прерывание без записи — ничего не происходит")
     func interruptionWithoutRecordingIsIgnored() async throws {
         let rig = try await makeRig()

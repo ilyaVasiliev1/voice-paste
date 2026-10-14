@@ -15,9 +15,13 @@ final class FakeAudioSource: AudioSource {
     var recording: [Float] = []
     var recordingRMS: Float = 0
     private(set) var startCount = 0
+    var startFailure: (any Error)?
+    var onStart: (() -> Void)?
 
     func start() throws {
         startCount += 1
+        onStart?()
+        if let startFailure { throw startFailure }
         isCapturing = true
     }
     func resume() throws { isCapturing = true }
