@@ -3,7 +3,7 @@ import SwiftUI
 /// Список раздела истории: записи с поиском и секцией незавершённого импорта.
 /// Sidebar pages 100 rows at a time via `HistoryStoring` (`DM-002`/`DM-003`),
 /// never loading `rawText` or full `text` until an item is selected. Search
-/// is FTS5-backed with a 250 ms debounce that cancels stale requests
+/// is FTS5-backed with a short debounce that cancels stale requests
 /// (`L-008`, в `HistoryListModel`).
 struct HistoryListColumn: View {
     /// Не наблюдается: нужен для перехода в очередь, а перерисовку от лекции

@@ -28,8 +28,11 @@ final class HistoryListModel: ObservableObject {
     private static let prefetchDistance = 20
     /// Потолок глубины, которую обновление восстанавливает одним заходом.
     private static let maxRefreshPages = 30
+    /// Запрос к 2,4 тыс. записей — около 2 мс (замер 14.10.2026): задержка и есть ожидание.
+    static let defaultSearchDebounce: Duration = .milliseconds(80)
 
     private let store: any HistoryStoring
+    private let searchDebounce: Duration
     private var nextCursor: TranscriptCursor?
     private var searchTask: Task<Void, Never>?
     private var detailTask: Task<Void, Never>?
@@ -46,8 +49,9 @@ final class HistoryListModel: ObservableObject {
     /// машине `.task` успел раньше: загрузка увидела пустое хранилище, вышла,
     /// и история не появилась вовсе. Порядка, от которого зависит результат,
     /// теперь нет.
-    init(store: any HistoryStoring) {
+    init(store: any HistoryStoring, searchDebounce: Duration = HistoryListModel.defaultSearchDebounce) {
         self.store = store
+        self.searchDebounce = searchDebounce
     }
 
     /// Хранилище, на котором стоит модель: редактору детали нужна запись правки.
@@ -158,12 +162,12 @@ final class HistoryListModel: ObservableObject {
         detail = loaded
     }
 
-    /// `L-008`: 250 ms debounce, cancels the stale request before it ever
-    /// reaches the store; Enter never starts a recognition session.
+    /// `L-008`: debounce cancels the stale request before it ever reaches
+    /// the store; Enter never starts a recognition session.
     private func scheduleSearch(_ query: String) {
         searchTask?.cancel()
         searchTask = Task {
-            try? await Task.sleep(nanoseconds: 250_000_000)
+            try? await Task.sleep(for: searchDebounce)
             guard !Task.isCancelled else { return }
             await reload(query: query, minimumCount: 0)
         }
