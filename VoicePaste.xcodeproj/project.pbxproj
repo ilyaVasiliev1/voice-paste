@@ -31,6 +31,7 @@
 		C0000000000000000000011E /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000011D /* AppState.swift */; };
 		C00000000000000000000120 /* AudioCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000011F /* AudioCaptureService.swift */; };
 		C00000000000000000000122 /* DictationStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000121 /* DictationStateMachine.swift */; };
+		C00000000000000000000A53 /* SpeechGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A52 /* SpeechGate.swift */; };
 		C00000000000000000000A4D /* DictationLanguageJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A4C /* DictationLanguageJournal.swift */; };
 		C00000000000000000000124 /* HUDContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000123 /* HUDContentView.swift */; };
 		C00000000000000000000126 /* HUDState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000125 /* HUDState.swift */; };
@@ -116,6 +117,7 @@
 		C00000000000000000000A47 /* DictationTractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A46 /* DictationTractTests.swift */; };
 		C00000000000000000000A51 /* AudioEvidenceFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A50 /* AudioEvidenceFilterTests.swift */; };
 		C00000000000000000000A4F /* SpeechGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A4E /* SpeechGateTests.swift */; };
+		C00000000000000000000A55 /* SpeechGateRealSpeechTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A54 /* SpeechGateRealSpeechTests.swift */; };
 		C00000000000000000000A4B /* DictationLanguageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A4A /* DictationLanguageTests.swift */; };
 		CA0000000000000000000923 /* SubtitleCreditFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0000000000000000000922 /* SubtitleCreditFilterTests.swift */; };
 		C00000000000000000000900 /* ModelDownloadProgressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000901 /* ModelDownloadProgressTests.swift */; };
@@ -166,6 +168,7 @@
 		C0000000000000000000011D /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		C0000000000000000000011F /* AudioCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioCaptureService.swift; sourceTree = "<group>"; };
 		C00000000000000000000121 /* DictationStateMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationStateMachine.swift; sourceTree = "<group>"; };
+		C00000000000000000000A52 /* SpeechGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechGate.swift; sourceTree = "<group>"; };
 		C00000000000000000000A4C /* DictationLanguageJournal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationLanguageJournal.swift; sourceTree = "<group>"; };
 		C00000000000000000000123 /* HUDContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDContentView.swift; sourceTree = "<group>"; };
 		C00000000000000000000125 /* HUDState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDState.swift; sourceTree = "<group>"; };
@@ -235,6 +238,7 @@
 		C00000000000000000000A46 /* DictationTractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationTractTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A50 /* AudioEvidenceFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEvidenceFilterTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A4E /* SpeechGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechGateTests.swift; sourceTree = "<group>"; };
+		C00000000000000000000A54 /* SpeechGateRealSpeechTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechGateRealSpeechTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A4A /* DictationLanguageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationLanguageTests.swift; sourceTree = "<group>"; };
 		CA0000000000000000000922 /* SubtitleCreditFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitleCreditFilterTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000901 /* ModelDownloadProgressTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloadProgressTests.swift; sourceTree = "<group>"; };
@@ -378,6 +382,7 @@
 			isa = PBXGroup;
 			children = (
 				C00000000000000000000121 /* DictationStateMachine.swift */,
+				C00000000000000000000A52 /* SpeechGate.swift */,
 				C00000000000000000000A4C /* DictationLanguageJournal.swift */,
 				C00000000000000000000930 /* DictationWindowPlanner.swift */,
 				C00000000000000000000934 /* StreamingDictationTranscriber.swift */,
@@ -614,6 +619,7 @@
 				C00000000000000000000A46 /* DictationTractTests.swift */,
 				C00000000000000000000A50 /* AudioEvidenceFilterTests.swift */,
 				C00000000000000000000A4E /* SpeechGateTests.swift */,
+				C00000000000000000000A54 /* SpeechGateRealSpeechTests.swift */,
 				C00000000000000000000A4A /* DictationLanguageTests.swift */,
 				CA0000000000000000000922 /* SubtitleCreditFilterTests.swift */,
 				C00000000000000000000901 /* ModelDownloadProgressTests.swift */,
@@ -791,6 +797,7 @@
 				C00000000000000000000301 /* AppDelegate.swift in Sources */,
 				C00000000000000000000120 /* AudioCaptureService.swift in Sources */,
 				C00000000000000000000122 /* DictationStateMachine.swift in Sources */,
+				C00000000000000000000A53 /* SpeechGate.swift in Sources */,
 				C00000000000000000000A4D /* DictationLanguageJournal.swift in Sources */,
 				C00000000000000000000931 /* DictationWindowPlanner.swift in Sources */,
 				C00000000000000000000935 /* StreamingDictationTranscriber.swift in Sources */,
@@ -876,6 +883,7 @@
 				C00000000000000000000A47 /* DictationTractTests.swift in Sources */,
 				C00000000000000000000A51 /* AudioEvidenceFilterTests.swift in Sources */,
 				C00000000000000000000A4F /* SpeechGateTests.swift in Sources */,
+				C00000000000000000000A55 /* SpeechGateRealSpeechTests.swift in Sources */,
 				C00000000000000000000A4B /* DictationLanguageTests.swift in Sources */,
 				CA0000000000000000000923 /* SubtitleCreditFilterTests.swift in Sources */,
 				C00000000000000000000900 /* ModelDownloadProgressTests.swift in Sources */,

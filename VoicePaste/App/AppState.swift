@@ -815,8 +815,6 @@ public final class AppState: ObservableObject {
             return
         }
 
-        presentHUD(.processing)
-
         dictationTask = Task { [weak self] in
             await self?.transcribeAndFinish(samples: samples)
         }
@@ -828,6 +826,19 @@ public final class AppState: ObservableObject {
             dictationPhase = .idle
             frontAppSnapshot = nil
         }
+
+        // Решение «есть ли речь» принимается до плашки «расшифровка» и до
+        // модели: на записи без речи Whisper выдумывает текст.
+        let activity = await SpeechGate.analyzeOffMain(samples)
+        guard activity.hasSpeech else {
+            streamingTranscriber.cancel()
+            logEvent("dictation.noSpeech", "durationMs=\(samples.count * 1_000 / 16_000)")
+            presentHUD(.error(
+                message: NSLocalizedString("dictation.emptyAudio", comment: "")
+            ))
+            return
+        }
+        presentHUD(.processing)
 
         do {
             let engine = try await modelManager.ensureLoaded()

@@ -259,6 +259,39 @@ Escape во время записи SHALL останавливать тольк�
 
 ---
 
+### Requirement: Запись без речи не доходит до модели
+<!-- id: SpeechGate.analyze -->
+<!-- entities: AppState, SpeechGate, SpeechActivity -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/Core/Dictation/SpeechGate.swift, VoicePaste/App/AppState.swift -->
+<!-- test_macos: VoicePasteTests/SpeechGateTests.swift -->
+<!-- test_macos: VoicePasteTests/DictationTractTests.swift:steadyNoiseNeverReachesTheModel -->
+<!-- test_macos: VoicePasteTests/SpeechGateRealSpeechTests.swift:realSpeechIsFound -->
+
+После проверки длины и громкости записи приложение SHALL определить, есть ли в
+ней речь, сравнивая громкость кадров по 20 мс с оценкой фона самой записи.
+Записи без речи (тишина, ровный шум громче 0.004, одиночный щелчок) не
+передаются в модель: показывается `dictation.emptyAudio`, история не пишется,
+в журнал уходит `dictation.noSpeech`. Анализ идёт вне главного актора.
+
+Основание: на записи без речи Whisper выдумывает текст — «Thank you»,
+«Продолжение следует».
+
+#### Scenario: ровный шум громче порога записи целиком
+<!-- test: DictationTractTests.steadyNoiseNeverReachesTheModel -->
+- **WHEN** средняя громкость выше 0.004, но речи в записи нет
+- **THEN** модель не вызывается, фаза `idle`, HUD `.error(dictation.emptyAudio)`
+
+#### Scenario: настоящая речь
+<!-- test: SpeechGateRealSpeechTests.realSpeechIsFound -->
+- **WHEN** запись содержит речь
+- **THEN** речь найдена; на окнах по секунде реальной записи теряется не более
+  2 % (измерено 0,2 %)
+
+> Last verified: 2026-10-14
+
+---
+
 ### Requirement: Язык каждой диктовки записывается в журнал без текста
 <!-- id: DictationLanguageJournal.detail -->
 <!-- entities: AppState, DictationLanguageJournal, DiagnosticLog -->

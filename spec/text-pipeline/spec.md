@@ -140,11 +140,26 @@
 <!-- platforms: macos -->
 <!-- enforced_macos: VoicePaste/Core/Transcription/TrailingHallucinationFilter.swift -->
 <!-- test_macos: VoicePasteTests/TrailingHallucinationFilterTests.swift:test_removesModelTerminalFillerOnlyInTrailingSilence -->
+<!-- test_macos: VoicePasteTests/AudioEvidenceFilterTests.swift:unlistedPhraseAfterSpeechIsRemoved -->
+<!-- test_macos: VoicePasteTests/AudioEvidenceFilterTests.swift:samePhraseInsideAudibleSpeechIsKept -->
+<!-- test_macos: VoicePasteTests/AudioEvidenceFilterTests.swift:noLongSilenceKeepsText -->
 
-Известный концевой наполнитель («продолжение следует», «to be continued»)
-SHALL удаляться только при доказательстве из аудио: в конце записи есть
-длинная тишина, а сегмент с наполнителем начинается позже последней речи.
-Текста самого по себе недостаточно.
+Концовка SHALL удаляться по звуку, а не по списку фраз: после долгой тишины в
+конце записи снимается любой хвост сегментов, начавшихся позже последнего
+слышимого звука (с запасом 0,2 с). Текста самого по себе недостаточно. Список
+известных наполнителей («продолжение следует», «to be continued») остаётся
+только для случая, когда декодер склеил речь и наполнитель в один сегмент.
+
+#### Scenario: фраза не из списка после речи и тишины
+<!-- test: AudioEvidenceFilterTests.unlistedPhraseAfterSpeechIsRemoved -->
+- **WHEN** хвост записи молчит, а последний сегмент («Thank you») начался
+  позже последнего слышимого звука
+- **THEN** сегмент убран из текста, хотя фразы нет в списке
+
+#### Scenario: та же фраза произнесена вслух
+<!-- test: AudioEvidenceFilterTests.samePhraseInsideAudibleSpeechIsKept -->
+- **WHEN** слышимый звук продолжается после начала сегмента
+- **THEN** текст не изменяется
 
 #### Scenario: наполнитель после тишины
 <!-- test: TrailingHallucinationFilterTests.test_removesModelTerminalFillerOnlyInTrailingSilence -->

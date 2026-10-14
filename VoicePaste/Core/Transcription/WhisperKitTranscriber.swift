@@ -40,7 +40,8 @@ nonisolated public struct WhisperKitTranscriber: Transcribing {
     /// `TrailingHallucinationFilter`, а в сегментах она оставалась.
     static func cleanedSegments(
         from segments: [TranscribedSegment],
-        hadLongTrailingSilence: Bool
+        hadLongTrailingSilence: Bool,
+        lastAudibleSecond: Double? = nil
     ) -> [TranscribedSegment] {
         var cleaned = segments.compactMap { segment -> TranscribedSegment? in
             let text = WhisperSpecialTokens.strip(segment.text)
@@ -53,8 +54,16 @@ nonisolated public struct WhisperKitTranscriber: Transcribing {
                 endSeconds: segment.endSeconds
             )
         }
-        // Концовка снимается только после настоящей тишины: та же оговорка,
-        // что у готового текста. Без тишины такая фраза могла быть сказана.
+        // Любой хвост, начавшийся после последнего слышимого звука, — не речь;
+        // только после настоящей тишины, как и у готового текста.
+        if hadLongTrailingSilence, let lastAudibleSecond {
+            let boundary = lastAudibleSecond + TrailingHallucinationFilter.afterSpeechMargin
+            while let last = cleaned.last, last.startSeconds >= boundary {
+                cleaned.removeLast()
+            }
+        }
+        // Концовка из списка снимается только после настоящей тишины: та же
+        // оговорка, что у готового текста.
         while hadLongTrailingSilence,
             let last = cleaned.last,
             TrailingHallucinationFilter.isTerminalFiller(last.text) {
@@ -292,7 +301,11 @@ private actor WhisperInferenceWorker {
                         endSeconds: Double($0.end)
                     )
                 },
-                hadLongTrailingSilence: hadLongTrailingSilence
+                hadLongTrailingSilence: hadLongTrailingSilence,
+                lastAudibleSecond: TrailingHallucinationFilter.lastAudibleSecond(
+                    in: request.samples,
+                    sampleRate: request.sampleRate
+                )
             )
         )
     }

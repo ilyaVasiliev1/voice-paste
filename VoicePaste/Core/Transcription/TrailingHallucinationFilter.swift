@@ -28,11 +28,14 @@ public enum TrailingHallucinationFilter {
         knownTerminalFillers.contains(canonical(text))
     }
 
-    /// A short natural pause at the end of a sentence must not alter text.
-    /// A model-only segment is removed only after at least 0.6 s of detected
-    /// silence and with its own timestamp at least 0.2 s after real speech.
-    /// The exact Russian terminal filler is additionally reserved as a
-    /// decoder artefact and removed even when timestamps are coalesced.
+    /// Сегмент, начавшийся позже последнего слышимого звука, — не речь.
+    /// Запас в долю секунды отделяет настоящий последний слог от выдумки.
+    public nonisolated static let afterSpeechMargin = 0.2
+
+    /// Снимает концовку по звуку, а не по списку фраз: после долгой тишины
+    /// убирается любой хвост сегментов, начавшихся позже последнего слышимого
+    /// звука. Список известных фраз остаётся для случая, когда декодер склеил
+    /// речь и концовку в один сегмент и по времени их не разделить.
     public nonisolated static func filtering(
         rawText: String,
         segments: [Segment],
@@ -44,29 +47,26 @@ public enum TrailingHallucinationFilter {
             ?? self.hasLongTrailingSilence(in: samples, sampleRate: sampleRate)
         guard hadLongTrailingSilence else { return rawText }
 
-        if let terminal = segments.last,
-           knownTerminalFillers.contains(canonical(terminal.text)),
-           let lastAudibleSecond = lastAudibleSecond(
-                in: samples,
-                sampleRate: sampleRate
-           ) {
-            if terminal.startSeconds >= lastAudibleSecond + 0.2 {
+        var text = rawText
+        var remaining = segments
+        if let lastAudible = lastAudibleSecond(in: samples, sampleRate: sampleRate) {
+            while let terminal = remaining.last,
+                  terminal.startSeconds >= lastAudible + afterSpeechMargin {
                 let suffix = terminal.text.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !suffix.isEmpty,
-                   rawText.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix(suffix) {
-                    return String(rawText.dropLast(suffix.count))
-                        .trimmingCharacters(in: .whitespacesAndNewlines)
-                }
+                let current = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !suffix.isEmpty, current.hasSuffix(suffix) else { break }
+                text = String(current.dropLast(suffix.count))
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                remaining.removeLast()
             }
         }
 
-        // Some decoders coalesce speech and filler into one segment. A long
-        // silent tail plus an appended filler is sufficient evidence, but a
-        // transcript consisting only of the phrase is preserved: that is the
-        // explicit user-dictated case covered by AT-053.
-        return canonical(rawText) == "продолжение следует"
-            ? rawText
-            : removingKnownTerminalFiller(rawText)
+        // Склеенный сегмент: долгая тишина плюс известная концовка — достаточное
+        // свидетельство. Текст из одной этой фразы сохраняется: человек мог
+        // продиктовать её сам (AT-053).
+        return canonical(text) == "продолжение следует"
+            ? text
+            : removingKnownTerminalFiller(text)
     }
 
     /// Trims a long silent tail before it reaches Whisper. This addresses the
@@ -101,7 +101,7 @@ public enum TrailingHallucinationFilter {
 
     /// Finds the final 20 ms window with enough signal energy for speech.
     /// The loop runs on the transcription executor, never on the UI actor.
-    private nonisolated static func lastAudibleSecond(
+    public nonisolated static func lastAudibleSecond(
         in samples: [Float],
         sampleRate: Double
     ) -> Double? {
