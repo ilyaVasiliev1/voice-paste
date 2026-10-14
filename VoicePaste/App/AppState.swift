@@ -244,6 +244,9 @@ public final class AppState: ObservableObject {
             self?.currentLevel = level
             self?.refreshRecordingHUD()
         }
+        audioCapture.onInterruption = { [weak self] event in
+            self?.handleCaptureInterruption(event)
+        }
 
         // `UI-003`: the HUD's mouse controls call back into the same
         // dictation logic the hotkey/menu drive — never a separate path.
@@ -809,7 +812,7 @@ public final class AppState: ObservableObject {
         // happens *before* `.processing` is presented, so the existing HUD
         // morphs directly from recording to its compact error without a
         // visible shrink-then-grow intermediate state.
-        let minimumSamples = 8_000 // 0.5 s at the 16 kHz capture format
+        let minimumSamples = Self.minimumRecordingSamples
         // 0.004 RMS retains quiet human speech but rejects microphone floor
         // noise / silence. The decision is derived during capture, not by a
         // second scan over the full buffer on the main actor.
@@ -933,6 +936,39 @@ public final class AppState: ObservableObject {
                 message: NSLocalizedString("dictation.transcriptionFailed", comment: "")
             ))
             Task { await DiagnosticLog.shared.log("dictation.transcriptionFailed", detail: String(describing: error)) }
+        }
+    }
+
+    // MARK: - Смена микрофона
+
+    /// 0,5 с при 16 кГц: меньше — для модели слишком мало фонетического контекста.
+    private static let minimumRecordingSamples = 8_000
+
+    private func handleCaptureInterruption(_ event: AudioCaptureInterruption) {
+        switch event {
+        case .restarted:
+            logEvent("capture.deviceChanged", "restarted")
+        case .failed(let reason):
+            logEvent("capture.deviceChanged", "failed reason=\(reason)")
+            if isLectureRecording {
+                // Лекция сохраняет прослушанное и закрывается сама.
+                toggleLectureRecording()
+                return
+            }
+            guard dictationStateMachine.phase == .recording, !isDictationPaused else { return }
+            if audioCapture.capturedSampleCount >= Self.minimumRecordingSamples {
+                // Сказанное не теряется: запись завершается так, как если бы
+                // человек сам нажал «готово».
+                finishDictationFromHUD()
+            } else {
+                _ = dictationStateMachine.cancelFromUI()
+                discardRecording()
+                synchronizeDictationPhase()
+                presentHUD(.error(
+                    message: NSLocalizedString("dictation.microphoneError", comment: ""),
+                    action: .selectMicrophone
+                ))
+            }
         }
     }
 

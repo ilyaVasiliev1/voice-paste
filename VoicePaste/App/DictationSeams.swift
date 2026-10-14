@@ -9,6 +9,7 @@ protocol AudioSource: AnyObject {
     var capturedSampleCount: Int { get }
     var onLevel: ((Float) -> Void)? { get set }
     var onAudioChunk: (@Sendable ([Float]) -> Void)? { get set }
+    var onInterruption: ((AudioCaptureInterruption) -> Void)? { get set }
 
     func start() throws
     func resume() throws

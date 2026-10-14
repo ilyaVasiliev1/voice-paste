@@ -292,6 +292,47 @@ Escape во время записи SHALL останавливать тольк�
 
 ---
 
+### Requirement: Смена или пропажа микрофона во время записи не теряет сказанное
+<!-- id: AppState.handleCaptureInterruption -->
+<!-- entities: AppState, AudioCaptureService, AudioCaptureInterruption -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/App/AppState.swift, VoicePaste/Core/Audio/AudioCaptureService.swift -->
+<!-- test_macos: VoicePasteTests/DictationTractTests.swift:deviceChangeWithRestartKeepsRecording -->
+<!-- test_macos: VoicePasteTests/DictationTractTests.swift:deviceLossFinishesWithWhatWasRecorded -->
+<!-- test_macos: VoicePasteTests/DictationTractTests.swift:deviceLossWithoutAudioShowsMicrophoneError -->
+<!-- test_macos: VoicePasteTests/DictationTractTests.swift:interruptionWithoutRecordingIsIgnored -->
+
+Когда система меняет устройство ввода посреди записи, служба захвата SHALL
+пересобрать аудиограф на новом устройстве с тем же накопителем и продолжить
+запись. Если продолжить не вышло, приложение SHALL не оставлять запись
+«идущей»: при накопленных 0,5 с и более она завершается как по кнопке
+«готово» и сказанное расшифровывается; при меньшем объёме показывается
+`dictation.microphoneError` с действием «Выбрать микрофон». Идущая лекция
+сохраняет прослушанное и закрывается. Каждое такое событие уходит в журнал как
+`capture.deviceChanged`.
+
+Основание: прежде наблюдателя смены графа не было — запись продолжала
+выглядеть идущей, а на выходе была тишина либо падение движка.
+
+#### Scenario: устройство сменилось, запись продолжена
+<!-- test: DictationTractTests.deviceChangeWithRestartKeepsRecording -->
+- **WHEN** граф пересобран на новом устройстве
+- **THEN** фаза остаётся `recording`, плашка не показывает ошибку, модель не вызывается
+
+#### Scenario: микрофон пропал, звука достаточно
+<!-- test: DictationTractTests.deviceLossFinishesWithWhatWasRecorded -->
+- **WHEN** продолжить не вышло, накоплено не меньше 0,5 с
+- **THEN** запись расшифрована и доставлена, фаза `idle`
+
+#### Scenario: микрофон пропал, звука почти нет
+<!-- test: DictationTractTests.deviceLossWithoutAudioShowsMicrophoneError -->
+- **WHEN** продолжить не вышло, накоплено меньше 0,5 с
+- **THEN** HUD `.error(dictation.microphoneError, .selectMicrophone)`, модель не вызывается, история не пишется
+
+> Last verified: 2026-10-14
+
+---
+
 ### Requirement: Язык каждой диктовки записывается в журнал без текста
 <!-- id: DictationLanguageJournal.detail -->
 <!-- entities: AppState, DictationLanguageJournal, DiagnosticLog -->
@@ -557,4 +598,5 @@ VoicePaste) SHALL считаться не текстовым назначени�
 ---
 
 <!-- uncertainty: HUD-состояния `inserted`/`copied`/`cancelled`/`error` и их таймеры автоскрытия проверены только чтением кода — автотестов на HUDWindowController и HUDContentView в VoicePasteTests нет. -->
+<!-- uncertainty: Настоящее срабатывание AVAudioEngineConfigurationChange и пересборка графа в AudioCaptureService.handleConfigurationChange проверены только чтением кода: тесты идут через подставной источник звука, живое устройство в тестовом прогоне недоступно. -->
 <!-- uncertainty: Переход по Escape и возврат к той же записи (AudioCaptureService.pause/resume) не покрыт тестом: проверить можно только с живым AVAudioEngine. -->

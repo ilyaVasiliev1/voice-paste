@@ -6,6 +6,15 @@ public enum AudioCaptureError: Error, Equatable, Sendable {
     case engineFailed(String)
 }
 
+/// Что случилось с захватом, пока шла запись: система сменила или убрала
+/// устройство ввода.
+public enum AudioCaptureInterruption: Equatable, Sendable {
+    /// Граф пересобран на новом устройстве, накопленное сохранено, запись идёт.
+    case restarted
+    /// Продолжить не вышло: микрофона нет. Накопленное остаётся в буфере.
+    case failed(String)
+}
+
 /// Thread-safe sink for samples produced on the real-time audio thread
 /// (`AVAudioEngine` taps never run on the main actor).
 ///
@@ -199,6 +208,10 @@ public final class AudioCaptureService {
         get { accumulator.onChunk }
         set { accumulator.onChunk = newValue }
     }
+
+    /// Система сменила устройство посреди записи. Вызывается на главном акторе.
+    public var onInterruption: ((AudioCaptureInterruption) -> Void)?
+    private var configurationObserver: NSObjectProtocol?
     private var levelPollTask: Task<Void, Never>?
 
     public init() {}
@@ -289,7 +302,34 @@ public final class AudioCaptureService {
         }
         self.engine = engine
         isCapturing = true
+        observeConfigurationChanges(of: engine)
         startLevelPolling()
+    }
+
+    // Смена устройства останавливает движок сама, без ошибки: прежде запись
+    // продолжала выглядеть идущей, а на выходе была тишина или падение.
+    private func observeConfigurationChanges(of engine: AVAudioEngine) {
+        if let configurationObserver { NotificationCenter.default.removeObserver(configurationObserver) }
+        configurationObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange,
+            object: engine,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.handleConfigurationChange() }
+        }
+    }
+
+    /// Пересобирает граф на новом устройстве с тем же накопителем; если не
+    /// вышло — сообщает, накопленное остаётся.
+    func handleConfigurationChange() {
+        guard isCapturing else { return }
+        pause()
+        do {
+            try beginCapture(clearingExistingSamples: false)
+            onInterruption?(.restarted)
+        } catch {
+            onInterruption?(.failed(String(describing: error)))
+        }
     }
 
     /// Stops capture and returns the accumulated 16 kHz mono samples.
@@ -310,6 +350,10 @@ public final class AudioCaptureService {
         guard isCapturing, let engine else { return }
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
+        if let configurationObserver {
+            NotificationCenter.default.removeObserver(configurationObserver)
+            self.configurationObserver = nil
+        }
         self.engine = nil
         isCapturing = false
         levelPollTask?.cancel()
