@@ -173,6 +173,8 @@ final class ScreenSnapshots: XCTestCase {
     /// `zsh scripts/test-safely.sh -only-testing:VoicePasteTests/ScreenSnapshots/test_hudLiveDemo`.
     func test_hudLiveDemo() async throws {
         try skipUnlessRequested()
+        // Тестовый хост — приложение без значка: без этого окна могут не выводиться на экран.
+        NSApp.setActivationPolicy(.accessory)
         let hud = HUDWindowController()
         let script: [(HUDState, Double)] = [
             (.recording(elapsed: 2, level: 0.5), 1.4), (.processing, 1.0), (.inserted, 1.2),
@@ -181,8 +183,16 @@ final class ScreenSnapshots: XCTestCase {
             (.importIdle, 1.6), (.importing, 1.2), (.importOpened, 1.4),
             (.recording(elapsed: 1, level: 0.4), 0.5), (.processing, 0.35), (.recording(elapsed: 2, level: 0.4), 0.5),
         ]
+        var logged = false
         for (state, seconds) in script {
             hud.present(state)
+            if !logged {
+                logged = true
+                let windows = NSApp.windows.map {
+                    "\($0.className) frame=\($0.frame) visible=\($0.isVisible) onActiveSpace=\($0.isOnActiveSpace) alpha=\($0.alphaValue) level=\($0.level.rawValue)"
+                }
+                print("DEMO policy=\(NSApp.activationPolicy().rawValue) screens=\(NSScreen.screens.map(\.frame)) windows=\(windows)")
+            }
             try await Task.sleep(for: .seconds(seconds))
         }
         hud.hide()

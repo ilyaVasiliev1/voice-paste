@@ -241,6 +241,64 @@ final class HistoryListModelTests: XCTestCase {
         XCTAssertTrue(model.didFailToDelete, "отказ базы остался незамеченным")
     }
 
+    // MARK: - Отказы видны, а не выдаются за «пусто»
+
+    func test_failedFirstLoad_isFailure_notAnEmptyHistory() async throws {
+        let (model, store) = makeModel(count: 3)
+        store.failsPages = true
+
+        let observing = Task { await model.observeChanges() }
+        defer { observing.cancel() }
+        let failed = await eventually { model.didFailToLoad }
+
+        XCTAssertTrue(failed, "сбой выборки показали бы как «Нет записей»")
+        XCTAssertTrue(model.items.isEmpty)
+        XCTAssertTrue(model.isLoaded, "заглушка загрузки не должна висеть вечно")
+    }
+
+    func test_retryAfterFailure_loadsTheList_andClearsTheFailure() async throws {
+        let (model, store) = makeModel(count: 3)
+        store.failsPages = true
+        let observing = Task { await model.observeChanges() }
+        defer { observing.cancel() }
+        _ = await eventually { model.didFailToLoad }
+
+        store.failsPages = false
+        await model.retry()
+
+        XCTAssertEqual(model.items.count, 3)
+        XCTAssertFalse(model.didFailToLoad)
+    }
+
+    func test_failedRefresh_keepsTheRowsAlreadyShown() async throws {
+        let (model, store) = makeModel(count: 3)
+        let observing = Task { await model.observeChanges() }
+        defer { observing.cancel() }
+        _ = await eventually { model.items.count == 3 }
+
+        store.failsPages = true
+        store.emitChange()
+        _ = await eventually { model.didFailToLoad }
+
+        XCTAssertEqual(model.items.count, 3, "сбой обновления стёр список")
+    }
+
+    func test_failedDetail_isShown_andClearedByTheNextSelection() async throws {
+        let (model, store) = makeModel(count: 3)
+        store.failsDetail = true
+
+        model.selection = FakeHistoryStore.recordID(0)
+        let failed = await eventually { model.didFailToOpenDetail }
+        XCTAssertTrue(failed, "сбой чтения записи выглядел как «Выберите запись»")
+        XCTAssertNil(model.detail)
+
+        store.failsDetail = false
+        model.selection = FakeHistoryStore.recordID(1)
+        let opened = await eventually { model.detail?.id == FakeHistoryStore.recordID(1) }
+        XCTAssertTrue(opened)
+        XCTAssertFalse(model.didFailToOpenDetail)
+    }
+
     // MARK: - Поиск: задержка не больше самого запроса
 
     func test_searchDebounce_isShortEnoughToFeelInstant() {
@@ -398,6 +456,8 @@ final class FakeHistoryStore: HistoryStoring {
     private(set) var deleteCalls = 0
     private(set) var editCalls: [(id: UUID, text: String)] = []
     private(set) var searchQueries: [String] = []
+    var failsPages = false
+    var failsDetail = false
 
     init(
         count: Int,
@@ -439,6 +499,7 @@ final class FakeHistoryStore: HistoryStoring {
         inFlight += 1
         defer { inFlight -= 1 }
         pageFetches += 1
+        if failsPages { throw HistoryError.notFound }
         if cursor == nil, firstPageDelay != .zero { try? await Task.sleep(for: firstPageDelay) }
         let rest = records.filter { record in
             guard let cursor else { return true }
@@ -463,6 +524,7 @@ final class FakeHistoryStore: HistoryStoring {
     func fetchDetail(id: UUID) async throws -> Transcript {
         if let delay = detailDelay[id] { try? await Task.sleep(for: delay) }
         completedDetailFetches += 1
+        if failsDetail { throw HistoryError.notFound }
         guard let record = records.first(where: { $0.id == id }) else { throw HistoryError.notFound }
         return record
     }
