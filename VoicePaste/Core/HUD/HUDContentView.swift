@@ -2,66 +2,33 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Движение плашки — «желе». Размер капсулы и её содержимое идут пружинами с
-/// отскоком, на каждой смене состояния — лёгкий тычок (сжатие по высоте и
-/// растяжение по ширине), старое содержимое уходит быстро, новое выпрыгивает.
-/// При «Уменьшить движение» пружины, отскок и тычок уходят: размер встаёт на
-/// место сразу, содержимое растворяется.
+/// Движение плашки. Контейнер меняет размер плавной пружиной без отскока;
+/// содержимое меняется прозрачностью в порядке «старое ушло, потом новое»,
+/// и всё содержимое обрезано контуром капсулы. При «Уменьшить движение»
+/// размер встаёт на место сразу, а прозрачность остаётся.
 enum HUDMotion {
     /// Появление и уход капсулы целиком, а также смена её размера.
     static func surface(reduceMotion: Bool) -> Animation {
-        reduceMotion ? DesignTokens.Motion.fade : DesignTokens.Motion.jelly
+        reduceMotion ? DesignTokens.Motion.fade : DesignTokens.Motion.surface
     }
 
     /// Геометрия внутри капсулы: `nil` — размер меняется без движения.
     static func size(reduceMotion: Bool) -> Animation? {
-        reduceMotion ? nil : DesignTokens.Motion.jelly
+        reduceMotion ? nil : DesignTokens.Motion.surface
     }
 
-    static func content(reduceMotion: Bool) -> Animation {
-        reduceMotion ? DesignTokens.Motion.fade : DesignTokens.Motion.pop
-    }
+    /// Основа для переходов содержимого: сами длительности — у перехода.
+    static let content = DesignTokens.Motion.fade
 
-    static func squashes(reduceMotion: Bool) -> Bool { !reduceMotion }
-
-    /// Новое содержимое выпрыгивает с масштабом, старое растворяется за 80 мс:
-    /// иначе они секунду лежат друг на друге.
     static func contentTransition(reduceMotion: Bool) -> AnyTransition {
-        guard !reduceMotion else { return .opacity }
         let scale = DesignTokens.Motion.timeScale
+        let out = Animation.easeOut(duration: DesignTokens.Motion.contentOutDuration * scale)
+        let into = Animation.easeOut(duration: DesignTokens.Motion.contentInDuration * scale)
+            .delay(DesignTokens.Motion.contentInDelay * scale)
         return .asymmetric(
-            insertion: .scale(scale: 0.8).combined(with: .opacity),
-            removal: .opacity.animation(.easeOut(duration: 0.08 * scale))
+            insertion: .opacity.animation(into),
+            removal: .opacity.animation(out)
         )
-    }
-}
-
-/// Тычок на смену состояния: капсула на мгновение приседает и расходится вширь,
-/// затем возвращается пружиной с отскоком. Якорь — низ: нижняя линия плашки стоит.
-private struct HUDSquash: ViewModifier {
-    struct Values { var x = 1.0, y = 1.0 }
-
-    let isEnabled: Bool
-    let trigger: HUDState.Kind
-
-    func body(content: Content) -> some View {
-        if isEnabled {
-            let scale = DesignTokens.Motion.timeScale
-            content.keyframeAnimator(initialValue: Values(), trigger: trigger) { view, value in
-                view.scaleEffect(x: value.x, y: value.y, anchor: .bottom)
-            } keyframes: { _ in
-                KeyframeTrack(\.x) {
-                    CubicKeyframe(1.07, duration: 0.06 * scale)
-                    SpringKeyframe(1, duration: 0.5 * scale, spring: .bouncy)
-                }
-                KeyframeTrack(\.y) {
-                    CubicKeyframe(0.88, duration: 0.06 * scale)
-                    SpringKeyframe(1, duration: 0.5 * scale, spring: .bouncy)
-                }
-            }
-        } else {
-            content
-        }
     }
 }
 
@@ -99,7 +66,6 @@ struct HUDContentView: View {
         .frame(width: HUDLayout.hostWidth, height: HUDLayout.hostHeight, alignment: .bottom)
         .compositingGroup()
         .animation(HUDMotion.surface(reduceMotion: reduceMotion), value: layout)
-        .modifier(HUDSquash(isEnabled: HUDMotion.squashes(reduceMotion: reduceMotion), trigger: state.kind))
     }
 
     /// Fixed-geometry capsule used by every state whose child controls have a
@@ -128,7 +94,7 @@ struct HUDContentView: View {
                     // Уходящее содержимое шире сжимающейся капсулы: без обрезки торчит за контур.
                     .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius, style: .continuous))
                     // Состояния одной ширины раньше менялись жёстко: `layout` у них равен.
-                    .animation(HUDMotion.content(reduceMotion: reduceMotion), value: state.kind)
+                    .animation(HUDMotion.content, value: state.kind)
             }
             .overlay(alignment: .bottom) {
                 autoDismissProgress(for: state, cornerRadius: layout.cornerRadius)
@@ -440,8 +406,8 @@ private struct HUDIconButton: View {
 
 private struct HUDLayout: Equatable {
     /// TOK-hud.container — размер контейнера панели.
-    static let hostWidth: CGFloat = 400
-    static let hostHeight: CGFloat = 176
+    static let hostWidth: CGFloat = 360
+    static let hostHeight: CGFloat = 144
     /// TOK-hud.icon-size — размер кнопки-иконки.
     static let controlSize: CGFloat = 28
     /// Applied by every HUD state on every edge. This is the one source of

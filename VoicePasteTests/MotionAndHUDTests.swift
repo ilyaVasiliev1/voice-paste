@@ -42,10 +42,9 @@ final class HUDMotionTests: XCTestCase {
         XCTAssertEqual(HUDMotion.size(reduceMotion: false), DesignTokens.Motion.surface)
     }
 
-    func test_oldContentLeavesBeforeTheNewOneArrives_andBeforeTheCapsuleSettles() {
+    func test_oldContentLeavesBeforeTheCapsuleHasShrunkMuch() {
         let motion = DesignTokens.Motion.self
         XCTAssertLessThan(motion.contentOutDuration, motion.surfaceDuration / 2, "крестик пережил сжатие капсулы")
-        XCTAssertGreaterThanOrEqual(motion.contentInDelay, motion.contentOutDuration, "новое легло на старое")
     }
 
     func test_surfaceIsQuick() {
@@ -54,6 +53,65 @@ final class HUDMotionTests: XCTestCase {
 
     func test_inspectionSlowdown_isOffByDefault() {
         XCTAssertEqual(DesignTokens.Motion.timeScale, 1)
+    }
+}
+
+/// Смена содержимого плашки идёт по порядку: старое остаётся нарисованным и
+/// уходит, затем появляется новое. Иначе крестик остаётся в сжавшейся панели,
+/// а новый текст лежит на старом.
+@MainActor
+final class HUDContentSwapTests: XCTestCase {
+    private func eventually(_ condition: @MainActor () -> Bool) async -> Bool {
+        for _ in 0..<100 {
+            if condition() { return true }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        return false
+    }
+
+    func test_kindChange_keepsTheOldContentDrawn_andHidesIt() async {
+        let holder = HUDStateHolder(swapOutDelay: .milliseconds(40))
+        holder.state = .recording(elapsed: 1, level: 0.2)
+
+        holder.state = .processing
+
+        XCTAssertEqual(holder.departing, .recording(elapsed: 1, level: 0.2), "старое содержимое пропало в тот же кадр")
+        XCTAssertEqual(holder.contentOpacity, 0)
+        let finished = await eventually { holder.departing == nil && holder.contentOpacity == 1 }
+        XCTAssertTrue(finished, "новое содержимое так и не появилось")
+    }
+
+    func test_tickInsideOneKind_doesNotSwap() {
+        let holder = HUDStateHolder(swapOutDelay: .milliseconds(40))
+        holder.state = .recording(elapsed: 1, level: 0.2)
+
+        holder.state = .recording(elapsed: 2, level: 0.9)
+
+        XCTAssertNil(holder.departing)
+        XCTAssertEqual(holder.contentOpacity, 1)
+    }
+
+    func test_appearanceAndDisappearance_areNotSwaps() {
+        let holder = HUDStateHolder(swapOutDelay: .milliseconds(40))
+
+        holder.state = .processing
+        XCTAssertNil(holder.departing, "появление из пустоты — не смена содержимого")
+
+        holder.state = .hidden
+        XCTAssertNil(holder.departing)
+        XCTAssertEqual(holder.contentOpacity, 1)
+    }
+
+    func test_swapInterruptedByAnotherSwap_endsOnTheLatestState() async {
+        let holder = HUDStateHolder(swapOutDelay: .milliseconds(40))
+        holder.state = .recording(elapsed: 1, level: 0)
+        holder.state = .processing
+        holder.state = .copied
+
+        let settled = await eventually { holder.departing == nil && holder.contentOpacity == 1 }
+
+        XCTAssertTrue(settled)
+        XCTAssertEqual(holder.state, .copied)
     }
 }
 

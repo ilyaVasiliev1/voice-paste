@@ -139,8 +139,10 @@ final class ScreenSnapshots: XCTestCase {
         let cases: [(String, HUDState, HUDState, Bool?)] = [
             ("morph", .recording(elapsed: 3, level: 0.4), .processing, nil),
             ("samewidth", .copied, .processing, nil),
+            ("expand", .recording(elapsed: 3, level: 0.4), .importIdle, nil),
+            ("collapse", .importIdle, .importing, nil),
             ("reduce-morph", .recording(elapsed: 3, level: 0.4), .processing, true),
-            ("reduce-samewidth", .copied, .processing, true),
+            ("reduce-expand", .recording(elapsed: 3, level: 0.4), .importIdle, true),
         ]
         try FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
         let scale = DesignTokens.Motion.timeScale
