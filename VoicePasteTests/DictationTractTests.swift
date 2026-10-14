@@ -233,6 +233,26 @@ struct DictationTractTests {
         #expect(entries.first?.contains("Привет") == false)
     }
 
+    @Test("ровный шум громче порога не доходит до модели")
+    func steadyNoiseNeverReachesTheModel() async throws {
+        let rig = try await makeRig()
+        defer { rig.cleanup() }
+
+        // Средняя громкость 0.02 проходит прежнюю проверку (0.004), речи в записи нет.
+        var state: UInt32 = 99
+        let noise = (0..<(3 * 16_000)).map { _ -> Float in
+            state = state &* 1_664_525 &+ 1_013_904_223
+            return (Float(state >> 8) / Float(1 << 24) * 2 - 1) * 0.03
+        }
+        await dictate(rig, samples: noise, rms: 0.02)
+
+        #expect(rig.engine.callCount == 0)
+        #expect(rig.hud.last == .error(message: NSLocalizedString("dictation.emptyAudio", comment: "")))
+        #expect(rig.delivery.inserted.isEmpty && rig.delivery.copied.isEmpty)
+        #expect(try await savedItems(rig).isEmpty)
+        #expect(rig.state.dictationPhase == .idle)
+    }
+
     @Test("приложение не готово — запись не начинается, плашка называет причину")
     func notReadyAppRefusesToStartRecording() async throws {
         let rig = try await makeRig(ready: false)

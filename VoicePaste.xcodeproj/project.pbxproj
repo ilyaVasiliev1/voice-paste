@@ -114,6 +114,8 @@
 		C00000000000000000000808 /* TrailingHallucinationFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000809 /* TrailingHallucinationFilterTests.swift */; };
 		C00000000000000000000A45 /* LiveResultsDrainTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A44 /* LiveResultsDrainTests.swift */; };
 		C00000000000000000000A47 /* DictationTractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A46 /* DictationTractTests.swift */; };
+		C00000000000000000000A51 /* AudioEvidenceFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A50 /* AudioEvidenceFilterTests.swift */; };
+		C00000000000000000000A4F /* SpeechGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A4E /* SpeechGateTests.swift */; };
 		C00000000000000000000A4B /* DictationLanguageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A4A /* DictationLanguageTests.swift */; };
 		CA0000000000000000000923 /* SubtitleCreditFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0000000000000000000922 /* SubtitleCreditFilterTests.swift */; };
 		C00000000000000000000900 /* ModelDownloadProgressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000901 /* ModelDownloadProgressTests.swift */; };
@@ -231,6 +233,8 @@
 		C00000000000000000000809 /* TrailingHallucinationFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailingHallucinationFilterTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A44 /* LiveResultsDrainTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveResultsDrainTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A46 /* DictationTractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationTractTests.swift; sourceTree = "<group>"; };
+		C00000000000000000000A50 /* AudioEvidenceFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEvidenceFilterTests.swift; sourceTree = "<group>"; };
+		C00000000000000000000A4E /* SpeechGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechGateTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A4A /* DictationLanguageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationLanguageTests.swift; sourceTree = "<group>"; };
 		CA0000000000000000000922 /* SubtitleCreditFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitleCreditFilterTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000901 /* ModelDownloadProgressTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloadProgressTests.swift; sourceTree = "<group>"; };
@@ -608,6 +612,8 @@
 				C00000000000000000000809 /* TrailingHallucinationFilterTests.swift */,
 				C00000000000000000000A44 /* LiveResultsDrainTests.swift */,
 				C00000000000000000000A46 /* DictationTractTests.swift */,
+				C00000000000000000000A50 /* AudioEvidenceFilterTests.swift */,
+				C00000000000000000000A4E /* SpeechGateTests.swift */,
 				C00000000000000000000A4A /* DictationLanguageTests.swift */,
 				CA0000000000000000000922 /* SubtitleCreditFilterTests.swift */,
 				C00000000000000000000901 /* ModelDownloadProgressTests.swift */,
@@ -868,6 +874,8 @@
 				C00000000000000000000808 /* TrailingHallucinationFilterTests.swift in Sources */,
 				C00000000000000000000A45 /* LiveResultsDrainTests.swift in Sources */,
 				C00000000000000000000A47 /* DictationTractTests.swift in Sources */,
+				C00000000000000000000A51 /* AudioEvidenceFilterTests.swift in Sources */,
+				C00000000000000000000A4F /* SpeechGateTests.swift in Sources */,
 				C00000000000000000000A4B /* DictationLanguageTests.swift in Sources */,
 				CA0000000000000000000923 /* SubtitleCreditFilterTests.swift in Sources */,
 				C00000000000000000000900 /* ModelDownloadProgressTests.swift in Sources */,
