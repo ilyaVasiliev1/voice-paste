@@ -220,23 +220,42 @@ build_debug() {
     print -r -- "$derived_data/Build/Products/Debug/VoicePaste.app"
 }
 
-# Ставит собранную копию в целевое место, штампует отпечаток и подписывает
-# ad-hoc — общий хвост install-local.sh и rollback-local.sh после того, как
-# каждый из них получил свою сборку (готовую или собранную из отпечатка).
+# Подпись сборок: сначала отдельный сертификат из своей связки
+# (scripts/setup-build-keychain.sh) — у всех сборок одно требование подписи,
+# и выданные системой разрешения переживают пересборку; нет связки — ad-hoc,
+# как раньше, и тогда каждая установка для системы новое приложение.
+BUILD_KEYCHAIN="${VOICEPASTE_BUILD_KEYCHAIN:-$HOME/Library/Keychains/voicepaste-build.keychain-db}"
+BUILD_IDENTITY="VoicePaste Local Build"
+BUILD_KEYCHAIN_SECRET="${VOICEPASTE_BUILD_KEYCHAIN_SECRET:-${${(%):-%x}:A:h:h:h:h:h}/.secrets/voicepaste-build-keychain.txt}"
+
+stable_signing_ready() {
+    [[ -f "$BUILD_KEYCHAIN" && -f "$BUILD_KEYCHAIN_SECRET" ]]
+}
+
+# Подписана ли копия сертификатом, а не ad-hoc: у ad-hoc требование — хеш двоичного файла.
+is_stably_signed() {
+    codesign -dr - "$1" 2>&1 | grep -q 'certificate root = H"'
+}
+
+# Ставит собранную копию в целевое место, штампует отпечаток и подписывает.
 #
 # Прежняя копия по целевому пути убирается перед установкой, не
 # перезаписывается копированием поверх: копирование поверх существующего
 # бандла оставляет файлы, которых в новой сборке уже нет.
 #
-# Подпись ad-hoc: без неё macOS отказывает приложению в правах доступности и
-# микрофона, а без них продукт не работает вовсе. Подписывается после
-# стемпинга отпечатка — печать в Info.plist меняет бандл и обязана произойти
-# до подписи, иначе подпись окажется недействительной для изменённого
-# содержимого.
+# Подпись обязательна: без неё macOS отказывает приложению в правах доступности
+# и микрофона. Она ставится после штампа отпечатка — штамп меняет бандл.
 install_app() {
     local source="$1" target="$2" fingerprint="$3"
     rm -rf "$target"
     ditto "$source" "$target"
     stamp_fingerprint "$target" "$fingerprint"
+    if stable_signing_ready; then
+        security unlock-keychain -p "$(<"$BUILD_KEYCHAIN_SECRET")" "$BUILD_KEYCHAIN" >/dev/null 2>&1 || true
+        if codesign --force --deep --sign "$BUILD_IDENTITY" --keychain "$BUILD_KEYCHAIN" "$target" >/dev/null 2>&1; then
+            return 0
+        fi
+        print -u2 "Подпись из своей связки не удалась — ставлю ad-hoc."
+    fi
     codesign --force --deep --sign - "$target" >/dev/null 2>&1 || true
 }
