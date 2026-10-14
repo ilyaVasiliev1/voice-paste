@@ -276,9 +276,9 @@ public final class ImportManager: ObservableObject {
             let duration = Int(Double(uniqueSampleCount) / 16_000 * 1_000)
             try await update(id) { $0.durationMilliseconds = duration }
 
-            let vocabulary = (try? await historyStore.fetchVocabulary()) ?? []
             let text = await DictationPipeline(normalizer: normalizer).finish(
-                result, language: settings.languageMode, vocabulary: vocabulary,
+                result, language: settings.languageMode,
+                vocabulary: (try? await historyStore.fetchVocabulary()) ?? [],
                 autoCorrectSafeTypos: settings.autoCorrectSafeTypos, durationMilliseconds: duration
             ).text
             guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
