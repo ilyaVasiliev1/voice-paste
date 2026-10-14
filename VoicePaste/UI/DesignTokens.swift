@@ -161,6 +161,41 @@ nonisolated enum DisplayFormat {
         return date.formatted(style)
     }
 
+    /// Существительное при числе: «1 слово», «2 слова», «5 слов», «21 слово».
+    private static func plural(_ count: Int, _ one: String, _ few: String, _ many: String) -> String {
+        let lastTwo = abs(count) % 100
+        let last = abs(count) % 10
+        let form: String
+        if (11...14).contains(lastTwo) { form = many }
+        else if last == 1 { form = one }
+        else if (2...4).contains(last) { form = few }
+        else { form = many }
+        return "\(count) \(form)"
+    }
+
+    static func words(_ count: Int) -> String { plural(count, "слово", "слова", "слов") }
+
+    static func transcriptions(_ count: Int) -> String { plural(count, "расшифровка", "расшифровки", "расшифровок") }
+
+    /// Длительность с единицами на всех экранах: «6 с», «1 мин 35 с», «46 мин», «1 ч 12 мин».
+    static func duration(milliseconds: Int) -> String {
+        let seconds = max(0, milliseconds / 1_000)
+        if seconds < 60 { return "\(seconds) с" }
+        if seconds < 600 {
+            let rest = seconds % 60
+            return rest == 0 ? "\(seconds / 60) мин" : "\(seconds / 60) мин \(rest) с"
+        }
+        if seconds < 3_600 { return "\(seconds / 60) мин" }
+        let minutes = (seconds % 3_600) / 60
+        return minutes == 0 ? "\(seconds / 3_600) ч" : "\(seconds / 3_600) ч \(minutes) мин"
+    }
+
+    /// Строка над графиком: дата и итоги дня, либо «Нет записей».
+    static func dayUsage(dateText: String, words wordCount: Int, transcriptions count: Int, durationMilliseconds: Int) -> String {
+        guard wordCount > 0 || count > 0 else { return "\(dateText) · Нет записей" }
+        return "\(dateText) · \(words(wordCount)) · \(transcriptions(count)) · \(duration(milliseconds: durationMilliseconds))"
+    }
+
     /// Название языка словом, а не кодом: «Русский», не «RU».
     static func languageName(_ code: String?, locale: Locale = .current) -> String? {
         guard let code, let name = locale.localizedString(forLanguageCode: code), let first = name.first else { return nil }
