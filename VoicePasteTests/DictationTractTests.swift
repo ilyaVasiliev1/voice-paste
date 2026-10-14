@@ -81,6 +81,20 @@ struct DictationTractTests {
         }
     }
 
+    /// Журнал событий под замком: запись приходит с фоновой задачи.
+    final class EventLog: @unchecked Sendable {
+        private let lock = NSLock()
+        private var entries: [(event: String, detail: String)] = []
+
+        func append(_ event: String, _ detail: String) {
+            lock.withLock { entries.append((event, detail)) }
+        }
+
+        func details(of event: String) -> [String] {
+            lock.withLock { entries.filter { $0.event == event }.map(\.detail) }
+        }
+    }
+
     // MARK: - Стенд
 
     struct Rig {
@@ -91,6 +105,7 @@ struct DictationTractTests {
         let engine: CountingTranscriber
         let store: HistoryStore
         let settings: AppSettings
+        let events: EventLog
         let cleanup: () -> Void
     }
 
@@ -131,6 +146,7 @@ struct DictationTractTests {
         let audio = FakeAudioSource()
         let delivery = FakeTextDelivery()
         let hud = FakeHUD()
+        let events = EventLog()
         let importManager = ImportManager(
             modelManager: modelManager,
             historyStore: store,
@@ -147,11 +163,12 @@ struct DictationTractTests {
             textDelivery: delivery,
             hud: hud,
             now: { Self.fixedNow },
-            isDictationReady: { ready }
+            isDictationReady: { ready },
+            logEvent: { events.append($0, $1) }
         )
         return Rig(
             state: state, audio: audio, delivery: delivery, hud: hud,
-            engine: engine, store: store, settings: settings,
+            engine: engine, store: store, settings: settings, events: events,
             cleanup: { try? FileManager.default.removeItem(at: directory) }
         )
     }
@@ -200,6 +217,20 @@ struct DictationTractTests {
         #expect(rig.engine.callCount == 0)
         #expect(rig.hud.last == .error(message: NSLocalizedString("dictation.emptyAudio", comment: "")))
         #expect(try await savedItems(rig).isEmpty)
+    }
+
+    @Test("диктовка пишет в журнал режим и язык, текста там нет")
+    func dictationJournalsLanguageWithoutText() async throws {
+        let rig = try await makeRig()
+        defer { rig.cleanup() }
+
+        await dictate(rig, samples: Self.speech(), rms: 0.07)
+
+        let entries = rig.events.details(of: "dictation.language")
+        #expect(entries.count == 1)
+        #expect(entries.first?.contains("mode=ru") == true)
+        #expect(entries.first?.contains("detected=ru") == true)
+        #expect(entries.first?.contains("Привет") == false)
     }
 
     @Test("приложение не готово — запись не начинается, плашка называет причину")
