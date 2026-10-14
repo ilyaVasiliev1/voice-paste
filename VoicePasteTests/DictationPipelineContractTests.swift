@@ -161,29 +161,25 @@ struct DictationPipelineContractTests {
         }
     }
 
-    @Test("пустое распознавание — пустой текст черновика, без падения")
-    func blankRecognitionGivesEmptyText() async throws {
+    @Test("пустое распознавание — ошибка, а не пустой черновик")
+    func blankRecognitionIsAnError() async {
         let log = EventLog()
         let engine = ScriptedRecognizer(
             log: log,
             result: .success(TranscriptionResult(rawText: "   ", detectedLanguage: "ru"))
         )
 
-        let outcome = try await pipeline.run(
-            DictationInput(
-                samples: Self.speech(seconds: 1),
-                language: .ru,
-                vocabulary: [],
-                autoCorrectSafeTypos: false
-            ),
-            recognizer: engine,
-            onSpeechConfirmed: {}
-        )
-
-        guard case .draft(let draft) = outcome else {
-            Issue.record("ожидался черновик, получено \(outcome)")
-            return
+        await #expect(throws: TranscribingError.emptyAudio) {
+            _ = try await pipeline.run(
+                DictationInput(
+                    samples: Self.speech(seconds: 1),
+                    language: .ru,
+                    vocabulary: [],
+                    autoCorrectSafeTypos: false
+                ),
+                recognizer: engine,
+                onSpeechConfirmed: {}
+            )
         }
-        #expect(draft.text.isEmpty)
     }
 }
