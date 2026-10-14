@@ -68,6 +68,11 @@ public final class HUDWindowController {
     }
 
     var isPanelVisible: Bool { panel.isVisible }
+    var panelWindowNumber: Int { panel.windowNumber }
+    var reduceMotionOverride: Bool? {
+        get { stateHolder.reduceMotionOverride }
+        set { stateHolder.reduceMotionOverride = newValue }
+    }
     var panelAlpha: CGFloat { panel.alphaValue }
 
     /// Один невидимый показ: панель прозрачна, не ловит мышь и убирается в тот
@@ -158,7 +163,7 @@ public final class HUDWindowController {
         exitToken += 1
         let token = exitToken
         NSAnimationContext.runAnimationGroup({ context in
-            context.duration = DesignTokens.Motion.exit
+            context.duration = DesignTokens.Motion.exit * DesignTokens.Motion.timeScale
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             panel.animator().alphaValue = 0
         }, completionHandler: { [weak self] in

@@ -131,6 +131,41 @@ final class ScreenSnapshots: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: png.path), "наблюдатель не снял окно \(name)")
     }
 
+    /// Кадры перехода плашки. Движение растягивается переменной
+    /// `TEST_RUNNER_VOICEPASTE_MOTION_SLOWDOWN`, иначе 200 мс не поймать
+    /// внешним наблюдателем. Кадр за кадром: каждый ждёт, пока наблюдатель снимет окно.
+    func test_hudTransitionFrames() async throws {
+        try skipUnlessRequested()
+        let cases: [(String, HUDState, HUDState, Bool?)] = [
+            ("morph", .recording(elapsed: 3, level: 0.4), .processing, nil),
+            ("samewidth", .copied, .processing, nil),
+            ("reduce-morph", .recording(elapsed: 3, level: 0.4), .processing, true),
+            ("reduce-samewidth", .copied, .processing, true),
+        ]
+        try FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
+        let scale = DesignTokens.Motion.timeScale
+        for (name, from, to, reduce) in cases {
+            let hud = HUDWindowController()
+            hud.reduceMotionOverride = reduce
+            hud.present(from)
+            try await Task.sleep(for: .seconds(0.4 * scale + 0.3))
+            hud.present(to)
+            for index in 0..<10 {
+                let frame = "hud-\(name)-\(String(format: "%02d", index))"
+                let png = outDir.appendingPathComponent("\(frame).png")
+                try? FileManager.default.removeItem(at: png)
+                try String(hud.panelWindowNumber).write(
+                    to: outDir.appendingPathComponent("\(frame).wid"), atomically: true, encoding: .utf8
+                )
+                for _ in 0..<60 where !FileManager.default.fileExists(atPath: png.path) {
+                    try await Task.sleep(for: .milliseconds(50))
+                }
+            }
+            hud.hide()
+            try await Task.sleep(for: .milliseconds(400))
+        }
+    }
+
     private func skipUnlessRequested() throws {
         let marker = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("VoicePaste/run-benchmark")

@@ -30,10 +30,24 @@ nonisolated enum DesignTokens {
         /// Уход короче прихода: Telegram держит 150 мс против 200 на показ.
         static let exit: Double = 0.12
 
+        /// Множитель времени для осмотра движения кадрами: `VOICEPASTE_MOTION_SLOWDOWN=8`
+        /// растягивает каждое движение в 8 раз. В обычной работе — 1.
+        static let timeScale: Double = {
+            let raw = ProcessInfo.processInfo.environment["VOICEPASTE_MOTION_SLOWDOWN"]
+            return raw.flatMap(Double.init).flatMap { $0 >= 1 ? $0 : nil } ?? 1
+        }()
+
+        private static func scaled(_ animation: Animation) -> Animation {
+            timeScale == 1 ? animation : animation.speed(1 / timeScale)
+        }
+
         /// Растворение и смена цвета: отклик, которого не должно быть видно.
-        static let fade = Animation.easeOut(duration: quick)
+        static let fade = scaled(.easeOut(duration: quick))
         /// Прокрутка за текстом, который пишется: пружина несёт скорость при каждом новом куске.
-        static let scroll = Animation.smooth(duration: 0.25)
+        static let scroll = scaled(.smooth(duration: 0.25))
+        /// Смена размера поверхности, которую успевают прервать: пружина несёт скорость
+        /// при перенацеливании, а `easeInOut` стартует с нуля.
+        static let surface = scaled(.snappy(duration: 0.2))
 
         /// «Уменьшить движение»: любое движение заменяется коротким растворением.
         static func respecting(_ animation: Animation, reduceMotion: Bool) -> Animation {

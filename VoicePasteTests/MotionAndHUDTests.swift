@@ -27,22 +27,34 @@ final class MotionTokensTests: XCTestCase {
     }
 }
 
-/// Плашка: размер капсулы — пружина, смена содержимого — растворение, а при
-/// «Уменьшить движение» размер не движется, но растворение остаётся.
+/// Плашка — «желе»: размер и содержимое на пружинах с отскоком, на каждой смене
+/// состояния лёгкий тычок (сжатие-растяжение). При «Уменьшить движение» пружины,
+/// отскок и тычок уходят, остаётся растворение содержимого.
 @MainActor
 final class HUDMotionTests: XCTestCase {
-    func test_surface_isTheSpringToken_andAFadeUnderReduceMotion() {
-        XCTAssertEqual(HUDMotion.surface(reduceMotion: false), DesignTokens.Motion.surface)
+    func test_surface_isTheBouncySpring_andAFadeUnderReduceMotion() {
+        XCTAssertEqual(HUDMotion.surface(reduceMotion: false), DesignTokens.Motion.jelly)
         XCTAssertEqual(HUDMotion.surface(reduceMotion: true), DesignTokens.Motion.fade)
     }
 
     func test_capsuleSize_doesNotMoveUnderReduceMotion() {
         XCTAssertNil(HUDMotion.size(reduceMotion: true), "размер капсулы двигался при Reduce Motion")
-        XCTAssertEqual(HUDMotion.size(reduceMotion: false), DesignTokens.Motion.surface)
+        XCTAssertEqual(HUDMotion.size(reduceMotion: false), DesignTokens.Motion.jelly)
     }
 
-    func test_contentSwap_isAFadeInBothModes() {
-        XCTAssertEqual(HUDMotion.content, DesignTokens.Motion.fade)
+    func test_contentSwap_popsNormally_andFadesUnderReduceMotion() {
+        XCTAssertEqual(HUDMotion.content(reduceMotion: false), DesignTokens.Motion.pop)
+        XCTAssertEqual(HUDMotion.content(reduceMotion: true), DesignTokens.Motion.fade)
+    }
+
+    func test_squashPoke_isOffUnderReduceMotion() {
+        XCTAssertTrue(HUDMotion.squashes(reduceMotion: false))
+        XCTAssertFalse(HUDMotion.squashes(reduceMotion: true))
+    }
+
+    func test_jelly_isFasterToSettleThanHalfASecond() {
+        XCTAssertLessThanOrEqual(DesignTokens.Motion.jellyDuration, 0.45, "желе тянется — это и есть «медленно»")
+        XCTAssertLessThanOrEqual(DesignTokens.Motion.popDuration, DesignTokens.Motion.jellyDuration)
     }
 
     func test_inspectionSlowdown_isOffByDefault() {

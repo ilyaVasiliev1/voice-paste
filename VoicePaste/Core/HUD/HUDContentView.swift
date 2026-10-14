@@ -2,12 +2,30 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
+/// Движение плашки. Размер капсулы — пружина, смена содержимого — растворение;
+/// при «Уменьшить движение» размер стоит на месте, а растворение остаётся: оно
+/// помогает понять, что состояние сменилось, и ничего не двигает.
+enum HUDMotion {
+    /// Появление и уход капсулы целиком, а также смена её размера.
+    static func surface(reduceMotion: Bool) -> Animation {
+        reduceMotion ? DesignTokens.Motion.fade : DesignTokens.Motion.surface
+    }
+
+    /// Геометрия внутри капсулы: `nil` — размер меняется без движения.
+    static func size(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : DesignTokens.Motion.surface
+    }
+
+    static let content = DesignTokens.Motion.fade
+}
+
 /// A single composited HUD surface. The NSPanel is deliberately fixed at the
 /// largest required size; only this inner shape morphs. That avoids an AppKit
 /// window resize racing SwiftUI layout during a state change.
 struct HUDContentView: View {
     @ObservedObject var stateHolder: HUDStateHolder
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
+    private var reduceMotion: Bool { stateHolder.reduceMotionOverride ?? systemReduceMotion }
     // The drop target is intentionally an inner affordance, never a second
     // panel or a border around the whole HUD. It tells the user exactly
     // where to release a file without changing the persistent surface.
@@ -34,7 +52,7 @@ struct HUDContentView: View {
         }
         .frame(width: HUDLayout.hostWidth, height: HUDLayout.hostHeight, alignment: .bottom)
         .compositingGroup()
-        .animation(reduceMotion ? nil : .easeInOut(duration: DesignTokens.Motion.standard), value: layout)  // TOK-motion.surface
+        .animation(HUDMotion.surface(reduceMotion: reduceMotion), value: layout)
     }
 
     /// Fixed-geometry capsule used by every state whose child controls have a
@@ -58,11 +76,16 @@ struct HUDContentView: View {
             .overlay {
                 content(for: state)
                     .frame(width: layout.width, height: layout.height)
+                    // Состояния одной ширины раньше менялись жёстко: `layout` у них равен.
+                    .animation(HUDMotion.content, value: state.kind)
             }
             .overlay(alignment: .bottom) {
                 autoDismissProgress(for: state, cornerRadius: layout.cornerRadius)
             }
             .onHover { stateHolder.actions.onInteractionChanged($0) }
+            // Размер капсулы и размер её содержимого двигаются вместе, а при
+            // Reduce Motion — оба не двигаются; растворение у содержимого своё.
+            .animation(HUDMotion.size(reduceMotion: reduceMotion), value: layout)
     }
 
     /// Content-sized plaque: the capsule wraps the message (single line) plus a
@@ -85,6 +108,7 @@ struct HUDContentView: View {
                     }
             }
             .onHover { stateHolder.actions.onInteractionChanged($0) }
+            .animation(HUDMotion.size(reduceMotion: reduceMotion), value: message)
     }
 
     @ViewBuilder
@@ -442,4 +466,6 @@ final class HUDStateHolder: ObservableObject {
     @Published var state: HUDState = .hidden
     @Published var dismissProgress: CGFloat = 0
     var actions = HUDActions()
+    /// Только для снимков движения: система «Уменьшить движение» из теста не включается.
+    var reduceMotionOverride: Bool?
 }
