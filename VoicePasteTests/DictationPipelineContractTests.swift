@@ -74,10 +74,12 @@ struct DictationPipelineContractTests {
         )
 
         let outcome = try await pipeline.run(
-            samples: Self.speech(seconds: 2),
-            language: .ru,
-            vocabulary: [],
-            autoCorrectSafeTypos: false,
+            DictationInput(
+                samples: Self.speech(seconds: 2),
+                language: .ru,
+                vocabulary: [],
+                autoCorrectSafeTypos: false
+            ),
             recognizer: engine,
             onSpeechConfirmed: { log.append("confirmed", "") }
         )
@@ -103,10 +105,12 @@ struct DictationPipelineContractTests {
         )
 
         let outcome = try await pipeline.run(
-            samples: Self.silence(seconds: 2),
-            language: .ru,
-            vocabulary: [],
-            autoCorrectSafeTypos: false,
+            DictationInput(
+                samples: Self.silence(seconds: 2),
+                language: .ru,
+                vocabulary: [],
+                autoCorrectSafeTypos: false
+            ),
             recognizer: engine,
             onSpeechConfirmed: { log.append("confirmed", "") }
         )
@@ -125,10 +129,12 @@ struct DictationPipelineContractTests {
         )
 
         _ = try await pipeline.run(
-            samples: Self.speech(seconds: 1),
-            language: .ru,
-            vocabulary: [],
-            autoCorrectSafeTypos: false,
+            DictationInput(
+                samples: Self.speech(seconds: 1),
+                language: .ru,
+                vocabulary: [],
+                autoCorrectSafeTypos: false
+            ),
             recognizer: engine,
             onSpeechConfirmed: { log.append("confirmed", "") }
         )
@@ -143,10 +149,12 @@ struct DictationPipelineContractTests {
 
         await #expect(throws: TranscribingError.modelNotReady) {
             _ = try await pipeline.run(
-                samples: Self.speech(seconds: 1),
-                language: .ru,
-                vocabulary: [],
-                autoCorrectSafeTypos: false,
+                DictationInput(
+                    samples: Self.speech(seconds: 1),
+                    language: .ru,
+                    vocabulary: [],
+                    autoCorrectSafeTypos: false
+                ),
                 recognizer: engine,
                 onSpeechConfirmed: {}
             )
@@ -162,10 +170,12 @@ struct DictationPipelineContractTests {
         )
 
         let outcome = try await pipeline.run(
-            samples: Self.speech(seconds: 1),
-            language: .ru,
-            vocabulary: [],
-            autoCorrectSafeTypos: false,
+            DictationInput(
+                samples: Self.speech(seconds: 1),
+                language: .ru,
+                vocabulary: [],
+                autoCorrectSafeTypos: false
+            ),
             recognizer: engine,
             onSpeechConfirmed: {}
         )
