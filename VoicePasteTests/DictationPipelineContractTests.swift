@@ -77,9 +77,9 @@ struct DictationPipelineContractTests {
             DictationInput(
                 samples: Self.speech(seconds: 2),
                 language: .ru,
-                vocabulary: [],
                 autoCorrectSafeTypos: false
             ),
+            vocabulary: { [] },
             recognizer: engine,
             onSpeechConfirmed: { log.append("confirmed", "") }
         )
@@ -108,9 +108,9 @@ struct DictationPipelineContractTests {
             DictationInput(
                 samples: Self.silence(seconds: 2),
                 language: .ru,
-                vocabulary: [],
                 autoCorrectSafeTypos: false
             ),
+            vocabulary: { [] },
             recognizer: engine,
             onSpeechConfirmed: { log.append("confirmed", "") }
         )
@@ -132,9 +132,9 @@ struct DictationPipelineContractTests {
             DictationInput(
                 samples: Self.speech(seconds: 1),
                 language: .ru,
-                vocabulary: [],
                 autoCorrectSafeTypos: false
             ),
+            vocabulary: { [] },
             recognizer: engine,
             onSpeechConfirmed: { log.append("confirmed", "") }
         )
@@ -152,9 +152,9 @@ struct DictationPipelineContractTests {
                 DictationInput(
                     samples: Self.speech(seconds: 1),
                     language: .ru,
-                    vocabulary: [],
                     autoCorrectSafeTypos: false
                 ),
+                vocabulary: { [] },
                 recognizer: engine,
                 onSpeechConfirmed: {}
             )
@@ -174,12 +174,82 @@ struct DictationPipelineContractTests {
                 DictationInput(
                     samples: Self.speech(seconds: 1),
                     language: .ru,
-                    vocabulary: [],
                     autoCorrectSafeTypos: false
                 ),
+                vocabulary: { [] },
                 recognizer: engine,
                 onSpeechConfirmed: {}
             )
         }
+    }
+
+    // MARK: - Словарь
+
+    private static func entry(_ spoken: String, _ replacement: String) -> VocabularyEntry {
+        VocabularyEntry(id: UUID(), spokenForm: spoken, replacement: replacement, createdAt: 0, updatedAt: 0)
+    }
+
+    @Test("замена из словаря применяется к тексту")
+    func vocabularyReplacementIsApplied() async throws {
+        let log = EventLog()
+        let engine = ScriptedRecognizer(
+            log: log,
+            result: .success(TranscriptionResult(rawText: "это эй пи ай", detectedLanguage: "ru"))
+        )
+
+        let outcome = try await pipeline.run(
+            DictationInput(samples: Self.speech(seconds: 1), language: .ru, autoCorrectSafeTypos: false),
+            vocabulary: { [Self.entry("эй пи ай", "API")] },
+            recognizer: engine,
+            onSpeechConfirmed: {}
+        )
+
+        guard case .draft(let draft) = outcome else {
+            Issue.record("ожидался черновик, получено \(outcome)")
+            return
+        }
+        #expect(draft.text == "это API")
+    }
+
+    @Test("словарь читается после распознавания, а не до проверки речи")
+    func vocabularyIsReadAfterRecognition() async throws {
+        let log = EventLog()
+        let engine = ScriptedRecognizer(
+            log: log,
+            result: .success(TranscriptionResult(rawText: "Раз", detectedLanguage: "ru"))
+        )
+
+        _ = try await pipeline.run(
+            DictationInput(samples: Self.speech(seconds: 1), language: .ru, autoCorrectSafeTypos: false),
+            vocabulary: {
+                log.append("vocabulary", "")
+                return []
+            },
+            recognizer: engine,
+            onSpeechConfirmed: { log.append("confirmed", "") }
+        )
+
+        #expect(log.order == ["confirmed", "recognize", "vocabulary"])
+    }
+
+    @Test("на тишине словарь не читается")
+    func vocabularyIsNotReadOnSilence() async throws {
+        let log = EventLog()
+        let engine = ScriptedRecognizer(
+            log: log,
+            result: .success(TranscriptionResult(rawText: "Раз", detectedLanguage: "ru"))
+        )
+
+        _ = try await pipeline.run(
+            DictationInput(samples: Self.silence(seconds: 2), language: .ru, autoCorrectSafeTypos: false),
+            vocabulary: {
+                log.append("vocabulary", "")
+                return []
+            },
+            recognizer: engine,
+            onSpeechConfirmed: {}
+        )
+
+        #expect(log.details(of: "vocabulary").isEmpty)
     }
 }

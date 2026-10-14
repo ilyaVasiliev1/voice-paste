@@ -113,13 +113,18 @@ nonisolated public struct DictationPipeline: Sendable {
         await onSpeechConfirmed()
 
         let recognized = try await recognizer.recognize(samples: samples, language: input.language)
-        return .draft(await finish(
+        let draft = await finish(
             recognized,
             language: input.language,
             vocabulary: input.vocabulary,
             autoCorrectSafeTypos: input.autoCorrectSafeTypos,
             durationMilliseconds: samples.count / Self.samplesPerMillisecond
-        ))
+        )
+        // Движок, который сам не проверяет пустоту, не должен вставить пустую строку.
+        guard !draft.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw TranscribingError.emptyAudio
+        }
+        return .draft(draft)
     }
 
     /// Приведение распознанного текста: общий последний шаг диктовки и импорта.

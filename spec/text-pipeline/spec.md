@@ -287,7 +287,8 @@
 <!-- id: WhisperInferenceWorker.transcribe -->
 <!-- entities: TranscribingError, TranscriptionResult -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/Core/Transcription/WhisperKitTranscriber.swift -->
+<!-- enforced_macos: VoicePaste/Core/Transcription/WhisperKitTranscriber.swift, Packages/SpeechPipeline/Sources/SpeechPipeline/DictationPipeline.swift -->
+<!-- test_macos: VoicePasteTests/DictationPipelineContractTests.swift:blankRecognitionIsAnError -->
 
 Пустой набор сэмплов и пустой текст после фильтрации SHALL приводить к
 `TranscribingError.emptyAudio`, а не к сохранению пустой расшифровки.

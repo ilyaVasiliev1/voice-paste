@@ -504,9 +504,10 @@ VoicePaste) SHALL считаться не текстовым назначени�
 ---
 
 ### Invariant: Порог осмысленной записи — 0,5 секунды и RMS 0.004
-<!-- entities: AppState, AudioCaptureService -->
+<!-- entities: DictationPipeline, AudioCaptureService -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/App/AppState.swift -->
+<!-- enforced_macos: Packages/SpeechPipeline/Sources/SpeechPipeline/DictationPipeline.swift, VoicePaste/App/DictationCoordinator.swift -->
+<!-- test_macos: VoicePasteTests/DictationPipelineContractTests.swift:tooShortCaptureIsRejected, VoicePasteTests/DictationPipelineContractTests.swift:captureBelowNoiseFloorIsRejected -->
 
 Буфер SHALL считаться пригодным для распознавания только при длине не менее
 8000 сэмплов (0,5 с при 16 кГц) и RMS не ниже 0.004. RMS накапливается на

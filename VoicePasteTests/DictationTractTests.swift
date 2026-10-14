@@ -131,6 +131,22 @@ struct DictationTractTests {
         #expect(rig.state.dictationPhase == .idle)
     }
 
+    @Test("на речи плашка «обработка» идёт перед результатом, на тишине её нет")
+    func processingPlaqueAppearsOnlyAfterSpeechIsConfirmed() async throws {
+        let speech = try await makeRig()
+        defer { speech.cleanup() }
+        await dictate(speech, samples: Self.speech(seconds: 1.5), rms: 0.07)
+        let states = speech.hud.states
+        let processing = try #require(states.firstIndex(of: .processing))
+        let outcome = try #require(states.lastIndex(where: { $0 == .inserted || $0 == .copied }))
+        #expect(processing < outcome)
+
+        let silence = try await makeRig()
+        defer { silence.cleanup() }
+        await dictate(silence, samples: [Float](repeating: 0, count: 32_000), rms: 0.07)
+        #expect(!silence.hud.states.contains(.processing))
+    }
+
     @Test("тишина на всю запись не доходит до модели")
     func silentRecordingNeverReachesTheModel() async throws {
         let rig = try await makeRig()
