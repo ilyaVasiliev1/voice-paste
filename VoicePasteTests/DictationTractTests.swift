@@ -182,7 +182,7 @@ struct DictationTractTests {
     func deletionWaitsForPendingSave() async throws {
         let rig = try await makeRig(saveAudio: true)
         defer { rig.cleanup() }
-        await rig.evaluation.setSaveDelay(.milliseconds(200))
+        rig.evaluation.setSaveDelay(.milliseconds(200))
         rig.audio.recording = Self.speech()
         rig.audio.recordingRMS = 0.07
         rig.state.handleHotkeyDown()
@@ -192,7 +192,7 @@ struct DictationTractTests {
         let removed = try await rig.state.deleteEvaluationAudio()
 
         #expect(removed == 1)
-        #expect(await rig.evaluation.saved.isEmpty)
+        #expect(rig.evaluation.saved.isEmpty)
     }
 
     @Test("звук для оценки выключен — ничего не сохраняется")
@@ -202,7 +202,7 @@ struct DictationTractTests {
 
         await dictate(rig, samples: Self.speech(), rms: 0.07)
 
-        #expect(await rig.evaluation.saved.isEmpty)
+        #expect(rig.evaluation.saved.isEmpty)
     }
 
     @Test("звук для оценки включён — файл назван по записи в истории")
@@ -213,7 +213,7 @@ struct DictationTractTests {
 
         await dictate(rig, samples: samples, rms: 0.07)
 
-        let saved = await rig.evaluation.saved
+        let saved = rig.evaluation.saved
         #expect(saved.count == 1)
         #expect(saved.first?.sampleCount == samples.count)
         #expect(saved.first?.id == (try await savedItems(rig)).first?.id)
@@ -226,7 +226,7 @@ struct DictationTractTests {
 
         await dictate(rig, samples: Self.speech(seconds: 2, amplitude: 0.0005), rms: 0.0004)
 
-        #expect(await rig.evaluation.saved.count == 1)
+        #expect(rig.evaluation.saved.count == 1)
         #expect(try await savedItems(rig).isEmpty)
     }
 
@@ -234,7 +234,7 @@ struct DictationTractTests {
     func evaluationAudioFailureDoesNotBreakDictation() async throws {
         let rig = try await makeRig(saveAudio: true)
         defer { rig.cleanup() }
-        await rig.evaluation.setFailure(TranscribingError.underlying("диск полон"))
+        rig.evaluation.setFailure(TranscribingError.underlying("диск полон"))
 
         await dictate(rig, samples: Self.speech(), rms: 0.07)
 
@@ -252,7 +252,7 @@ struct DictationTractTests {
         rig.state.handleHotkeyDown()
         rig.state.cancelDictationFromHUD()
 
-        #expect(await rig.evaluation.saved.isEmpty)
+        #expect(rig.evaluation.saved.isEmpty)
     }
 
     @Test("сводка и удаление идут через приложение")

@@ -86,24 +86,32 @@ final class EventLog: @unchecked Sendable {
 }
 
 /// Хранилище звука для оценки: что и под каким именем сохранили.
-actor FakeEvaluationAudio: EvaluationAudioStoring {
-    private(set) var saved: [(id: UUID, sampleCount: Int)] = []
-    var failure: Error?
-    var saveDelay: Duration = .zero
+final class FakeEvaluationAudio: EvaluationAudioStoring, @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedFiles: [(id: UUID, sampleCount: Int)] = []
+    private var storedFailure: Error?
+    private var storedDelay: Duration = .zero
 
-    func setFailure(_ error: Error?) { failure = error }
-    func setSaveDelay(_ delay: Duration) { saveDelay = delay }
+    var saved: [(id: UUID, sampleCount: Int)] { lock.withLock { storedFiles } }
+
+    func setFailure(_ error: Error?) { lock.withLock { storedFailure = error } }
+    func setSaveDelay(_ delay: Duration) { lock.withLock { storedDelay = delay } }
 
     func save(samples: [Float], id: UUID) async throws {
-        if saveDelay > .zero { try await Task.sleep(for: saveDelay) }
+        let (delay, failure) = lock.withLock { (storedDelay, storedFailure) }
+        if delay > .zero { try await Task.sleep(for: delay) }
         if let failure { throw failure }
-        saved.append((id, samples.count))
+        lock.withLock { storedFiles.append((id, samples.count)) }
     }
+
     func summary() async -> EvaluationAudioSummary {
         EvaluationAudioSummary(fileCount: saved.count, totalBytes: 0)
     }
+
     func deleteAll() async throws -> Int {
-        defer { saved.removeAll() }
-        return saved.count
+        lock.withLock {
+            defer { storedFiles.removeAll() }
+            return storedFiles.count
+        }
     }
 }

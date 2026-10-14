@@ -93,12 +93,37 @@ struct DictationLanguageTests {
         #expect(settings.languageMode == .ru)
     }
 
-    @Test("сохранённое «автоматически» не перезаписывается")
-    func storedAutoIsKept() throws {
-        let defaults = try #require(UserDefaults(suiteName: "DictationLanguage-\(UUID().uuidString)"))
+    @Test("«автоматически», сохранённое до миграции, становится русским и остаётся им")
+    func savedAutoBeforeMigrationBecomesRussian() throws {
+        let name = "DictationLanguage-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
         defaults.set("auto", forKey: "languageMode")
 
-        #expect(AppSettings(defaults: defaults).languageMode == .auto)
+        #expect(AppSettings(defaults: defaults).languageMode == .ru)
+
+        let reopened = try #require(UserDefaults(suiteName: name))
+        #expect(AppSettings(defaults: reopened).languageMode == .ru)
+    }
+
+    @Test("«автоматически», выбранное после миграции, не трогается")
+    func autoChosenAfterMigrationIsKept() throws {
+        let name = "DictationLanguage-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defaults.set("auto", forKey: "languageMode")
+        AppSettings(defaults: defaults).languageMode = .auto
+
+        let reopened = try #require(UserDefaults(suiteName: name))
+        #expect(AppSettings(defaults: reopened).languageMode == .auto)
+    }
+
+    @Test("английский и китайский при миграции остаются как были")
+    func otherSavedLanguagesAreUntouched() throws {
+        for code in ["en", "zh"] {
+            let defaults = try #require(UserDefaults(suiteName: "DictationLanguage-\(UUID().uuidString)"))
+            defaults.set(code, forKey: "languageMode")
+
+            #expect(AppSettings(defaults: defaults).languageMode.rawValue == code)
+        }
     }
 
     @Test("нераспознанное сохранённое значение возвращает русский")
