@@ -44,6 +44,14 @@ struct HistoryListColumn: View {
         let activeImports = importManager.jobs.filter(\.state.isActive)
         if !model.isLoaded && activeImports.isEmpty {
             HistoryLoadingPlaceholder()
+        } else if model.didFailToLoad && model.items.isEmpty && activeImports.isEmpty {
+            ContentUnavailableView {
+                Label("history.loadFailed.title", systemImage: "exclamationmark.triangle")
+            } description: {
+                Text("history.loadFailed.description")
+            } actions: {
+                Button("history.loadFailed.retry") { Task { await model.retry() } }
+            }
         } else if model.items.isEmpty && activeImports.isEmpty {
             ContentUnavailableView(
                 model.searchText.isEmpty ? "history.empty.title" : "history.list.empty.title",
@@ -139,6 +147,8 @@ struct HistoryDetailColumn: View {
             )
             // Новая запись — новый редактор: текст на первом кадре, а не после .task.
             .id(detail.id)
+        } else if model.didFailToOpenDetail {
+            ContentUnavailableView("history.detail.failed", systemImage: "exclamationmark.triangle")
         } else {
             ContentUnavailableView("history.detail.empty", systemImage: "text.bubble")
         }
@@ -196,7 +206,7 @@ private struct HistoryRow: View {
             Text(item.preview.isEmpty ? " " : item.preview)
                 .lineLimit(2)
             HStack(spacing: DesignTokens.Spacing.sm) {
-                Text(item.createdAt.formattedHistoryDate())
+                Text(DisplayFormat.recordDate(Date(timeIntervalSince1970: Double(item.createdAt) / 1_000)))
                 Text(durationString(item.durationMilliseconds))
             }
             .font(.caption)
@@ -251,12 +261,5 @@ private struct ProcessingImportRow: View {
 
     private var progressText: String {
         job.state == .queued || job.state == .staging ? "" : "\(Int((job.progress * 100).rounded()))%"
-    }
-}
-
-private extension Int64 {
-    func formattedHistoryDate() -> String {
-        let date = Date(timeIntervalSince1970: Double(self) / 1_000)
-        return date.formatted(date: .abbreviated, time: .shortened)
     }
 }

@@ -355,6 +355,41 @@
 
 ---
 
+### Requirement: Отказ чтения истории виден, а не выдаётся за «пусто»
+<!-- id: HistoryListModel.didFailToLoad -->
+<!-- entities: HistoryListModel, HistoryListColumn, HistoryDetailColumn -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/UI/History/HistoryListModel.swift, VoicePaste/UI/History/HistoryView.swift -->
+<!-- test_macos: VoicePasteTests/HistoryListModelTests.swift:test_failedFirstLoad_isFailure_notAnEmptyHistory -->
+
+Когда выборка списка не удалась, модель SHALL поднять признак отказа, а при пустом списке
+показать состояние «История не прочиталась» с действием «Повторить», а не «Нет записей».
+Уже показанные строки при сбое обновления остаются. Когда выбранная запись не прочиталась,
+деталь SHALL показать «Не удалось открыть запись», а не «Выберите запись»; признак сбрасывается
+следующим выбором.
+
+#### Scenario: первая выборка не удалась
+<!-- test: HistoryListModelTests.test_failedFirstLoad_isFailure_notAnEmptyHistory -->
+- **WHEN** первая выборка завершилась ошибкой
+- **THEN** `didFailToLoad` истинно, `isLoaded` истинно, список пуст
+
+#### Scenario: повтор после отказа
+<!-- test: HistoryListModelTests.test_retryAfterFailure_loadsTheList_andClearsTheFailure -->
+- **WHEN** выполнен повтор и база ответила
+- **THEN** список загружен, признак отказа снят
+
+#### Scenario: сбой обновления
+<!-- test: HistoryListModelTests.test_failedRefresh_keepsTheRowsAlreadyShown -->
+- **WHEN** тик обновления закончился ошибкой при показанном списке
+- **THEN** строки остаются
+
+#### Scenario: запись не открылась
+<!-- test: HistoryListModelTests.test_failedDetail_isShown_andClearedByTheNextSelection -->
+- **WHEN** чтение выбранной записи завершилось ошибкой
+- **THEN** `didFailToOpenDetail` истинно, а следующий выбор его снимает
+
+---
+
 ### Requirement: Подгрузка страницы начинается заранее и не дублируется
 <!-- id: HistoryListModel.loadNextPageIfNeeded -->
 <!-- entities: HistoryListModel, TranscriptCursor -->

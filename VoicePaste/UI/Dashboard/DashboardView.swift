@@ -125,7 +125,7 @@ struct DashboardView: View {
     private var chart: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
             HStack {
-                Text(period == .day ? "Речь по часам" : "Речь по дням").font(.headline)
+                Text(period == .day ? "Слов по часам" : "Слов по дням").font(.headline)
                 Spacer()
                 if let selectedDay { tooltip(for: selectedDay) }
             }
@@ -164,8 +164,17 @@ struct DashboardView: View {
                     value: selectedDay?.day
                 )
                 .chartYScale(domain: 0...max(1, stats.dailyStats.map(\.wordCount).max() ?? 1))
+                // Подписи по X без вертикальной сетки: двойная сетка читалась как шум.
                 .chartXAxis {
-                    AxisMarks(values: .stride(by: period == .day ? .hour : .day, count: period == .day ? 3 : period == .month ? 7 : 1))
+                    AxisMarks(values: .stride(by: period == .day ? .hour : .day, count: period == .day ? 3 : period == .month ? 7 : 1)) { _ in
+                        AxisValueLabel()
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks(values: .automatic(desiredCount: 3)) { _ in
+                        AxisGridLine()
+                        AxisValueLabel()
+                    }
                 }
                 .chartOverlay { proxy in
                     GeometryReader { geometry in

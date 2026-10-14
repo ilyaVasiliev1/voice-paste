@@ -93,7 +93,7 @@ private struct SavedLectureRow: View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
             Text(lecture.title)
                 .lineLimit(2)
-            Text(lecture.createdAtDate.formatted(date: .abbreviated, time: .shortened))
+            Text(DisplayFormat.recordDate(lecture.createdAtDate))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Text(LectureSummary.text(for: lecture))
@@ -161,7 +161,7 @@ struct LectureView: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(Text("lecture.elapsed"))
             } else if let opened = appState.openedLecture {
-                Text(opened.lecture.createdAtDate.formatted(date: .long, time: .shortened))
+                Text(DisplayFormat.recordDate(opened.lecture.createdAtDate))
                 Text(LectureSummary.text(for: opened.lecture))
             }
 

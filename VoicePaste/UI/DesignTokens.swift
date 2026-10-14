@@ -106,6 +106,9 @@ nonisolated enum DesignTokens {
     /// Прежде 10 и 12 без причины.
     static let cardCornerRadius: CGFloat = 12
 
+    /// Предельная ширина текста записи: длиннее строка читается тяжело.
+    static let readingMeasure: CGFloat = 680
+
     /// Внешний отступ правой части главного окна. Два экрана из четырёх уже
     /// держали 24 — остальные подведены под них.
     static let detailPanePadding: CGFloat = Spacing.xl
@@ -128,5 +131,36 @@ private struct CardSurface: ViewModifier {
         } else {
             content.background(.quaternary, in: shape)
         }
+    }
+}
+
+/// Даты и языки в списках и шапках: одна форма на все экраны.
+nonisolated enum DisplayFormat {
+    /// Сегодня и вчера — словами со временем, в этом году — без года, раньше — с годом
+    /// и без времени: точное время давней записи ничего не говорит.
+    static func recordDate(
+        _ date: Date,
+        now: Date = Date(),
+        calendar: Calendar = .current,
+        locale: Locale = .current
+    ) -> String {
+        let time = date.formatted(Date.FormatStyle(date: .omitted, time: .shortened, locale: locale, calendar: calendar))
+        if calendar.isDate(date, inSameDayAs: now) {
+            return NSLocalizedString("date.today", value: "Сегодня", comment: "") + ", " + time
+        }
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: now), calendar.isDate(date, inSameDayAs: yesterday) {
+            return NSLocalizedString("date.yesterday", value: "Вчера", comment: "") + ", " + time
+        }
+        let sameYear = calendar.isDate(date, equalTo: now, toGranularity: .year)
+        var style = Date.FormatStyle(locale: locale, calendar: calendar).day().month(.abbreviated)
+        if sameYear { return date.formatted(style) + ", " + time }
+        style = style.year()
+        return date.formatted(style)
+    }
+
+    /// Название языка словом, а не кодом: «Русский», не «RU».
+    static func languageName(_ code: String?, locale: Locale = .current) -> String? {
+        guard let code, let name = locale.localizedString(forLanguageCode: code), let first = name.first else { return nil }
+        return first.uppercased() + name.dropFirst()
     }
 }

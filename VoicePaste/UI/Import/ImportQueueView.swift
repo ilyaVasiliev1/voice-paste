@@ -54,7 +54,7 @@ struct ImportQueueView: View {
                     .foregroundStyle(.secondary)
                 Text("MP3, M4A, WAV, OGG, MP4, MOV, M4V")
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, minHeight: 190)
             .padding(DesignTokens.Spacing.xl)

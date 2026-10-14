@@ -12,6 +12,11 @@ final class HistoryListModel: ObservableObject {
     @Published private(set) var isLoaded = false
     /// Удаление не прошло, строка вернулась на место. Сбрасывает показавший отказ.
     @Published var didFailToDelete = false
+    /// Последняя выборка списка не удалась. Список при этом остаётся прежним:
+    /// отказ не выдаётся ни за «Нет записей», ни за стёртую историю.
+    @Published private(set) var didFailToLoad = false
+    /// Запись выбрана, но не прочиталась: не то же самое, что «ничего не выбрано».
+    @Published private(set) var didFailToOpenDetail = false
     @Published var searchText = "" {
         didSet { if searchText != oldValue { scheduleSearch(searchText) } }
     }
@@ -122,6 +127,7 @@ final class HistoryListModel: ObservableObject {
         repeat {
             guard let page = await fetch(query: query, after: cursor) else {
                 isLoaded = true
+                didFailToLoad = true
                 return
             }
             collected += page.items
@@ -133,6 +139,12 @@ final class HistoryListModel: ObservableObject {
         items = collected.filter { !pendingDeletions.contains($0.id) }
         nextCursor = cursor
         isLoaded = true
+        didFailToLoad = false
+    }
+
+    /// «Повторить» после отказа выборки.
+    func retry() async {
+        await reload(query: searchText, minimumCount: 0)
     }
 
     private func fetch(query: String, after cursor: TranscriptCursor?) async -> TranscriptPage? {
@@ -148,6 +160,7 @@ final class HistoryListModel: ObservableObject {
 
     private func select(_ id: UUID?) {
         detailTask?.cancel()
+        didFailToOpenDetail = false
         guard let id else {
             detail = nil
             return
@@ -156,10 +169,17 @@ final class HistoryListModel: ObservableObject {
     }
 
     private func loadDetail(id: UUID) async {
-        let loaded = try? await store.fetchDetail(id: id)
+        let loaded: Transcript?
+        do {
+            loaded = try await store.fetchDetail(id: id)
+        } catch {
+            await DiagnosticLog.shared.log("history.detailFailed", detail: String(describing: error))
+            loaded = nil
+        }
         // Ответ на прежний выбор не должен перетирать нынешний.
         guard !Task.isCancelled, selection == id else { return }
         detail = loaded
+        didFailToOpenDetail = loaded == nil
     }
 
     /// `L-008`: debounce cancels the stale request before it ever reaches

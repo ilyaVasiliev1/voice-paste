@@ -82,32 +82,45 @@ struct DetailEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
-            metadata
+            header
             TextEditor(text: Binding(get: { model.text }, set: { model.userEdited($0) }))
                 .font(.body)
+                .lineSpacing(3)
         }
-        .padding()
+        .frame(maxWidth: DesignTokens.readingMeasure, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(DesignTokens.detailPanePadding)
     }
 
-    private var metadata: some View {
-        HStack(spacing: DesignTokens.Spacing.md) {
-            Label(sourceText, systemImage: transcript.source == .file ? "doc" : "mic")
-            Text(durationString)
-            if let language = transcript.language {
-                Text(language.uppercased())
+    /// Дата записи — заголовок, остальное — тихой строкой под ним.
+    private var header: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(DisplayFormat.recordDate(Date(timeIntervalSince1970: Double(transcript.createdAt) / 1_000)))
+                    .font(.title3.weight(.semibold))
+                if model.didFailToSave {
+                    Spacer()
+                    Label(
+                        NSLocalizedString("history.detail.saveFailed", comment: ""),
+                        systemImage: "exclamationmark.triangle.fill"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .accessibilityIdentifier("detail-save-failed")
+                }
             }
-            if model.didFailToSave {
-                Spacer()
-                Label(
-                    NSLocalizedString("history.detail.saveFailed", comment: ""),
-                    systemImage: "exclamationmark.triangle.fill"
-                )
-                .foregroundStyle(.orange)
-                .accessibilityIdentifier("detail-save-failed")
-            }
+            Text(details)
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
-        .font(.caption)
-        .foregroundStyle(.secondary)
+        // У текстового поля свой внутренний отступ — без него левый край шапки уходит от текста.
+        .padding(.leading, 5)
+    }
+
+    private var details: String {
+        [sourceText, durationString, DisplayFormat.languageName(transcript.language)]
+            .compactMap { $0 }
+            .joined(separator: " · ")
     }
 
     private var sourceText: String {
