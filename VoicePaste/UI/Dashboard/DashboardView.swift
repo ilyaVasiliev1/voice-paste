@@ -51,6 +51,7 @@ struct DashboardView: View {
     @ObservedObject private var importManager: ImportManager
     @StateObject private var model: UsageStatsModel
     @State private var selectedDay: DailyUsageStat?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(period: StatisticsPeriod, appState: AppState) {
         self.period = period
@@ -158,6 +159,10 @@ struct DashboardView: View {
                     .foregroundStyle(Color.accentColor.opacity(selectedDay == nil || selectedDay?.day == item.day ? 1 : 0.45))
                     .cornerRadius(2)
                 }
+                .animation(
+                    DesignTokens.Motion.respecting(DesignTokens.Motion.fade, reduceMotion: reduceMotion),
+                    value: selectedDay?.day
+                )
                 .chartYScale(domain: 0...max(1, stats.dailyStats.map(\.wordCount).max() ?? 1))
                 .chartXAxis {
                     AxisMarks(values: .stride(by: period == .day ? .hour : .day, count: period == .day ? 3 : period == .month ? 7 : 1))

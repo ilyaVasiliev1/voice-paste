@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 /// раздела (`ImportQueueList`).
 struct ImportQueueView: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isDropTargeted = false
 
     var body: some View {
@@ -72,7 +73,7 @@ struct ImportQueueView: View {
                 )
                 .allowsHitTesting(false)
         }
-        .animation(.easeOut(duration: DesignTokens.Motion.quick), value: isDropTargeted)
+        .animation(DesignTokens.Motion.respecting(DesignTokens.Motion.fade, reduceMotion: reduceMotion), value: isDropTargeted)
         .accessibilityLabel("Добавить аудио или видео")
         .accessibilityHint("Открывает Finder для выбора файла")
     }

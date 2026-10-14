@@ -372,9 +372,10 @@ struct LectureView: View {
                 // иначе за говорящим придётся гоняться руками. У открытой на
                 // чтение лекции прокрутка остаётся за человеком.
                 guard followsTail, appState.isLectureRecording else { return }
-                // Плавно, а не прыжком: текст подъезжает, пока его читают.
+                // Пружина, а не кривая: новый кусок текста приходит раньше конца
+                // прежней прокрутки и перенацеливает её со скоростью, не с нуля.
                 // При включённом «уменьшить движение» — без анимации.
-                withAnimation(reduceMotion ? nil : .easeOut(duration: DesignTokens.Motion.deliberate)) {
+                withAnimation(reduceMotion ? nil : DesignTokens.Motion.scroll) {
                     proxy.scrollTo("live", anchor: .bottom)
                 }
             }

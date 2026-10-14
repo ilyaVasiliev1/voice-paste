@@ -27,6 +27,18 @@ nonisolated enum DesignTokens {
         static let quick: Double = 0.12
         static let standard: Double = 0.18
         static let deliberate: Double = 0.24
+        /// Уход короче прихода: Telegram держит 150 мс против 200 на показ.
+        static let exit: Double = 0.12
+
+        /// Растворение и смена цвета: отклик, которого не должно быть видно.
+        static let fade = Animation.easeOut(duration: quick)
+        /// Прокрутка за текстом, который пишется: пружина несёт скорость при каждом новом куске.
+        static let scroll = Animation.smooth(duration: 0.25)
+
+        /// «Уменьшить движение»: любое движение заменяется коротким растворением.
+        static func respecting(_ animation: Animation, reduceMotion: Bool) -> Animation {
+            reduceMotion ? fade : animation
+        }
     }
 
     /// Зона приёма файла. Одна пара значений на обе её реализации — в HUD и

@@ -17,6 +17,9 @@ public final class HUDWindowController {
     private var dismissTask: Task<Void, Never>?
     private var dismissDeadline: Date?
     private var pausedDismissalRemaining: TimeInterval?
+    /// Номер выхода: новый показ или новый выход делает прежний недействительным.
+    private var exitToken = 0
+    private var isExiting = false
 
     /// Re-entrancy guard: `present(_:)` is called ~5-10x/sec while recording
     /// (elapsed ticker + level meter, `L-004`). Without this guard, a
@@ -54,6 +57,35 @@ public final class HUDWindowController {
         self.panel = panel
         self.hostingView = hostingView
 
+        // Первый кадр сессии иначе платит за создание поверхности и рендер
+        // материала: делается в простое, невидимо, до первой диктовки.
+        if !ProcessRuntime.isRunningTests {
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(2))
+                self?.prewarm()
+            }
+        }
+    }
+
+    var isPanelVisible: Bool { panel.isVisible }
+    var panelAlpha: CGFloat { panel.alphaValue }
+
+    /// Один невидимый показ: панель прозрачна, не ловит мышь и убирается в тот
+    /// же ход главного потока, поэтому между прогревом и горячей клавишей
+    /// ничего не встаёт. Идущий показ не трогает.
+    func prewarm() {
+        guard !panel.isVisible, !isExiting else { return }
+        stateHolder.state = .recording(elapsed: 0, level: 0)
+        reposition()
+        panel.alphaValue = 0
+        panel.ignoresMouseEvents = true
+        panel.orderFrontRegardless()
+        hostingView.layoutSubtreeIfNeeded()
+        panel.displayIfNeeded()
+        panel.orderOut(nil)
+        panel.ignoresMouseEvents = false
+        panel.alphaValue = 1
+        stateHolder.state = .hidden
     }
 
     /// Shows (or updates) the HUD with a new state, positioned bottom-center
@@ -72,10 +104,10 @@ public final class HUDWindowController {
 
         guard state != .hidden else {
             cancelDismissTimer()
-            panel.orderOut(nil)
-            stateHolder.state = .hidden
+            beginExit()
             return
         }
+        cancelExit()
 
         let previousKind = stateHolder.state.kind
         let needsReposition = !panel.isVisible
@@ -112,6 +144,45 @@ public final class HUDWindowController {
 
     public func hide() {
         present(.hidden)
+    }
+
+    /// Плашка растворяется за `Motion.exit`, а не обрывается. Содержимое
+    /// остаётся до конца выхода: пустая капсула вместо текста была бы рывком.
+    private func beginExit() {
+        guard panel.isVisible else {
+            stateHolder.state = .hidden
+            return
+        }
+        guard !isExiting else { return }
+        isExiting = true
+        exitToken += 1
+        let token = exitToken
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = DesignTokens.Motion.exit
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            panel.animator().alphaValue = 0
+        }, completionHandler: { [weak self] in
+            Task { @MainActor in self?.finishExit(token: token) }
+        })
+    }
+
+    private func finishExit(token: Int) {
+        guard isExiting, token == exitToken else { return }
+        isExiting = false
+        panel.orderOut(nil)
+        panel.alphaValue = 1
+        stateHolder.state = .hidden
+    }
+
+    /// Новый показ посреди выхода отменяет его: панель снова непрозрачна.
+    private func cancelExit() {
+        guard isExiting else { return }
+        isExiting = false
+        exitToken += 1
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0
+            panel.animator().alphaValue = 1
+        }
     }
 
     /// Wires the HUD's mouse-button actions (`UI-003`) to whatever
@@ -165,6 +236,14 @@ public final class HUDWindowController {
         }
         dismissDeadline = Date().addingTimeInterval(delay)
         stateHolder.dismissProgress = startingProgress
+        guard stateHolder.state.showsDismissProgress else {
+            dismissTask = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(delay))
+                guard !Task.isCancelled else { return }
+                self?.present(.hidden)
+            }
+            return
+        }
         dismissTask = Task { [weak self] in
             let startedAt = Date()
             while let self, !Task.isCancelled {

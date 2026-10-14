@@ -250,7 +250,7 @@ struct HUDContentView: View {
             .contentShape(RoundedRectangle(cornerRadius: DesignTokens.DropZone.cornerRadius, style: .continuous))
         }
         .padding(HUDLayout.contentInset)
-        .animation(reduceMotion ? nil : .easeOut(duration: DesignTokens.Motion.quick), value: isImportTargeted)  // TOK-motion.drop-target
+        .animation(reduceMotion ? nil : DesignTokens.Motion.fade, value: isImportTargeted)
         .onDrop(of: [.fileURL], isTargeted: $isImportTargeted, perform: loadDroppedFile)
     }
 
@@ -324,8 +324,7 @@ struct HUDContentView: View {
 
     @ViewBuilder
     private func autoDismissProgress(for state: HUDState, cornerRadius: CGFloat) -> some View {
-        switch state {
-        case .cancelledWithUndo, .importFinished:
+        if state.showsDismissProgress {
             GeometryReader { proxy in
                 Rectangle()
                     .fill(.primary.opacity(0.35))
@@ -334,8 +333,6 @@ struct HUDContentView: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .allowsHitTesting(false)
-        default:
-            EmptyView()
         }
     }
 }
@@ -360,7 +357,7 @@ private struct HUDIconButton: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            withAnimation(.easeOut(duration: DesignTokens.Motion.quick)) { isHovered = hovering }  // TOK-motion.hover
+            withAnimation(DesignTokens.Motion.fade) { isHovered = hovering }
         }
         .accessibilityLabel(Text(labelKey))
     }
