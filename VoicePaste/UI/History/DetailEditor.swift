@@ -68,8 +68,8 @@ final class DetailEditModel: ObservableObject {
     }
 }
 
-/// Detail pane of `UI-004`: editable text, metadata, copying, and a compact
-/// destructive action. `rawText` is preserved on edit (`L-008`); only
+/// Detail pane of editable text, metadata, copying, and a compact
+/// destructive action. `rawText` is preserved on edit; only
 /// `text`/`preview`/`updatedAt` change.
 struct DetailEditor: View {
     let transcript: Transcript

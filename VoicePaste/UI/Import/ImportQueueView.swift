@@ -26,7 +26,7 @@ struct ImportQueueView: View {
                     Label("history.toolbar.transcribeFile", systemImage: "arrow.down.doc")
                         .labelStyle(.titleAndIcon)
                 }
-                // `INV-015`/`AT-088`: import stays disabled while not ready.
+                // import stays disabled while not ready.
                 .disabled(appState.readiness.state != .ready)
             }
         }
@@ -34,7 +34,7 @@ struct ImportQueueView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-            Text("Добавить файл")
+            Text("Расшифровка файла")
                 .font(.title2.weight(.semibold))
             Text("Аудио и видео обрабатываются локально и по очереди.")
                 .foregroundStyle(.secondary)
@@ -56,7 +56,7 @@ struct ImportQueueView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            .frame(maxWidth: .infinity, minHeight: 190)
+            .frame(maxWidth: .infinity, minHeight: DesignTokens.DropZone.minHeight)
             .padding(DesignTokens.Spacing.xl)
             .contentShape(RoundedRectangle(cornerRadius: DesignTokens.DropZone.cornerRadius, style: .continuous))
         }
@@ -179,18 +179,21 @@ private struct QueueRow: View {
                     }
                     .buttonStyle(.borderless)
                     .help("Повторить расшифровку")
+                    .accessibilityLabel(Text("Повторить расшифровку"))
                 }
                 Button(role: .destructive, action: onRemove) {
                     Image(systemName: "trash")
                 }
                 .buttonStyle(.borderless)
                 .help("Удалить файл из очереди")
+                .accessibilityLabel(Text("Удалить файл из очереди"))
             } else {
                 Button(role: .destructive, action: onRemove) {
                     Image(systemName: "xmark.circle.fill")
                 }
                 .buttonStyle(.borderless)
                 .help("Отменить")
+                .accessibilityLabel(Text("Отменить расшифровку файла"))
             }
         }
         .padding(.vertical, DesignTokens.Spacing.xs)

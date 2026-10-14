@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// `UI-002`: sequential native onboarding. Every step explains why the
+/// sequential native onboarding. Every step explains why the
 /// permission is needed, offers a System Settings deep link, and can be
 /// skipped for now — actual readiness (`ReadinessCoordinator`) is computed
 /// independently from live system status, not from wizard progress.
@@ -10,9 +10,9 @@ struct OnboardingView: View {
     @Environment(\.dismissWindow) private var dismissWindow
     @Environment(\.openWindow) private var openWindow
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var step: Step = .purpose
+    @State private var step: Step
     @State private var accessibilityPollTask: Task<Void, Never>?
-    /// `AT-092`/`UI-002`: set when `requestMicrophoneAccess()` returns
+    /// set when `requestMicrophoneAccess()` returns
     /// `.notPresented` — macOS silently skipped its consent sheet. Cleared on
     /// every fresh attempt and whenever the step changes.
     @State private var didFailToPresentConsentSheet = false
@@ -28,8 +28,12 @@ struct OnboardingView: View {
     @State private var accessibilityFallbackTask: Task<Void, Never>?
     @State private var isOpeningAccessibilitySettings = false
 
-    private enum Step: Int, CaseIterable {
+    enum Step: Int, CaseIterable {
         case purpose, microphone, accessibility, model
+    }
+
+    init(initialStep: Step = .purpose) {
+        _step = State(initialValue: initialStep)
     }
 
     var body: some View {
@@ -128,7 +132,7 @@ struct OnboardingView: View {
                     didFailToPresentConsentSheet = false
                     Task {
                         let action = await appState.readiness.requestMicrophoneAccess()
-                        // `AT-092`/`UI-002`: only a *real* denial sends the
+                        // only a *real* denial sends the
                         // person to System Settings. `.notPresented` means
                         // macOS silently skipped its consent sheet — System
                         // Settings would show an empty "Microphone" list, so
@@ -140,7 +144,7 @@ struct OnboardingView: View {
                         }
                     }
                 }
-                // `AT-092`/`UI-002`: the manual System Settings link is only
+                // the manual System Settings link is only
                 // safe to show for a *real* denial (`.denied`/`.restricted`).
                 // At `.notDetermined` the app is not yet listed under
                 // Privacy & Security → Microphone, so this button would open
@@ -247,7 +251,7 @@ struct OnboardingView: View {
     /// `UI-002`/task 2: the last step's "Готово" must actually close the
     /// onboarding window — previously `Step(rawValue: 4)` was `nil` and
     /// `goNext()` silently did nothing. If readiness is now `.ready`, also
-    /// bring up the single main window (`UI-008`) so the user lands
+    /// bring up the single main window so the user lands
     /// somewhere useful instead of at an empty menu bar.
     private func finish() {
         dismissWindow(id: "onboarding")

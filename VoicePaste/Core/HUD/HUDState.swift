@@ -19,7 +19,7 @@ public nonisolated enum HUDErrorAction: Equatable, Sendable {
     case selectMicrophone
 }
 
-/// HUD content per `DESIGN.md` "Единая система HUD" (`UI-003`, `INV-006`).
+/// HUD content per `DESIGN.md` "Единая система HUD".
 public nonisolated enum HUDState: Equatable, Sendable {
     case hidden
     /// `DESIGN.md`: capsule 240–280 pt × 48 pt. No preview text and no
@@ -29,12 +29,12 @@ public nonisolated enum HUDState: Equatable, Sendable {
     case processing
     /// Auto-dismisses after 1.5 s.
     case inserted
-    /// Shown when direct insertion was not possible (`INV-008`). Same
+    /// Shown when direct insertion was not possible. Same
     /// 1.5 s auto-dismiss as `.inserted` — clipboard fallback is still a
-    /// successful, momentary confirmation (`L-007`), not a state that
+    /// successful, momentary confirmation, not a state that
     /// should linger until the next HUD present.
     case copied
-    /// `UI-003` HUD "Отменить" button: a brief confirmation that the
+    /// HUD "Отменить" button: a brief confirmation that the
     /// in-flight dictation was discarded, not transcribed. Same 1.5 s
     /// auto-dismiss as `.inserted`/`.copied` — this is a successful, final
     /// outcome for the session, not an error.
@@ -48,11 +48,11 @@ public nonisolated enum HUDState: Equatable, Sendable {
     /// message and the close button — never more than one action, never a
     /// second line of detail ("не расползается в карточку").
     case error(message: String, action: HUDErrorAction = .none)
-    /// `UI-006`/`UI-003`: a stable raised drop target, visible before a file
+    /// a stable raised drop target, visible before a file
     /// is dragged. It keeps the same geometry while hovering so the panel
     /// never jumps under the pointer.
     case importIdle
-    /// `DM-005` real progress (`ImportJob.progress`/`.state`) while a file
+    /// real progress (`ImportJob.progress`/`.state`) while a file
     /// decodes/transcribes, in the same container — no new card. Stays up
     /// until completion/failure.
     case importing

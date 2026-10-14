@@ -160,7 +160,7 @@ struct LectureView: View {
                 HStack(spacing: DesignTokens.Spacing.sm) {
                     Circle()
                         .fill(.red)
-                        .frame(width: 9, height: 9)
+                        .frame(width: DesignTokens.IconSize.statusDot, height: DesignTokens.IconSize.statusDot)
                         .accessibilityHidden(true)
                     Text(LectureClock.text(appState.lectureElapsedSeconds))
                         .font(.title3.monospacedDigit().weight(.medium))
@@ -511,7 +511,7 @@ private struct LiveTextRow: View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
             Circle()
                 .fill(.red.opacity(0.8))
-                .frame(width: 6, height: 6)
+                .frame(width: DesignTokens.IconSize.liveMarker, height: DesignTokens.IconSize.liveMarker)
                 .padding(.top, DesignTokens.Spacing.sm)
                 .frame(width: 48, alignment: .leading)
                 .accessibilityHidden(true)

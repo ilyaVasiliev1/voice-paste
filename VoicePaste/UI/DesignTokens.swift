@@ -67,6 +67,7 @@ nonisolated enum DesignTokens {
     /// в очереди импорта.
     enum DropZone {
         static let cornerRadius: CGFloat = 12
+        static let minHeight: CGFloat = 190
         static let dash: [CGFloat] = [6, 5]
         static let idleStroke = Color.primary.opacity(0.18)
         static let activeFill = Color.accentColor.opacity(0.10)
@@ -100,7 +101,14 @@ nonisolated enum DesignTokens {
     /// и вне системы.
     enum IconSize {
         static let invitation: CGFloat = 28
+        /// Красная точка «идёт запись» рядом с таймером.
+        static let statusDot: CGFloat = 8
+        /// Маркер строки живого текста лекции.
+        static let liveMarker: CGFloat = 6
     }
+
+    /// Минимальная высота области графика статистики.
+    static let chartMinHeight: CGFloat = 210
 
     /// Карточка: показатели и график статистики, строка очереди в статистике.
     /// Прежде 10 и 12 без причины.
@@ -108,6 +116,9 @@ nonisolated enum DesignTokens {
 
     /// Предельная ширина текста записи: длиннее строка читается тяжело.
     static let readingMeasure: CGFloat = 680
+
+    /// Ширина подписи значения у ползунка в настройках: «2,0 с», «30 с».
+    static let sliderValueWidth: CGFloat = 56
 
     /// Предельная ширина экрана-формы (импорт): шире зона приёма растягивается без пользы.
     static let formMeasure: CGFloat = 860

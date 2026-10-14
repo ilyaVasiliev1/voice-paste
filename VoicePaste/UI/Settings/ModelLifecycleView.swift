@@ -51,7 +51,7 @@ struct ModelLifecycleView: View {
         Task { _ = try? await appState.modelManager.installModel() }
     }
 
-    /// `AT-086`/`L-010`/`UI-002`: honest download progress — percent and
+    /// honest download progress — percent and
     /// "N из 626 МБ" read straight from `ModelDownloadProgress`'s byte
     /// counters, plus current speed and an ETA that only appears once the
     /// smoothed speed is a trustworthy signal (until then, "Считаем
@@ -72,7 +72,7 @@ struct ModelLifecycleView: View {
             Text(Self.speedAndETAText(progress))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            // `L-010`: cancel the in-flight download and clear whatever was
+            // cancel the in-flight download and clear whatever was
             // written, dropping back to `.notPrepared` so the source can be
             // switched and the download restarted from the chosen host.
             Button("onboarding.model.cancelDownload") {
@@ -123,7 +123,7 @@ struct ModelLifecycleView: View {
 }
 
 /// Источник загрузки модели — одна настройка `settings.modelDownloadSource`
-/// (`AT-093`, `AT-096`, `L-010`) и один выбор на оба экрана.
+/// и один выбор на оба экрана.
 ///
 /// Пояснение одно на оба экрана. Прежде онбординг советовал из Китая
 /// китайское зеркало, а настройки — GitHub как единственный рабочий оттуда

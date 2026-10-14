@@ -3,18 +3,19 @@ import Foundation
 import SwiftUI
 
 /// `UI-settings.tabs`. Sections map 1:1 to `ui-ux.md`; all controls bind to
-/// `DM-001` via `AppSettings`, which persists to `UserDefaults` on every
-/// change — except `launchAtLogin` (`L-020`), whose source of truth is
+/// via `AppSettings`, which persists to `UserDefaults` on every
+/// change — except `launchAtLogin`, whose source of truth is
 /// `SMAppService.mainApp.status`, not `UserDefaults`.
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
+    var initialTab: SettingsTabItem = .general
 
     var body: some View {
-        SettingsBody(appState: appState, settings: appState.settings)
+        SettingsBody(appState: appState, settings: appState.settings, initialTab: initialTab)
     }
 }
 
-private enum SettingsTabItem: Hashable {
+enum SettingsTabItem: Hashable {
     case general, dictation, text, model, history
 }
 
@@ -26,8 +27,14 @@ private struct SettingsBody: View {
     @State private var showingDeleteModelConfirmation = false
     @State private var newVocabularySpokenForm = ""
     @State private var newVocabularyReplacement = ""
-    @State private var selectedTab: SettingsTabItem = .general
+    @State private var selectedTab: SettingsTabItem
     @State private var actionFailure: String?
+
+    init(appState: AppState, settings: AppSettings, initialTab: SettingsTabItem) {
+        self.appState = appState
+        self.settings = settings
+        _selectedTab = State(initialValue: initialTab)
+    }
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -54,12 +61,12 @@ private struct SettingsBody: View {
         .task {
             await loadVocabulary()
             applyRequestedTab()
-            // `L-020`: the system is the source of truth for this switch —
+            // the system is the source of truth for this switch —
             // pick up a change made outside the app (System Settings →
             // Login Items) every time this window becomes visible again.
             settings.refreshLaunchAtLoginFromSystem()
         }
-        // `UI-003` "Выбрать микрофон": if Settings was already open when the
+        // "Выбрать микрофон": if Settings was already open when the
         // HUD button was clicked, `.task` above won't re-run — this covers
         // that case (the window is brought back to front by
         // `AppState.openSettingsToPermissions()` regardless).
@@ -79,15 +86,22 @@ private struct SettingsBody: View {
         appState.requestedSettingsTab = nil
     }
 
+    private static func seconds(_ value: Double, fractionDigits: Int) -> String {
+        value.formatted(.number.precision(.fractionLength(fractionDigits))) + " с"
+    }
+
     private var generalSection: some View {
         Form {
             Section {
-                // `L-020`: this binding's getter reflects the system's own
+                // this binding's getter reflects the system's own
                 // `SMAppService.mainApp.status`, not a stored preference —
                 // flipping it asks the system to register/unregister and the
                 // switch snaps back to reality if that request fails.
                 Toggle("settings.general.launchAtLogin", isOn: $settings.launchAtLogin)
                 Toggle("settings.general.showInDock", isOn: $settings.showInDock)
+                    .onChange(of: settings.showInDock) { _, _ in appState.applyDockVisibility() }
+            }
+            Section("settings.lecture.section") {
                 // Порог паузы для абзацев лекции: у разных говорящих разный
                 // темп, поэтому это настройка, а не константа.
                 LabeledContent("settings.lecture.pause") {
@@ -97,9 +111,9 @@ private struct SettingsBody: View {
                             in: LectureParagraphBuilder.pauseRange,
                             step: 0.5
                         )
-                        Text(String(format: "%.1f с", settings.lectureParagraphPauseSeconds))
+                        Text(Self.seconds(settings.lectureParagraphPauseSeconds, fractionDigits: 1))
                             .font(.system(.body, design: .monospaced))
-                            .frame(width: 56, alignment: .trailing)
+                            .frame(width: DesignTokens.sliderValueWidth, alignment: .trailing)
                     }
                 }
                 Text("settings.lecture.pauseDescription")
@@ -112,15 +126,14 @@ private struct SettingsBody: View {
                             in: LectureRecorder.windowRange,
                             step: 1
                         )
-                        Text(String(format: "%.0f с", settings.lectureWindowSeconds))
+                        Text(Self.seconds(settings.lectureWindowSeconds, fractionDigits: 0))
                             .font(.system(.body, design: .monospaced))
-                            .frame(width: 56, alignment: .trailing)
+                            .frame(width: DesignTokens.sliderValueWidth, alignment: .trailing)
                     }
                 }
                 Text("settings.lecture.windowDescription")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .onChange(of: settings.showInDock) { _, _ in appState.applyDockVisibility() }
             }
             permissionsControls
         }
@@ -173,12 +186,12 @@ private struct SettingsBody: View {
 
     private var modelSection: some View {
         Form {
-            LabeledContent("settings.model.name", value: settings.modelID)
+            LabeledContent("settings.model.name", value: NSLocalizedString("settings.model.displayName", comment: ""))
             LabeledContent(
                 "settings.model.size",
                 value: ByteCountFormatter.string(
                     fromByteCount: ModelCatalog.approximateSizeBytes,
-                    countStyle: .file
+                    countStyle: .binary
                 ))
             LabeledContent("settings.model.status") {
                 ModelLifecycleView(showsSourcePicker: false)

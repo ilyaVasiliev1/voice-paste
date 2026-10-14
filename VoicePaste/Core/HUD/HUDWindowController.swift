@@ -26,7 +26,7 @@ public final class HUDWindowController {
     /// re-entrant call arriving while a previous `present` is still on the
     /// stack (e.g. from a nested run-loop turn triggered by SwiftUI's own
     /// state-driven layout) could re-enter AppKit's layout machinery and
-    /// trigger `_NSDetectedLayoutRecursion` (`UI-003`, `INV-006`).
+    /// trigger `_NSDetectedLayoutRecursion`.
     private var isPresenting = false
 
     public init() {
@@ -190,7 +190,7 @@ public final class HUDWindowController {
         }
     }
 
-    /// Wires the HUD's mouse-button actions (`UI-003`) to whatever
+    /// Wires the HUD's mouse-button actions to whatever
     /// `AppState`/`DictationStateMachine` calls make sense for each — this
     /// controller only owns presentation, never dictation logic itself.
     public func configureActions(

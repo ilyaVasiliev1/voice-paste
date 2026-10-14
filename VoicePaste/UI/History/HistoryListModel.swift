@@ -182,7 +182,7 @@ final class HistoryListModel: ObservableObject {
         didFailToOpenDetail = loaded == nil
     }
 
-    /// `L-008`: debounce cancels the stale request before it ever reaches
+    /// debounce cancels the stale request before it ever reaches
     /// the store; Enter never starts a recognition session.
     private func scheduleSearch(_ query: String) {
         searchTask?.cancel()

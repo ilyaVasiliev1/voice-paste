@@ -268,6 +268,34 @@ final class ScreenSnapshots: XCTestCase {
         }
     }
 
+    /// Окно настроек целиком по вкладкам и шаги онбординга — то, что в прежних снимках не попадало.
+    func test_settingsTabs_andOnboardingSteps() async throws {
+        try skipUnlessRequested()
+        let tabs: [(String, SettingsTabItem)] = [
+            ("general", .general), ("dictation", .dictation), ("text", .text), ("model", .model), ("history", .history),
+        ]
+        let steps: [(String, OnboardingView.Step)] = [
+            ("purpose", .purpose), ("microphone", .microphone), ("accessibility", .accessibility), ("model", .model),
+        ]
+        for dark in [false, true] {
+            let theme = dark ? "dark" : "light"
+            for (name, tab) in tabs {
+                let app = try await makeAppState()
+                try await snapshot(
+                    SettingsView(initialTab: tab).environmentObject(app),
+                    size: CGSize(width: 720, height: 460), dark: dark, name: "settings-\(name)-\(theme)"
+                )
+            }
+            for (name, step) in steps {
+                let app = try await makeAppState()
+                try await snapshot(
+                    OnboardingView(initialStep: step).environmentObject(app),
+                    size: CGSize(width: 480, height: 360), dark: dark, name: "onboarding-\(name)-\(theme)"
+                )
+            }
+        }
+    }
+
     func test_lectureScreen_continuing() async throws {
         try skipUnlessRequested()
         let app = try await makeAppState()

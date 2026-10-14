@@ -131,7 +131,7 @@ struct DashboardView: View {
                 if let selectedDay { tooltip(for: selectedDay) }
             }
             if !model.isLoaded && !model.didFailToLoad {
-                Color.clear.frame(maxWidth: .infinity, minHeight: 210)
+                Color.clear.frame(maxWidth: .infinity, minHeight: DesignTokens.chartMinHeight)
             } else if stats.dailyStats.isEmpty || stats.totalTranscriptCount == 0 {
                 Group {
                     if model.didFailToLoad {
@@ -148,7 +148,7 @@ struct DashboardView: View {
                         )
                     }
                 }
-                .frame(maxWidth: .infinity, minHeight: 210)
+                .frame(maxWidth: .infinity, minHeight: DesignTokens.chartMinHeight)
             } else {
                 // Столбцы, а не линия: при редкой речи линия превращалась в
                 // ряд нулей с одним всплеском, а столбец читается и в одиночку.
@@ -200,6 +200,13 @@ struct DashboardView: View {
         }
         .padding(DesignTokens.Spacing.lg)
         .cardSurface()
+        // Подсказка графика живёт на наведении — для VoiceOver и клавиатуры её нет, поэтому сводка текстом.
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text(period == .day ? "Слов по часам" : "Слов по дням"))
+        .accessibilityValue(Text(
+            DisplayFormat.words(stats.totalWordCount) + ", "
+                + DisplayFormat.transcriptions(stats.totalTranscriptCount)
+        ))
     }
 
     private func tooltip(for day: DailyUsageStat) -> some View {

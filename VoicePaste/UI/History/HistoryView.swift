@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Список раздела истории: записи с поиском и секцией незавершённого импорта.
-/// Sidebar pages 100 rows at a time via `HistoryStoring` (`DM-002`/`DM-003`),
+/// Sidebar pages 100 rows at a time via `HistoryStoring`,
 /// never loading `rawText` or full `text` until an item is selected. Search
 /// is FTS5-backed with a short debounce that cancels stale requests
 /// (`L-008`, в `HistoryListModel`).
@@ -167,7 +167,7 @@ private struct StartDictationButton: View {
             Label("history.toolbar.startDictation", systemImage: "waveform")
         }
         .help("history.toolbar.startDictation")
-        // `INV-015`/`AT-088`: recording stays a disabled, non-erroring
+        // recording stays a disabled, non-erroring
         // control while not ready, not a tap that surfaces an error.
         .disabled(appState.dictationPhase == .processing || appState.readiness.state != .ready)
     }

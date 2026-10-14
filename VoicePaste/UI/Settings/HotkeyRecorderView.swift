@@ -2,7 +2,7 @@ import AppKit
 import Carbon.HIToolbox
 import SwiftUI
 
-/// Native shortcut recorder for `UI-005` "Диктовка" section (`AT-011`).
+/// Native shortcut recorder for `UI-005` "Диктовка" section.
 ///
 /// Two explicit states, matching the fix brief:
 /// - idle — shows the current combination plus a "Изменить" caption hint;
