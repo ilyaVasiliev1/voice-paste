@@ -1,0 +1,111 @@
+import Foundation
+
+/// Распознавание как шаг конвейера: звук и язык на входе, сырой текст на выходе.
+///
+/// Тракт диктовки считает окна по ходу записи и не умещается в `Transcribing`
+/// (там нет состояния между вызовами), поэтому конвейер зависит от этого
+/// узкого протокола, а не от движка.
+nonisolated public protocol Recognizing: Sendable {
+    func recognize(samples: [Float], language: TranscriptionLanguage) async throws -> TranscriptionResult
+}
+
+/// Прямое распознавание одним вызовом движка — для импорта и тестов.
+nonisolated public struct EngineRecognizer: Recognizing {
+    private let engine: any Transcribing
+
+    public init(engine: any Transcribing) {
+        self.engine = engine
+    }
+
+    public func recognize(samples: [Float], language: TranscriptionLanguage) async throws -> TranscriptionResult {
+        try await engine.transcribe(TranscriptionRequest(samples: samples, language: language))
+    }
+}
+
+/// Результат конвейера до доставки: текст ещё нигде не вставлен и не сохранён.
+nonisolated public struct Draft: Sendable, Equatable {
+    public var rawText: String
+    public var text: String
+    public var detectedLanguage: String?
+    public var durationMilliseconds: Int
+
+    public init(rawText: String, text: String, detectedLanguage: String?, durationMilliseconds: Int) {
+        self.rawText = rawText
+        self.text = text
+        self.detectedLanguage = detectedLanguage
+        self.durationMilliseconds = durationMilliseconds
+    }
+}
+
+/// Почему запись не дошла до модели.
+nonisolated public enum PipelineRejection: Sendable, Equatable {
+    case tooShort
+    case belowNoiseFloor
+    case noSpeech
+}
+
+nonisolated public enum PipelineOutcome: Sendable, Equatable {
+    case draft(Draft)
+    case rejected(PipelineRejection)
+}
+
+/// Шаги диктовки от записанного звука до черновика: страж, распознавание,
+/// приведение текста. Доставка и история — снаружи: конвейер не знает ни
+/// буфера обмена, ни базы, ни окна.
+nonisolated public struct DictationPipeline: Sendable {
+
+    /// Меньше — слишком мало звука для модели: она выдаёт правдоподобную
+    /// выдумку вроде «Продолжение следует…».
+    public static let minimumSamples = 8_000
+
+    /// Громкость записи, ниже которой это шум микрофона, а не тихая речь.
+    public static let minimumCaptureRMS: Float = 0.004
+
+    private static let samplesPerMillisecond = 16
+
+    private let normalizer: TextNormalizer
+
+    public init(normalizer: TextNormalizer) {
+        self.normalizer = normalizer
+    }
+
+    /// Дешёвая проверка по тому, что известно сразу после остановки записи.
+    /// Идёт до показа «обработка»: отказ превращает окно в ошибку без промежуточного вида.
+    public func admitCapture(sampleCount: Int, captureRMS: Float) -> PipelineRejection? {
+        guard sampleCount >= Self.minimumSamples else { return .tooShort }
+        guard captureRMS >= Self.minimumCaptureRMS else { return .belowNoiseFloor }
+        return nil
+    }
+
+    /// Детектор речи, распознавание и приведение текста.
+    ///
+    /// `onSpeechConfirmed` вызывается один раз после того, как речь найдена, и
+    /// до распознавания: там приложение показывает «обработка» и загружает модель.
+    public func run(
+        samples: [Float],
+        language: TranscriptionLanguage,
+        vocabulary: [VocabularyEntry],
+        autoCorrectSafeTypos: Bool,
+        recognizer: any Recognizing,
+        onSpeechConfirmed: @Sendable () async -> Void
+    ) async throws -> PipelineOutcome {
+        guard await SpeechGate.analyzeOffMain(samples).hasSpeech else {
+            return .rejected(.noSpeech)
+        }
+        await onSpeechConfirmed()
+
+        let recognized = try await recognizer.recognize(samples: samples, language: language)
+        let (text, _) = await normalizer.normalizeInBackground(
+            rawText: recognized.rawText,
+            language: language,
+            vocabulary: vocabulary,
+            autoCorrectSafeTypos: autoCorrectSafeTypos
+        )
+        return .draft(Draft(
+            rawText: recognized.rawText,
+            text: text,
+            detectedLanguage: recognized.detectedLanguage,
+            durationMilliseconds: samples.count / Self.samplesPerMillisecond
+        ))
+    }
+}
