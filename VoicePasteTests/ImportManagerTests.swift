@@ -107,6 +107,16 @@ final class ImportManagerTests: XCTestCase {
         XCTAssertEqual(manager.jobs.first(where: { $0.id == jobID })?.failureKey, "import.error.unsupportedFormat")
     }
 
+    func test_fileWithoutSpeech_failsWithItsOwnReason() async throws {
+        let url = try makeSilentWAV(seconds: 1, name: "quiet.wav")
+        let manager = try await makeManager(transcriber: MockTranscriber())
+
+        let jobID = manager.enqueue(url: url)
+        try await waitUntil { manager.jobs.first(where: { $0.id == jobID })?.state == .failed }
+
+        XCTAssertEqual(manager.jobs.first(where: { $0.id == jobID })?.failureKey, "import.error.emptyAudio")
+    }
+
     func test_AT025_cancelledStaging_removesJobAndCache() async throws {
         let url = try makeSilentWAV(seconds: 0.5, name: "cancel.wav")
         let manager = try await makeManager(transcriber: MockTranscriber())
