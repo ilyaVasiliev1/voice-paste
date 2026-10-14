@@ -61,6 +61,12 @@ make_clip() {
   local id="$1" voice="$2" lang="$3" text="$4"
   say -v "$voice" -o "$WORK/$id.aiff" -- "$text"
   afconvert -f WAVE -d LEI16@16000 -c 1 "$WORK/$id.aiff" "$OUT/$id.wav"
+  # Голос без установленных данных молча отдаёт тишину: такой клип в набор не берём.
+  if (( $(stat -f %z "$OUT/$id.wav") < 20000 )); then
+    rm -f "$OUT/$id.wav"
+    print -u2 "пропущен $id: голос $voice не прочитал текст (нет данных голоса)"
+    return 0
+  fi
   MANIFEST+=("$id	$lang	$text")
 }
 i=0; for t in "${RU[@]}"; do i=$((i+1)); make_clip "ru-$(printf %02d $i)" Milena ru "$t"; done

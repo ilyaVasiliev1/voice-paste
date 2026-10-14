@@ -51,7 +51,7 @@ struct EngineBakeoff {
             let loadStart = Date()
             let engine = try await WhisperKitTranscriber(
                 modelDirectory: directory,
-                endpoint: ModelCatalog.downloadEndpoint,
+                endpoint: ProcessInfo.processInfo.environment["BAKEOFF_ENDPOINT"] ?? "https://huggingface.co",
                 tokenizerFolder: ModelManager.tokenizerDirectory(in: Self.installedModels),
                 variant: variant
             )
