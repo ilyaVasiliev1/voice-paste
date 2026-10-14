@@ -217,14 +217,13 @@ public final class SystemLiveTranscriber: LiveTranscribing {
     private static func stream(from transcriber: SpeechTranscriber) -> AsyncStream<LiveTranscriptUpdate> {
         AsyncStream { continuation in
             Task {
-                for try await result in transcriber.results {
-                    continuation.yield(Self.update(
+                await drain(transcriber.results, into: continuation) { result in
+                    Self.update(
                         text: String(result.text.characters),
                         isFinal: result.isFinal,
                         range: result.range
-                    ))
+                    )
                 }
-                continuation.finish()
             }
         }
     }
@@ -232,16 +231,33 @@ public final class SystemLiveTranscriber: LiveTranscribing {
     private static func stream(from transcriber: DictationTranscriber) -> AsyncStream<LiveTranscriptUpdate> {
         AsyncStream { continuation in
             Task {
-                for try await result in transcriber.results {
-                    continuation.yield(Self.update(
+                await drain(transcriber.results, into: continuation) { result in
+                    Self.update(
                         text: String(result.text.characters),
                         isFinal: result.isFinal,
                         range: result.range
-                    ))
+                    )
                 }
-                continuation.finish()
             }
         }
+    }
+
+    /// Переливает результаты в поток обновлений и закрывает его при любом
+    /// исходе. Ошибка результатов уходит в журнал: прежде она терялась в
+    /// безымянной задаче, а поток не заканчивался, и лекция ждала вечно.
+    static func drain<Results: AsyncSequence>(
+        _ results: Results,
+        into continuation: AsyncStream<LiveTranscriptUpdate>.Continuation,
+        map: (Results.Element) -> LiveTranscriptUpdate
+    ) async {
+        do {
+            for try await result in results {
+                continuation.yield(map(result))
+            }
+        } catch {
+            await DiagnosticLog.shared.log("lecture.liveResults.failed", detail: String(describing: error))
+        }
+        continuation.finish()
     }
 
     private static func update(text: String, isFinal: Bool, range: CMTimeRange) -> LiveTranscriptUpdate {
