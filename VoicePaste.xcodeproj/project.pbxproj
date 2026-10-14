@@ -24,6 +24,7 @@
 		C0000000000000000000098B /* LectureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000098A /* LectureView.swift */; };
 		C00000000000000000000989 /* AppState+Lecture.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000988 /* AppState+Lecture.swift */; };
 		C00000000000000000000A49 /* DictationSeams.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A48 /* DictationSeams.swift */; };
+		C00000000000000000000A79 /* DictationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A78 /* DictationCoordinator.swift */; };
 		C00000000000000000000A6D /* Exports.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A6C /* Exports.swift */; };
 		C00000000000000000000987 /* LectureStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000986 /* LectureStore.swift */; };
 		C00000000000000000000985 /* Lecture.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000984 /* Lecture.swift */; };
@@ -167,6 +168,7 @@
 		C0000000000000000000098A /* LectureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureView.swift; sourceTree = "<group>"; };
 		C00000000000000000000988 /* AppState+Lecture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState+Lecture.swift"; sourceTree = "<group>"; };
 		C00000000000000000000A48 /* DictationSeams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationSeams.swift; sourceTree = "<group>"; };
+		C00000000000000000000A78 /* DictationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationCoordinator.swift; sourceTree = "<group>"; };
 		C00000000000000000000A6C /* Exports.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exports.swift; sourceTree = "<group>"; };
 		C00000000000000000000986 /* LectureStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureStore.swift; sourceTree = "<group>"; };
 		C00000000000000000000984 /* Lecture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Lecture.swift; sourceTree = "<group>"; };
@@ -359,6 +361,7 @@
 			children = (
 				C00000000000000000000988 /* AppState+Lecture.swift */,
 				C00000000000000000000A48 /* DictationSeams.swift */,
+				C00000000000000000000A78 /* DictationCoordinator.swift */,
 				C00000000000000000000A6C /* Exports.swift */,
 				C0000000000000000000011B /* App.swift */,
 				C0000000000000000000011D /* AppState.swift */,
@@ -811,6 +814,7 @@
 				C0000000000000000000098B /* LectureView.swift in Sources */,
 				C00000000000000000000989 /* AppState+Lecture.swift in Sources */,
 				C00000000000000000000A49 /* DictationSeams.swift in Sources */,
+				C00000000000000000000A79 /* DictationCoordinator.swift in Sources */,
 				C00000000000000000000A6D /* Exports.swift in Sources */,
 				C00000000000000000000987 /* LectureStore.swift in Sources */,
 				C00000000000000000000985 /* Lecture.swift in Sources */,

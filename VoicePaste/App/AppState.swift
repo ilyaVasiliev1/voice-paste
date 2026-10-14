@@ -41,40 +41,15 @@ public final class AppState: ObservableObject {
     /// select its Statistics view without creating a second app window.
     @Published public var requestedMainContentSection: MainContentSection?
 
-    private var dictationStateMachine: DictationStateMachine
     /// `internal`, а не `private`: захват нужен и учебному режиму,
     /// живущему в `AppState+Lecture.swift`. Микрофон один, и заводить
     /// второй захват ради инкапсуляции значило бы драться за устройство.
     let audioCapture: any AudioSource
-    /// Считает закрывшиеся окна длинной записи, пока она идёт, чтобы после
-    /// остановки досчитывался только хвост. Короткую диктовку не трогает:
-    /// планировщик не выдаёт окон, пока их не набралось, и запись уходит в
-    /// модель одним проходом, как и прежде.
-    private let streamingTranscriber = StreamingDictationTranscriber(
-        windowSamples: 28 * 16_000,
-        overlapSamples: Int(0.75 * 16_000)
-    )
     private let hud: any HUDPresenting
-    private let textDelivery: any TextDelivering
-    private let now: () -> Date
-    private let isDictationReady: (@MainActor () -> Bool)?
-    private let logEvent: @Sendable (String, String) -> Void
-    private let evaluationAudio: any EvaluationAudioStoring
-    private(set) var evaluationAudioTask: Task<Void, Never>?
-    private(set) var dictationTask: Task<Void, Never>?
-    private let normalizer = TextNormalizer(spellChecker: NSSpellCheckerAdapter())
+    private let dictation: DictationCoordinator
     private var hotkeyManager: HotkeyManager?
-    private var frontAppSnapshot: FrontAppSnapshot?
-    private var recordingStartedAt: Date?
-    private var elapsedBeforePause: TimeInterval = 0
-    private var isDictationPaused = false
-    private var elapsedTimerTask: Task<Void, Never>?
-    private var pausedDictationExpiryTask: Task<Void, Never>?
-    /// Both the audio meter (10 Hz) and elapsed timer (5 Hz) ask to refresh
-    /// the same HUD. Coalescing guarantees one lightweight SwiftUI update at
-    /// most every 100 ms instead of occasionally painting twice in one tick.
-    private var lastRecordingHUDRefreshAt = Date.distantPast
-    private var currentLevel: Float = 0
+    var dictationTask: Task<Void, Never>? { dictation.dictationTask }
+    var evaluationAudioTask: Task<Void, Never>? { dictation.evaluationAudioTask }
     private var didBecomeActiveObserver: NSObjectProtocol?
     private var forwardingCancellables = Set<AnyCancellable>()
     /// Schedules the initial background model warm-up at most once per app
@@ -168,29 +143,41 @@ public final class AppState: ObservableObject {
         logEvent: @escaping @Sendable (String, String) -> Void,
         evaluationAudio: any EvaluationAudioStoring
     ) {
-        self.audioCapture = audioSource ?? AudioCaptureService()
-        self.textDelivery = textDelivery ?? SystemTextDelivery()
-        self.now = now
-        self.isDictationReady = isDictationReady
-        self.logEvent = logEvent
-        self.evaluationAudio = evaluationAudio
+        let capture = audioSource ?? AudioCaptureService()
+        self.audioCapture = capture
         let realHUD: HUDWindowController?
+        let resolvedHUD: any HUDPresenting
         if let hud {
-            self.hud = hud
+            resolvedHUD = hud
             realHUD = nil
         } else {
             let controller = HUDWindowController()
-            self.hud = controller
+            resolvedHUD = controller
             realHUD = controller
         }
+        self.hud = resolvedHUD
         self.lectureStore = lectureStore
         self.settings = settings
         self.modelManager = modelManager
-        self.readiness = ReadinessCoordinator(modelManager: modelManager)
         self.historyStore = historyStore
         self.importManager = importManager
         self.persistenceFailureMessage = persistenceFailureMessage
-        self.dictationStateMachine = DictationStateMachine(mode: settings.recordingMode)
+        let readiness = ReadinessCoordinator(modelManager: modelManager)
+        self.readiness = readiness
+        self.dictation = DictationCoordinator(
+            settings: settings,
+            modelManager: modelManager,
+            historyStore: historyStore,
+            readiness: readiness,
+            audioCapture: capture,
+            textDelivery: textDelivery ?? SystemTextDelivery(),
+            hud: resolvedHUD,
+            now: now,
+            isDictationReady: isDictationReady,
+            logEvent: logEvent,
+            evaluationAudio: evaluationAudio,
+            pipeline: DictationPipeline(normalizer: TextNormalizer(spellChecker: NSSpellCheckerAdapter()))
+        )
 
         importManager.restoreQueue()
 
@@ -232,12 +219,12 @@ public final class AppState: ObservableObject {
             self.hotkeyManager = manager
         }
 
+        dictation.host = self
         audioCapture.onLevel = { [weak self] level in
-            self?.currentLevel = level
-            self?.refreshRecordingHUD()
+            self?.dictation.audioLevelChanged(level)
         }
         audioCapture.onInterruption = { [weak self] event in
-            self?.handleCaptureInterruption(event)
+            self?.dictation.handleCaptureInterruption(event)
         }
 
         // `UI-003`: the HUD's mouse controls call back into the same
@@ -278,7 +265,7 @@ public final class AppState: ObservableObject {
     /// Call after any Settings change (`AT-011`, mode switch) and whenever
     /// returning from System Settings (permission status may have changed).
     public func settingsDidChange() {
-        dictationStateMachine.mode = settings.recordingMode
+        dictation.recordingModeChanged()
         hotkeyManager?.updateShortcut(settings.hotkey)
     }
 
@@ -351,258 +338,30 @@ public final class AppState: ObservableObject {
         }
     }
 
-    // MARK: - Hotkey / toggle+hold state machine (L-002/L-003, EC-003)
+    // MARK: - Диктовка: вход для горячей клавиши, HUD и меню
 
-    public func handleHotkeyDown() {
-        if isDictationPaused {
-            resumeDictationAfterEscape()
-            return
-        }
-        if dictationStateMachine.phase == .idle, !isReadyToDictate {
-            presentNotReadyMessage()
-            return
-        }
-        apply(dictationStateMachine.handleHotkeyDown())
-    }
+    public func handleHotkeyDown() { dictation.handleHotkeyDown() }
 
-    public func handleHotkeyUp() {
-        guard !isDictationPaused else { return }
-        apply(dictationStateMachine.handleHotkeyUp())
-    }
-
-    private func apply(_ effect: DictationEffect) {
-        switch effect {
-        case .startCapture:
-            beginRecording()
-        case .stopCaptureAndProcess:
-            endRecordingAndProcess()
-        case .cancelCapture:
-            cancelRecording()
-        case .alreadyProcessing:
-            // EC-003: keep the running job, just say so.
-            presentHUD(.error(
-                message: NSLocalizedString("dictation.alreadyProcessing", comment: "")
-            ))
-        case .none:
-            break
-        }
-        synchronizeDictationPhase()
-    }
-
-    private var isReadyToDictate: Bool {
-        isDictationReady?() ?? (readiness.state == .ready)
-    }
-
-    private func presentNotReadyMessage() {
-        // Logged with the *reason*, not just "an error appeared": this plaque
-        // is what the user actually sees when dictation refuses to start, and
-        // without the readiness state behind it the log said nothing useful.
-        Task {
-            await DiagnosticLog.shared.log(
-                "dictation.notReady",
-                detail: ReadinessCoordinator.describe(readiness.state)
-            )
-        }
-        presentHUD(.error(
-            message: NSLocalizedString(readiness.state.statusLocalizationKey, comment: "")
-        ))
-    }
-
-    // MARK: - Recording (L-004, DEP-003)
-
-    private func beginRecording() {
-        // Микрофон и накопитель в приложении одни. Если идёт лекция, старт
-        // диктовки не «добавляет вторую запись», а рушит обе: `start()` молча
-        // возвращается на уже идущем захвате, а последующий `stop()` выгребает
-        // буфер лекции себе. Прежде это проходило без единой ошибки на экране,
-        // и лекция продолжала выглядеть записывающейся при остановленном
-        // микрофоне.
-        guard !isLectureRecording else {
-            dictationStateMachine.handleProcessingFinished()
-            dictationPhase = .idle
-            presentHUD(.error(message: NSLocalizedString("dictation.busyWithLecture", comment: "")))
-            Task { await DiagnosticLog.shared.log("dictation.refused.lectureRecording") }
-            return
-        }
-        frontAppSnapshot = textDelivery.captureFrontApp()
-        // `L-010`: start loading the model the moment recording begins, so it
-        // warms up *while the user is still speaking* if the one-time launch
-        // warm-up has not completed (or the model was later unloaded).
-        // `ensureLoaded()` coalesces, so the transcription that follows joins
-        // this same load rather than starting a second one.
-        modelManager.prewarm()
-        do {
-            try audioCapture.start()
-        } catch {
-            dictationStateMachine.handleProcessingFinished()
-            dictationPhase = .idle
-            // `dictation.microphoneError`'s single relevant recovery is
-            // picking a working input device in Settings → Разрешения.
-            presentHUD(.error(
-                message: NSLocalizedString("dictation.microphoneError", comment: ""),
-                action: .selectMicrophone
-            ))
-            Task { await DiagnosticLog.shared.log("capture.start.failed", detail: String(describing: error)) }
-            streamingTranscriber.cancel()
-            return
-        }
-        recordingStartedAt = now()
-        elapsedBeforePause = 0
-        isDictationPaused = false
-        pausedDictationExpiryTask?.cancel()
-        // Present synchronously after successful capture. The ticker is only
-        // for subsequent elapsed/level updates; waiting for its task turn
-        // made the HUD vulnerable to being visually missed under load.
-        refreshRecordingHUD(force: true)
-        startElapsedTicker()
-        startStreamingTranscription()
-    }
-
-    /// Поднимает счёт окон по ходу записи, дождавшись модели.
-    ///
-    /// Ждать асинхронно, а не проверять «уже ли она в памяти»: после
-    /// перезапуска или выгрузки по нехватке памяти модель не резидентна, и
-    /// проверка молча отменяла бы весь параллельный счёт. `ensureLoaded()`
-    /// объединяет вызовы с идущим прогревом, так что второй загрузки не
-    /// будет.
-    private func startStreamingTranscription() {
-        streamingTranscriber.cancel()
-        Task { [weak self] in
-            guard let self, let engine = try? await modelManager.ensureLoaded() else { return }
-            // Пока модель грузилась, запись могли остановить или отменить.
-            guard dictationPhase == .recording else { return }
-            streamingTranscriber.begin(
-                transcriber: engine,
-                language: settings.languageMode,
-                availableSamples: { [audioCapture] in audioCapture.capturedSampleCount },
-                readSamples: { [audioCapture] range in audioCapture.capturedSamples(in: range) }
-            )
-        }
-    }
-
-    private func startElapsedTicker() {
-        elapsedTimerTask?.cancel()
-        elapsedTimerTask = Task { [weak self] in
-            while let self, self.dictationStateMachine.phase == .recording, !Task.isCancelled {
-                self.refreshRecordingHUD()
-                // TOK-hud.recording-updates — не более десяти обновлений в секунду.
-                try? await Task.sleep(nanoseconds: 200_000_000)
-            }
-        }
-    }
-
-    private func refreshRecordingHUD(force: Bool = false) {
-        guard dictationStateMachine.phase == .recording,
-              !isDictationPaused,
-              let startedAt = recordingStartedAt else { return }
-        let now = self.now()
-        guard force || now.timeIntervalSince(lastRecordingHUDRefreshAt) >= 0.1 else { return }
-        lastRecordingHUDRefreshAt = now
-        presentHUD(.recording(
-            elapsed: elapsedBeforePause + now.timeIntervalSince(startedAt),
-            level: currentLevel
-        ))
-    }
-
-    /// `UI-003` HUD "Отменить" button (mode-independent, works alongside the
-    /// hotkey): stops capture and discards the buffer outright — no
-    /// transcription is ever started and no history row is written, unlike
-    /// `endRecordingAndProcess()`.
-    private func cancelRecording(showUndo: Bool = false) {
-        discardRecording()
-        presentHUD(showUndo ? .cancelledWithUndo : .cancelled)
-    }
-
-    private func discardRecording() {
-        elapsedTimerTask?.cancel()
-        pausedDictationExpiryTask?.cancel()
-        // Посчитанные по ходу окна выбрасываются вместе с буфером: отменённая
-        // запись не оставляет следов.
-        streamingTranscriber.cancel()
-        _ = audioCapture.stop() // discarded on purpose: cancel means no transcription, no history
-        frontAppSnapshot = nil
-        recordingStartedAt = nil
-        elapsedBeforePause = 0
-        isDictationPaused = false
-        currentLevel = 0
-        lastRecordingHUDRefreshAt = .distantPast
-    }
+    public func handleHotkeyUp() { dictation.handleHotkeyUp() }
 
     /// `UI-003` HUD "Готово"/✓ button.
-    public func finishDictationFromHUD() {
-        apply(dictationStateMachine.finishFromUI())
-    }
+    public func finishDictationFromHUD() { dictation.finishFromHUD() }
 
     /// `UI-003` HUD "Отменить"/✕ button.
-    public func cancelDictationFromHUD() {
-        apply(dictationStateMachine.cancelFromUI())
-    }
+    public func cancelDictationFromHUD() { dictation.cancelFromHUD() }
 
-    /// Escape pauses capture without draining its buffer. The return arrow
-    /// resumes into the same accumulator; only the explicit × control truly
-    /// discards a recording.
-    public func cancelDictationWithEscape() {
-        guard dictationStateMachine.phase == .recording, !isDictationPaused else { return }
-        elapsedTimerTask?.cancel()
-        if let recordingStartedAt {
-            elapsedBeforePause += now().timeIntervalSince(recordingStartedAt)
-        }
-        self.recordingStartedAt = nil
-        audioCapture.pause()
-        isDictationPaused = true
-        hotkeyManager?.setEscapeCancellationEnabled(false)
-        presentHUD(.cancelledWithUndo)
-        pausedDictationExpiryTask?.cancel()
-        pausedDictationExpiryTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 4_000_000_000)
-            guard !Task.isCancelled else { return }
-            self?.cancelPausedDictationFromHUD()
-        }
-    }
+    public func cancelDictationWithEscape() { dictation.cancelWithEscape() }
 
     /// File mode is a true mode switch: current microphone audio is discarded
     /// and the capture engine is stopped before the drop target is shown.
     public func switchToFileImportFromHUD() {
-        if dictationStateMachine.phase == .recording {
-            _ = dictationStateMachine.cancelFromUI()
-            synchronizeDictationPhase()
-            discardRecording()
-        }
+        dictation.discardForFileImport()
         presentImportHUD()
     }
 
-    /// The curved-arrow control after Escape reconnects a fresh mic engine
-    /// to the existing accumulator, preserving everything said before pause.
-    public func resumeDictationAfterEscape() {
-        guard dictationStateMachine.phase == .recording, isDictationPaused else { return }
-        do {
-            try audioCapture.resume()
-            isDictationPaused = false
-            pausedDictationExpiryTask?.cancel()
-            recordingStartedAt = now()
-            hotkeyManager?.setEscapeCancellationEnabled(true)
-            refreshRecordingHUD(force: true)
-            startElapsedTicker()
-        } catch {
-            _ = dictationStateMachine.cancelFromUI()
-            synchronizeDictationPhase()
-            discardRecording()
-            presentHUD(.error(
-                message: NSLocalizedString("dictation.microphoneError", comment: ""),
-                action: .selectMicrophone
-            ))
-        }
-    }
+    public func resumeDictationAfterEscape() { dictation.resumeAfterEscape() }
 
-    /// The × shown while Escape-paused is the irreversible branch: discard
-    /// all captured audio and return to idle. It is deliberately distinct
-    /// from the curved return arrow, which resumes the same buffer.
-    public func cancelPausedDictationFromHUD() {
-        guard dictationStateMachine.phase == .recording, isDictationPaused else { return }
-        _ = dictationStateMachine.cancelFromUI()
-        synchronizeDictationPhase()
-        cancelRecording()
-    }
+    public func cancelPausedDictationFromHUD() { dictation.cancelPausedFromHUD() }
 
     /// `UI-003` error-state "Повторить" button: starts a fresh session the
     /// same way a hotkey press from `.idle` would (readiness is re-checked
@@ -770,11 +529,6 @@ public final class AppState: ObservableObject {
         hudImportJobID = nil
     }
 
-    private func synchronizeDictationPhase() {
-        dictationPhase = dictationStateMachine.phase
-        hotkeyManager?.setEscapeCancellationEnabled(dictationPhase == .recording && !isDictationPaused)
-    }
-
     /// Every other HUD presentation path (dictation recording/processing/
     /// status plaques) — routes through here instead of calling
     /// `hud.present` directly so switching away from the import surface
@@ -787,202 +541,15 @@ public final class AppState: ObservableObject {
         hud.present(state)
     }
 
-    // MARK: - Stop + transcribe (L-005/L-006/L-007/L-008, EC-004/EC-005)
-
-    private func endRecordingAndProcess() {
-        elapsedTimerTask?.cancel()
-        let samples = audioCapture.stop()
-        // Имя файла звука — id записи в истории: звук и расшифровка находятся друг по другу.
-        let recordingID = UUID()
-        saveEvaluationAudioIfEnabled(samples, id: recordingID)
-
-        // A very short buffer has too little phonetic context for Whisper and
-        // can produce plausible-looking hallucinations such as "Продолжение
-        // следует…". Reject it before the model sees it: a quick accidental
-        // double-tap is not a transcription request. Crucially, this check
-        // happens *before* `.processing` is presented, so the existing HUD
-        // morphs directly from recording to its compact error without a
-        // visible shrink-then-grow intermediate state.
-        let minimumSamples = Self.minimumRecordingSamples
-        // 0.004 RMS retains quiet human speech but rejects microphone floor
-        // noise / silence. The decision is derived during capture, not by a
-        // second scan over the full buffer on the main actor.
-        let minimumSpeechRMS: Float = 0.004
-        guard samples.count >= minimumSamples, audioCapture.lastCaptureRMS >= minimumSpeechRMS else {
-            dictationStateMachine.handleProcessingFinished()
-            dictationPhase = .idle
-            // `dictation.emptyAudio`'s single relevant recovery is trying
-            // again immediately.
-            presentHUD(.error(
-                message: NSLocalizedString("dictation.emptyAudio", comment: "")
-            ))
-            return
-        }
-
-        dictationTask = Task { [weak self] in
-            await self?.transcribeAndFinish(samples: samples, recordingID: recordingID)
-        }
-    }
-
-    private func transcribeAndFinish(samples: [Float], recordingID: UUID) async {
-        defer {
-            dictationStateMachine.handleProcessingFinished()
-            dictationPhase = .idle
-            frontAppSnapshot = nil
-        }
-
-        guard await confirmSpeech(in: samples) else { return }
-        presentHUD(.processing)
-
-        do {
-            let engine = try await modelManager.ensureLoaded()
-            // Окна, закрывшиеся во время записи, уже посчитаны — остаётся
-            // хвост. Для короткой диктовки окон не было вовсе, и `finish`
-            // распознаёт всю запись одним проходом, как и до нарезки.
-            let result = try await streamingTranscriber.finish(
-                transcriber: engine,
-                language: settings.languageMode,
-                totalSamples: samples
-            )
-            logEvent("dictation.language", DictationLanguageJournal.detail(
-                mode: settings.languageMode,
-                detected: result.detectedLanguage,
-                text: result.rawText,
-                durationMilliseconds: samples.count * 1_000 / 16_000
-            ))
-
-            let vocabulary = (try? await historyStore.fetchVocabulary()) ?? []
-            let (normalizedText, _) = await normalizer.normalizeInBackground(
-                rawText: result.rawText,
-                language: settings.languageMode,
-                vocabulary: vocabulary,
-                autoCorrectSafeTypos: settings.autoCorrectSafeTypos
-            )
-
-            var outcome: Transcript.InsertionOutcome = .notRequested
-            if settings.autoInsertEnabled {
-                outcome = textDelivery.insert(normalizedText, into: frontAppSnapshot) == .inserted ? .inserted : .copied
-            } else {
-                // "Не вставлять автоматически" is a deliberate clipboard
-                // workflow, never a silent discard of the finished text.
-                textDelivery.copyToClipboard(normalizedText)
-                outcome = .copied
-            }
-
-            let now = Int64(self.now().timeIntervalSince1970 * 1_000)
-            let transcript = Transcript(
-                id: recordingID,
-                createdAt: now,
-                updatedAt: now,
-                source: .dictation,
-                sourceFileName: nil,
-                durationMilliseconds: Int(Double(samples.count) / 16_000.0 * 1_000),
-                language: result.detectedLanguage,
-                rawText: result.rawText,
-                text: normalizedText,
-                preview: Transcript.makePreview(from: normalizedText),
-                status: .completed,
-                insertionOutcome: outcome
-            )
-
-            if settings.historyEnabled {
-                do {
-                    try await historyStore.save(transcript)
-                } catch {
-                    // Текст уже вставлен или лежит в буфере, поэтому отказ
-                    // хранилища не отменяет удачную диктовку и HUD остаётся
-                    // прежним. Но молчать о нём нельзя: прежде здесь стоял
-                    // `try?`, и потерянная запись не оставляла ни следа в
-                    // журнале — при том что тот же вызов в `ImportManager`
-                    // разбирается. Причина отказа сохраняется без текста
-                    // расшифровки.
-                    Task {
-                        await DiagnosticLog.shared.log(
-                            "dictation.historySaveFailed",
-                            detail: String(describing: error)
-                        )
-                    }
-                }
-            }
-            modelManager.endTask(unloadMinutes: settings.modelUnloadMinutes)
-
-            switch outcome {
-            case .inserted: presentHUD(.inserted)
-            case .copied: presentHUD(.copied)
-            case .notRequested: presentHUD(.hidden)
-            }
-        } catch {
-            modelManager.endTask(unloadMinutes: settings.modelUnloadMinutes)
-            presentHUD(.error(
-                message: NSLocalizedString("dictation.transcriptionFailed", comment: "")
-            ))
-            Task { await DiagnosticLog.shared.log("dictation.transcriptionFailed", detail: String(describing: error)) }
-        }
-    }
-
-    private func confirmSpeech(in samples: [Float]) async -> Bool {
-        guard await SpeechGate.analyzeOffMain(samples).hasSpeech else {
-            streamingTranscriber.cancel()
-            logEvent("dictation.noSpeech", "durationMs=\(samples.count * 1_000 / 16_000)")
-            presentHUD(.error(message: NSLocalizedString("dictation.emptyAudio", comment: "")))
-            return false
-        }
-        return true
-    }
-
-    // MARK: - Смена микрофона
-
-    private static let minimumRecordingSamples = 8_000
-
-    private func handleCaptureInterruption(_ event: AudioCaptureInterruption) {
-        switch event {
-        case .restarted:
-            logEvent("capture.deviceChanged", "restarted")
-        case .failed(let reason):
-            logEvent("capture.deviceChanged", "failed reason=\(reason)")
-            if isLectureRecording {
-                toggleLectureRecording()
-                return
-            }
-            guard dictationStateMachine.phase == .recording, !isDictationPaused else { return }
-            if audioCapture.capturedSampleCount >= Self.minimumRecordingSamples {
-                finishDictationFromHUD()
-            } else {
-                _ = dictationStateMachine.cancelFromUI()
-                discardRecording()
-                synchronizeDictationPhase()
-                presentHUD(.error(
-                    message: NSLocalizedString("dictation.microphoneError", comment: ""),
-                    action: .selectMicrophone
-                ))
-            }
-        }
-    }
-
     // MARK: - Звук для оценки
 
-    private func saveEvaluationAudioIfEnabled(_ samples: [Float], id: UUID) {
-        guard settings.saveAudioForEvaluation, !samples.isEmpty else { return }
-        let store = evaluationAudio
-        let log = logEvent
-        evaluationAudioTask = Task {
-            do {
-                try await store.save(samples: samples, id: id)
-            } catch {
-                log("evaluationAudio.saveFailed", ErrorSummary.describe(error))
-            }
-        }
-    }
-
     public func evaluationAudioSummary() async -> EvaluationAudioSummary {
-        await evaluationAudio.summary()
+        await dictation.evaluationAudioSummary()
     }
 
     @discardableResult
     public func deleteEvaluationAudio() async throws -> Int {
-        // WHY: идущее сохранение иначе обогнало бы удаление и пережило его.
-        await evaluationAudioTask?.value
-        return try await evaluationAudio.deleteAll()
+        try await dictation.deleteEvaluationAudio()
     }
 
     // MARK: - Lifecycle (EC-014, L-010/L-011)
@@ -992,6 +559,20 @@ public final class AppState: ObservableObject {
         _ = audioCapture.stop()
         hotkeyManager?.stop()
         modelManager.unloadNow()
+    }
+}
+
+extension AppState: DictationHost {
+    func dictationPhaseChanged(_ phase: DictationPhase) {
+        dictationPhase = phase
+    }
+
+    func setEscapeCancellationEnabled(_ isEnabled: Bool) {
+        hotkeyManager?.setEscapeCancellationEnabled(isEnabled)
+    }
+
+    func stopLectureAfterMicrophoneLoss() {
+        toggleLectureRecording()
     }
 }
 
