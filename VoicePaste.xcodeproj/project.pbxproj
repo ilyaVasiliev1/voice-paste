@@ -121,6 +121,7 @@
 		C00000000000000000000A45 /* LiveResultsDrainTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A44 /* LiveResultsDrainTests.swift */; };
 		C00000000000000000000A47 /* DictationTractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A46 /* DictationTractTests.swift */; };
 		C00000000000000000000A6F /* SpeechPipelineBoundaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A6E /* SpeechPipelineBoundaryTests.swift */; };
+		C00000000000000000000A89 /* ImportQueueRestoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A88 /* ImportQueueRestoreTests.swift */; };
 		C00000000000000000000A83 /* EvaluationAudioControlsModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A82 /* EvaluationAudioControlsModelTests.swift */; };
 		C00000000000000000000A81 /* EngineBakeoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A80 /* EngineBakeoff.swift */; };
 		C00000000000000000000A7F /* ErrorRateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A7E /* ErrorRateTests.swift */; };
@@ -257,6 +258,7 @@
 		C00000000000000000000A44 /* LiveResultsDrainTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveResultsDrainTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A46 /* DictationTractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationTractTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A6E /* SpeechPipelineBoundaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechPipelineBoundaryTests.swift; sourceTree = "<group>"; };
+		C00000000000000000000A88 /* ImportQueueRestoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportQueueRestoreTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A82 /* EvaluationAudioControlsModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvaluationAudioControlsModelTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A80 /* EngineBakeoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EngineBakeoff.swift; sourceTree = "<group>"; };
 		C00000000000000000000A7E /* ErrorRateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorRateTests.swift; sourceTree = "<group>"; };
@@ -655,6 +657,7 @@
 				C00000000000000000000A44 /* LiveResultsDrainTests.swift */,
 				C00000000000000000000A46 /* DictationTractTests.swift */,
 				C00000000000000000000A6E /* SpeechPipelineBoundaryTests.swift */,
+				C00000000000000000000A88 /* ImportQueueRestoreTests.swift */,
 				C00000000000000000000A82 /* EvaluationAudioControlsModelTests.swift */,
 				C00000000000000000000A80 /* EngineBakeoff.swift */,
 				C00000000000000000000A7E /* ErrorRateTests.swift */,
@@ -938,6 +941,7 @@
 				C00000000000000000000A45 /* LiveResultsDrainTests.swift in Sources */,
 				C00000000000000000000A47 /* DictationTractTests.swift in Sources */,
 				C00000000000000000000A6F /* SpeechPipelineBoundaryTests.swift in Sources */,
+				C00000000000000000000A89 /* ImportQueueRestoreTests.swift in Sources */,
 				C00000000000000000000A83 /* EvaluationAudioControlsModelTests.swift in Sources */,
 				C00000000000000000000A81 /* EngineBakeoff.swift in Sources */,
 				C00000000000000000000A7F /* ErrorRateTests.swift in Sources */,
