@@ -160,7 +160,9 @@ public final class AppSettings: ObservableObject {
         self.historyEnabled = defaults.object(forKey: Keys.historyEnabled) as? Bool ?? true
         self.autoInsertEnabled = defaults.object(forKey: Keys.autoInsertEnabled) as? Bool ?? true
         self.autoCorrectSafeTypos = defaults.object(forKey: Keys.autoCorrectSafeTypos) as? Bool ?? true
-        self.languageMode = TranscriptionLanguage(rawValue: defaults.string(forKey: Keys.languageMode) ?? "") ?? .auto
+        // Русский, а не автоопределение: на русской речи с английскими терминами оно
+        // давало метку `en`, и такие записи кончались «Thank you».
+        self.languageMode = TranscriptionLanguage(rawValue: defaults.string(forKey: Keys.languageMode) ?? "") ?? .ru
         // `L-020`: never read from `UserDefaults` — a clean machine has no
         // registration, so the system status (`.notRegistered`) already
         // gives the documented "выключено" default without a stored flag

@@ -31,6 +31,7 @@
 		C0000000000000000000011E /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000011D /* AppState.swift */; };
 		C00000000000000000000120 /* AudioCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000011F /* AudioCaptureService.swift */; };
 		C00000000000000000000122 /* DictationStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000121 /* DictationStateMachine.swift */; };
+		C00000000000000000000A4D /* DictationLanguageJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A4C /* DictationLanguageJournal.swift */; };
 		C00000000000000000000124 /* HUDContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000123 /* HUDContentView.swift */; };
 		C00000000000000000000126 /* HUDState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000125 /* HUDState.swift */; };
 		C00000000000000000000128 /* HUDWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000127 /* HUDWindowController.swift */; };
@@ -163,6 +164,7 @@
 		C0000000000000000000011D /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		C0000000000000000000011F /* AudioCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioCaptureService.swift; sourceTree = "<group>"; };
 		C00000000000000000000121 /* DictationStateMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationStateMachine.swift; sourceTree = "<group>"; };
+		C00000000000000000000A4C /* DictationLanguageJournal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationLanguageJournal.swift; sourceTree = "<group>"; };
 		C00000000000000000000123 /* HUDContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDContentView.swift; sourceTree = "<group>"; };
 		C00000000000000000000125 /* HUDState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDState.swift; sourceTree = "<group>"; };
 		C00000000000000000000127 /* HUDWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDWindowController.swift; sourceTree = "<group>"; };
@@ -372,6 +374,7 @@
 			isa = PBXGroup;
 			children = (
 				C00000000000000000000121 /* DictationStateMachine.swift */,
+				C00000000000000000000A4C /* DictationLanguageJournal.swift */,
 				C00000000000000000000930 /* DictationWindowPlanner.swift */,
 				C00000000000000000000934 /* StreamingDictationTranscriber.swift */,
 			);
@@ -782,6 +785,7 @@
 				C00000000000000000000301 /* AppDelegate.swift in Sources */,
 				C00000000000000000000120 /* AudioCaptureService.swift in Sources */,
 				C00000000000000000000122 /* DictationStateMachine.swift in Sources */,
+				C00000000000000000000A4D /* DictationLanguageJournal.swift in Sources */,
 				C00000000000000000000931 /* DictationWindowPlanner.swift in Sources */,
 				C00000000000000000000935 /* StreamingDictationTranscriber.swift in Sources */,
 				C00000000000000000000124 /* HUDContentView.swift in Sources */,

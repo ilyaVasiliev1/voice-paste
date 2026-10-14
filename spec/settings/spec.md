@@ -14,9 +14,12 @@
 <!-- platforms: macos -->
 <!-- enforced_macos: VoicePaste/Core/Settings/AppSettings.swift, VoicePaste/Core/Hotkey/HotkeyShortcut.swift -->
 <!-- test_macos: VoicePasteTests/AppSettingsModelDownloadSourceTests.swift:test_default_isGitHub_onEmptyDefaults -->
+<!-- test_macos: VoicePasteTests/DictationLanguageTests.swift:freshInstallPinsRussian -->
+<!-- test_macos: VoicePasteTests/DictationLanguageTests.swift:storedAutoIsKept -->
+<!-- test_macos: VoicePasteTests/DictationLanguageTests.swift:unrecognisedStoredValueFallsBackToRussian -->
 
 На чистой машине приложение SHALL стартовать с сочетанием ⌥Space, режимом
-«переключение», языком «автоопределение», включёнными историей, авто-вставкой
+«переключение», языком «русский», включёнными историей, авто-вставкой
 и безопасным автоисправлением, включённым показом в Dock, источником загрузки
 модели «GitHub» и выгрузкой модели `0` минут — то есть с моделью, остающейся
 в памяти.
@@ -25,6 +28,11 @@
 <!-- test: AppSettingsModelDownloadSourceTests.test_default_isGitHub_onEmptyDefaults -->
 - **WHEN** сохранённых значений нет
 - **THEN** источник загрузки — `github`
+
+#### Scenario: язык на чистой установке
+<!-- test: DictationLanguageTests.freshInstallPinsRussian -->
+- **WHEN** сохранённого значения языка нет
+- **THEN** язык — русский; ранее сохранённое «автоматически» не перезаписывается
 
 #### Scenario: нераспознанное сохранённое значение
 <!-- test: AppSettingsModelDownloadSourceTests.test_unrecognizedStoredValue_fallsBackToGitHub -->

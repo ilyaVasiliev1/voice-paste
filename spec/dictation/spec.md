@@ -259,6 +259,40 @@ Escape во время записи SHALL останавливать тольк�
 
 ---
 
+### Requirement: Язык каждой диктовки записывается в журнал без текста
+<!-- id: DictationLanguageJournal.detail -->
+<!-- entities: AppState, DictationLanguageJournal, DiagnosticLog -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/Core/Dictation/DictationLanguageJournal.swift, VoicePaste/App/AppState.swift -->
+<!-- test_macos: VoicePasteTests/DictationLanguageTests.swift:entryNamesModeDetectedLanguageAndScript -->
+<!-- test_macos: VoicePasteTests/DictationLanguageTests.swift:latinTailAfterCyrillicSpeechIsVisible -->
+<!-- test_macos: VoicePasteTests/DictationLanguageTests.swift:entryNeverCarriesTheText -->
+<!-- test_macos: VoicePasteTests/DictationTractTests.swift:dictationJournalsLanguageWithoutText -->
+
+После распознавания приложение SHALL записать в журнал событие
+`dictation.language`: режим языка, определённый язык, долю кириллицы среди
+букв, письмо последнего предложения и длительность записи. Текст
+расшифровки в запись не попадает ни целиком, ни частью.
+
+Основание: на русской речи с английскими терминами метка языка оказывалась
+`en`, и такие записи кончались «Thank you» (17 записей из 36 с меткой `en`;
+с меткой `ru` — ни одной из 2309). Запись делает расхождение метки и письма
+видимым сразу.
+
+#### Scenario: латинская концовка после русской речи
+<!-- test: DictationLanguageTests.latinTailAfterCyrillicSpeechIsVisible -->
+- **WHEN** последнее предложение написано латиницей, а до него речь русская
+- **THEN** в записи `lastSentence=latin` и доля кириллицы меньше 100
+
+#### Scenario: текст не попадает в журнал
+<!-- test: DictationLanguageTests.entryNeverCarriesTheText -->
+- **WHEN** диктовка завершена
+- **THEN** ни одно слово расшифровки не встречается в записи
+
+> Last verified: 2026-10-14
+
+---
+
 ### Requirement: Вставка текста в чужое приложение одним HID-сочетанием
 <!-- id: TextInserter.insert -->
 <!-- entities: TextInserter, FrontAppSnapshot, InsertionOutcome -->

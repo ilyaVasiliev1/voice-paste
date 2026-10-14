@@ -60,6 +60,8 @@ public final class AppState: ObservableObject {
     private let now: () -> Date
     /// Подмена условия готовности. `nil` — решает `readiness`, как в приложении.
     private let isDictationReady: (@MainActor () -> Bool)?
+    /// Журнал событий тракта: имя и подробности без текста расшифровки.
+    private let logEvent: @Sendable (String, String) -> Void
     /// Идущая расшифровка. Внутренний, чтобы тест мог дождаться её конца.
     private(set) var dictationTask: Task<Void, Never>?
     private let normalizer = TextNormalizer()
@@ -144,7 +146,10 @@ public final class AppState: ObservableObject {
             textDelivery: nil,
             hud: nil,
             now: Date.init,
-            isDictationReady: nil
+            isDictationReady: nil,
+            logEvent: { event, detail in
+                Task { await DiagnosticLog.shared.log(event, detail: detail) }
+            }
         )
     }
 
@@ -162,12 +167,14 @@ public final class AppState: ObservableObject {
         textDelivery: (any TextDelivering)?,
         hud: (any HUDPresenting)?,
         now: @escaping () -> Date,
-        isDictationReady: (@MainActor () -> Bool)?
+        isDictationReady: (@MainActor () -> Bool)?,
+        logEvent: @escaping @Sendable (String, String) -> Void
     ) {
         self.audioCapture = audioSource ?? AudioCaptureService()
         self.textDelivery = textDelivery ?? SystemTextDelivery()
         self.now = now
         self.isDictationReady = isDictationReady
+        self.logEvent = logEvent
         // Действия кнопок знает только настоящая плашка; подставной их не имеет.
         let realHUD: HUDWindowController?
         if let hud {
@@ -832,6 +839,12 @@ public final class AppState: ObservableObject {
                 language: settings.languageMode,
                 totalSamples: samples
             )
+            logEvent("dictation.language", DictationLanguageJournal.detail(
+                mode: settings.languageMode,
+                detected: result.detectedLanguage,
+                text: result.rawText,
+                durationMilliseconds: samples.count * 1_000 / 16_000
+            ))
 
             let vocabulary = (try? await historyStore.fetchVocabulary()) ?? []
             let (normalizedText, _) = await normalizer.normalizeInBackground(
