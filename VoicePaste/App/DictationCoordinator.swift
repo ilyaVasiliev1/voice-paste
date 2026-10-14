@@ -102,12 +102,12 @@ final class DictationCoordinator {
             presentNotReadyMessage()
             return
         }
-        apply(stateMachine.handleHotkeyDown())
+        apply(stateMachine.handleHotkeyDown(at: now().timeIntervalSinceReferenceDate))
     }
 
     func handleHotkeyUp() {
         guard !isPaused else { return }
-        apply(stateMachine.handleHotkeyUp())
+        apply(stateMachine.handleHotkeyUp(at: now().timeIntervalSinceReferenceDate))
     }
 
     func finishFromHUD() {

@@ -5,6 +5,7 @@ import Testing
 /// Режим «удержание или защёлка»: одна клавиша. Держишь — пишет, пока держишь;
 /// тапнул — запись защёлкнулась и идёт до следующего нажатия. Время приходит
 /// снаружи, автомат остаётся чистым.
+@MainActor
 @Suite("Удержание или защёлка")
 struct HoldOrLatchTests {
 
@@ -36,8 +37,9 @@ struct HoldOrLatchTests {
 
     @Test("удержание ровно на пороге считается удержанием")
     func holdExactlyAtThresholdIsHold() {
-        var machine = recordingMachine(downAt: 10)
-        #expect(machine.handleHotkeyUp(at: 10 + Self.threshold) == .stopCaptureAndProcess)
+        // Нулевое нажатие: разность двоичных дробей на больших числах теряет последние знаки.
+        var machine = recordingMachine(downAt: 0)
+        #expect(machine.handleHotkeyUp(at: Self.threshold) == .stopCaptureAndProcess)
     }
 
     @Test("короткий тап: запись защёлкивается и продолжается")
