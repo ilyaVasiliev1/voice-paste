@@ -242,9 +242,7 @@ public final class SystemLiveTranscriber: LiveTranscribing {
         }
     }
 
-    /// Переливает результаты в поток обновлений и закрывает его при любом
-    /// исходе. Ошибка результатов уходит в журнал: прежде она терялась в
-    /// безымянной задаче, а поток не заканчивался, и лекция ждала вечно.
+    /// Закрывает поток при любом исходе: потерянная ошибка прежде оставляла лекцию ждать вечно.
     static func drain<Results: AsyncSequence>(
         _ results: Results,
         into continuation: AsyncStream<LiveTranscriptUpdate>.Continuation,

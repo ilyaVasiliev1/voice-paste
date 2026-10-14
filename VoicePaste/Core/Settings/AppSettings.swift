@@ -51,8 +51,6 @@ public final class AppSettings: ObservableObject {
     }
     /// Default `true`.
     @Published public var autoInsertEnabled: Bool { didSet { persist() } }
-    /// Сохранять звук диктовок на этой машине для оценки качества. Выключено
-    /// по умолчанию: звук — персональные данные.
     @Published public var saveAudioForEvaluation: Bool { didSet { persist() } }
     /// Default `true`.
     @Published public var autoCorrectSafeTypos: Bool { didSet { persist() } }
@@ -165,8 +163,7 @@ public final class AppSettings: ObservableObject {
         self.autoInsertEnabled = defaults.object(forKey: Keys.autoInsertEnabled) as? Bool ?? true
         self.saveAudioForEvaluation = defaults.object(forKey: Keys.saveAudioForEvaluation) as? Bool ?? false
         self.autoCorrectSafeTypos = defaults.object(forKey: Keys.autoCorrectSafeTypos) as? Bool ?? true
-        // Русский, а не автоопределение: на русской речи с английскими терминами оно
-        // давало метку `en`, и такие записи кончались «Thank you».
+        // WHY: автоопределение метило русскую речь с английскими терминами как `en`, и запись кончалась «Thank you».
         self.languageMode = TranscriptionLanguage(rawValue: defaults.string(forKey: Keys.languageMode) ?? "") ?? .ru
         // `L-020`: never read from `UserDefaults` — a clean machine has no
         // registration, so the system status (`.notRegistered`) already

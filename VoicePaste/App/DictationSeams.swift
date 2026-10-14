@@ -1,7 +1,6 @@
 import Foundation
 
-/// Микрофон так, как его видит тракт диктовки. Настоящий — `AudioCaptureService`;
-/// в тестах вместо него стоит подставной, и тракт проходит без звукового устройства.
+/// Микрофон так, как его видит тракт диктовки; в тестах вместо него подставной.
 @MainActor
 protocol AudioSource: AnyObject {
     var isCapturing: Bool { get }
@@ -20,7 +19,6 @@ protocol AudioSource: AnyObject {
 
 extension AudioCaptureService: AudioSource {}
 
-/// Доставка готового текста: чужое приложение или буфер обмена.
 @MainActor
 protocol TextDelivering {
     func captureFrontApp() -> FrontAppSnapshot?
@@ -28,7 +26,6 @@ protocol TextDelivering {
     func copyToClipboard(_ text: String)
 }
 
-/// Настоящая доставка — прежний `TextInserter`, без изменений.
 struct SystemTextDelivery: TextDelivering {
     func captureFrontApp() -> FrontAppSnapshot? { TextInserter.captureFrontAppSnapshot() }
 
@@ -39,9 +36,7 @@ struct SystemTextDelivery: TextDelivering {
     func copyToClipboard(_ text: String) { TextInserter.copyToClipboard(text) }
 }
 
-/// То, что тракту нужно от плашки: показать состояние и убрать её.
-/// Остальную поверхность `HUDWindowController` (действия кнопок) знает только
-/// сам контроллер — она принадлежит дорожке интерфейса.
+/// Только то, что нужно тракту; действия кнопок плашки принадлежат дорожке интерфейса.
 @MainActor
 protocol HUDPresenting: AnyObject {
     func present(_ state: HUDState)

@@ -35,8 +35,6 @@ public actor GitHubModelDownloader {
         /// Weight of this archive in the combined progress (`0...1`). The model
         /// dwarfs the tokenizer, so the tokenizer barely moves the bar.
         public let progressWeight: Double
-        /// SHA-256 архива. Сверяется до распаковки: без совпадения ничего не
-        /// ставится. Обязательна — архив без суммы не проверялся бы вовсе.
         public let expectedSHA256: String
 
         public init(
@@ -59,7 +57,6 @@ public actor GitHubModelDownloader {
         case httpStatus(Int)
         case extractionFailed
         case verificationFailed
-        /// Скачанный архив не совпал с вшитой суммой.
         case checksumMismatch
     }
 
@@ -143,10 +140,7 @@ public actor GitHubModelDownloader {
             } catch let error as DownloadError where error == .cancelled {
                 throw error
             } catch let error as DownloadError where error == .checksumMismatch {
-                // Несовпадение — не сбой сети: ждать и повторять с паузами
-                // незачем. Один раз качаем заново с нуля (продолженная
-                // загрузка могла склеить куски разных ответов), второй раз —
-                // отказ.
+                // WHY: несовпадение — не сбой сети; один раз качаем с нуля (докачка могла склеить куски), затем отказ.
                 guard !didRetryAfterMismatch else { throw error }
                 didRetryAfterMismatch = true
                 resumeData = nil

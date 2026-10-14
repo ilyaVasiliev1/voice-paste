@@ -1,6 +1,5 @@
 import Foundation
 
-/// Где в записи есть речь.
 nonisolated public struct SpeechActivity: Equatable, Sendable {
     public let hasSpeech: Bool
     public let speechSeconds: Double
@@ -12,21 +11,13 @@ nonisolated public struct SpeechActivity: Equatable, Sendable {
     )
 }
 
-/// Решает, есть ли в записи речь, ещё до модели: на записи без речи Whisper
-/// выдумывает текст («Thank you»), и единственный надёжный ответ — не звать его.
-///
-/// Громкость кадра сравнивается с оценкой фона самой записи, а не только с
-/// абсолютным порогом: ровный шум громче 0.004 проходит проверку по всей
-/// записи, но речью не является. Пороги подобраны по записи речи 132 с и
-/// синтетическому шуму (`docs/status.md`, «Детектор речи»); подбор на других
-/// микрофонах — в бейкоффе блока M3.
+/// Есть ли в записи речь: без неё Whisper выдумывает текст, и модель звать незачем.
 nonisolated public enum SpeechGate {
     private static let frameSeconds = 0.02
-    /// Тот же порог, что у проверки записи целиком (`spec/dictation`).
     private static let absoluteFloor: Float = 0.004
+    // WHY: множитель и потолок фона подобраны по записи речи 132 с и синтетическому
+    // шуму (docs/status.md, «Детектор речи»); без потолка сплошная речь уносит порог выше себя.
     private static let noiseMultiplier: Float = 2.0
-    /// Фон не оценивается выше этого: в записи сплошной речи нижняя квантиль
-    /// и есть речь, и без потолка порог ушёл бы выше самой речи.
     private static let noiseCeiling: Float = 0.01
     private static let noisePercentile = 20
     private static let minimumRunFrames = 5
@@ -35,33 +26,54 @@ nonisolated public enum SpeechGate {
 
     public static func analyze(_ samples: [Float], sampleRate: Double = 16_000) -> SpeechActivity {
         let frameSize = max(1, Int(sampleRate * frameSeconds))
-        let frameCount = samples.count / frameSize
-        guard frameCount > 0 else { return .none }
+        let levels = frameLevels(samples, frameSize: frameSize)
+        guard !levels.isEmpty else { return .none }
 
-        var levels = [Float](repeating: 0, count: frameCount)
-        for frame in 0..<frameCount {
+        let runs = speechRuns(levels: levels, threshold: threshold(for: levels))
+        guard let first = runs.first, let last = runs.last else { return .none }
+        let seconds = Double(runs.reduce(0) { $0 + $1.count }) * frameSeconds
+        guard seconds >= minimumSpeechSeconds else { return .none }
+        return SpeechActivity(
+            hasSpeech: true,
+            speechSeconds: seconds,
+            firstSpeechStartSeconds: Double(first.lowerBound) * frameSeconds,
+            lastSpeechEndSeconds: Double(last.upperBound + 1) * frameSeconds
+        )
+    }
+
+    @concurrent
+    public static func analyzeOffMain(_ samples: [Float], sampleRate: Double = 16_000) async -> SpeechActivity {
+        analyze(samples, sampleRate: sampleRate)
+    }
+
+    private static func frameLevels(_ samples: [Float], frameSize: Int) -> [Float] {
+        (0..<(samples.count / frameSize)).map { frame in
             var energy: Float = 0
             for index in (frame * frameSize)..<((frame + 1) * frameSize) {
                 energy += samples[index] * samples[index]
             }
-            levels[frame] = (energy / Float(frameSize)).squareRoot()
+            return (energy / Float(frameSize)).squareRoot()
         }
+    }
 
+    private static func threshold(for levels: [Float]) -> Float {
         let sorted = levels.sorted()
         let quantile = sorted[min(sorted.count - 1, sorted.count * noisePercentile / 100)]
-        let threshold = max(absoluteFloor, noiseMultiplier * min(quantile, noiseCeiling))
+        return max(absoluteFloor, noiseMultiplier * min(quantile, noiseCeiling))
+    }
 
+    private static func speechRuns(levels: [Float], threshold: Float) -> [ClosedRange<Int>] {
         var runs: [ClosedRange<Int>] = []
         var start: Int?
-        for frame in 0..<frameCount {
-            if levels[frame] >= threshold {
+        for (frame, level) in levels.enumerated() {
+            if level >= threshold {
                 if start == nil { start = frame }
             } else if let begin = start {
                 runs.append(begin...(frame - 1))
                 start = nil
             }
         }
-        if let begin = start { runs.append(begin...(frameCount - 1)) }
+        if let begin = start { runs.append(begin...(levels.count - 1)) }
 
         var merged: [ClosedRange<Int>] = []
         for run in runs {
@@ -71,23 +83,6 @@ nonisolated public enum SpeechGate {
                 merged.append(run)
             }
         }
-        let kept = merged.filter { $0.count >= minimumRunFrames }
-        guard let first = kept.first, let last = kept.last else { return .none }
-
-        let speechSeconds = Double(kept.reduce(0) { $0 + $1.count }) * frameSeconds
-        guard speechSeconds >= minimumSpeechSeconds else { return .none }
-        return SpeechActivity(
-            hasSpeech: true,
-            speechSeconds: speechSeconds,
-            firstSpeechStartSeconds: Double(first.lowerBound) * frameSeconds,
-            lastSpeechEndSeconds: Double(last.upperBound + 1) * frameSeconds
-        )
-    }
-
-    /// Тот же анализ вне главного актора: запись в минуты длиной не должна
-    /// занимать интерфейс.
-    @concurrent
-    public static func analyzeOffMain(_ samples: [Float], sampleRate: Double = 16_000) async -> SpeechActivity {
-        analyze(samples, sampleRate: sampleRate)
+        return merged.filter { $0.count >= minimumRunFrames }
     }
 }

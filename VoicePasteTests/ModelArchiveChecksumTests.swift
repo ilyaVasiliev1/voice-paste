@@ -61,8 +61,14 @@ struct ModelArchiveChecksumTests {
 
     // MARK: - Загрузчик
 
+    private struct ArchiveFixture {
+        let zip: URL
+        let sha256: String
+        let root: URL
+    }
+
     /// Архив с одним вложенным файлом `payload/model.bin`.
-    private func makeArchive(content: String) throws -> (zip: URL, sha256: String, root: URL) {
+    private func makeArchive(content: String) throws -> ArchiveFixture {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("archive-\(UUID().uuidString)", isDirectory: true)
         let source = root.appendingPathComponent("src/payload", isDirectory: true)
@@ -78,7 +84,7 @@ struct ModelArchiveChecksumTests {
         try #require(process.terminationStatus == 0)
 
         let digest = SHA256.hash(data: try Data(contentsOf: zip)).map { String(format: "%02x", $0) }.joined()
-        return (zip, digest, root)
+        return ArchiveFixture(zip: zip, sha256: digest, root: root)
     }
 
     private func fetch(zip: URL, sha256: String, into root: URL) async throws -> URL {

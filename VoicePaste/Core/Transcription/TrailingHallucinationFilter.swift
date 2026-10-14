@@ -28,14 +28,10 @@ public enum TrailingHallucinationFilter {
         knownTerminalFillers.contains(canonical(text))
     }
 
-    /// Сегмент, начавшийся позже последнего слышимого звука, — не речь.
-    /// Запас в долю секунды отделяет настоящий последний слог от выдумки.
+    /// Сегмент, начавшийся позже последнего слышимого звука плюс этот запас, — не речь.
     public nonisolated static let afterSpeechMargin = 0.2
 
-    /// Снимает концовку по звуку, а не по списку фраз: после долгой тишины
-    /// убирается любой хвост сегментов, начавшихся позже последнего слышимого
-    /// звука. Список известных фраз остаётся для случая, когда декодер склеил
-    /// речь и концовку в один сегмент и по времени их не разделить.
+    /// После долгой тишины снимает любой хвост сегментов, начавшихся позже последнего слышимого звука.
     public nonisolated static func filtering(
         rawText: String,
         segments: [Segment],
@@ -52,7 +48,7 @@ public enum TrailingHallucinationFilter {
         if let lastAudible = lastAudibleSecond(in: samples, sampleRate: sampleRate) {
             while let terminal = remaining.last,
                   terminal.startSeconds >= lastAudible + afterSpeechMargin {
-                // В тексте отдельного сегмента остаются метки времени, в готовом тексте их нет.
+                // WHY: в тексте отдельного сегмента остаются метки времени, в готовом тексте их нет.
                 let suffix = WhisperSpecialTokens.strip(terminal.text)
                 let current = text.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !suffix.isEmpty, current.hasSuffix(suffix) else { break }
@@ -62,9 +58,7 @@ public enum TrailingHallucinationFilter {
             }
         }
 
-        // Склеенный сегмент: долгая тишина плюс известная концовка — достаточное
-        // свидетельство. Текст из одной этой фразы сохраняется: человек мог
-        // продиктовать её сам (AT-053).
+        // WHY: склеенный сегмент по времени не разделить; фраза целиком сохраняется — её могли сказать (AT-053).
         return canonical(text) == "продолжение следует"
             ? text
             : removingKnownTerminalFiller(text)

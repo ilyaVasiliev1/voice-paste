@@ -86,24 +86,24 @@ struct DictationLanguageTests {
     // MARK: - Значение по умолчанию
 
     @Test("чистая установка начинает с русского")
-    func freshInstallPinsRussian() {
-        let defaults = UserDefaults(suiteName: "DictationLanguage-\(UUID().uuidString)")!
+    func freshInstallPinsRussian() throws {
+        let defaults = try #require(UserDefaults(suiteName: "DictationLanguage-\(UUID().uuidString)"))
         let settings = AppSettings(defaults: defaults)
 
         #expect(settings.languageMode == .ru)
     }
 
     @Test("сохранённое «автоматически» не перезаписывается")
-    func storedAutoIsKept() {
-        let defaults = UserDefaults(suiteName: "DictationLanguage-\(UUID().uuidString)")!
+    func storedAutoIsKept() throws {
+        let defaults = try #require(UserDefaults(suiteName: "DictationLanguage-\(UUID().uuidString)"))
         defaults.set("auto", forKey: "languageMode")
 
         #expect(AppSettings(defaults: defaults).languageMode == .auto)
     }
 
     @Test("нераспознанное сохранённое значение возвращает русский")
-    func unrecognisedStoredValueFallsBackToRussian() {
-        let defaults = UserDefaults(suiteName: "DictationLanguage-\(UUID().uuidString)")!
+    func unrecognisedStoredValueFallsBackToRussian() throws {
+        let defaults = try #require(UserDefaults(suiteName: "DictationLanguage-\(UUID().uuidString)"))
         defaults.set("klingon", forKey: "languageMode")
 
         #expect(AppSettings(defaults: defaults).languageMode == .ru)

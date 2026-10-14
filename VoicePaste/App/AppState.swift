@@ -56,16 +56,11 @@ public final class AppState: ObservableObject {
     )
     private let hud: any HUDPresenting
     private let textDelivery: any TextDelivering
-    /// Часы тракта: время старта записи, таймер на плашке и метка записи в истории.
     private let now: () -> Date
-    /// Подмена условия готовности. `nil` — решает `readiness`, как в приложении.
     private let isDictationReady: (@MainActor () -> Bool)?
-    /// Журнал событий тракта: имя и подробности без текста расшифровки.
     private let logEvent: @Sendable (String, String) -> Void
-    /// Звук для оценки: пишется только при включённой настройке.
     private let evaluationAudio: any EvaluationAudioStoring
     private(set) var evaluationAudioTask: Task<Void, Never>?
-    /// Идущая расшифровка. Внутренний, чтобы тест мог дождаться её конца.
     private(set) var dictationTask: Task<Void, Never>?
     private let normalizer = TextNormalizer()
     private var hotkeyManager: HotkeyManager?
@@ -127,7 +122,6 @@ public final class AppState: ObservableObject {
     private var importJobCancellable: AnyCancellable?
     private var hudImportJobID: UUID?
 
-    /// Прежний публичный вход: настоящие микрофон, вставка, плашка и часы.
     public convenience init(
         settings: AppSettings,
         modelManager: ModelManager,
@@ -157,8 +151,7 @@ public final class AppState: ObservableObject {
         )
     }
 
-    /// Полный вход с подменяемыми частями — для тестов тракта. Без значений
-    /// по умолчанию, чтобы не спорить с публичным входом выше.
+    /// Полный вход с подменяемыми частями — для тестов тракта.
     init(
         settings: AppSettings,
         modelManager: ModelManager,
@@ -181,7 +174,6 @@ public final class AppState: ObservableObject {
         self.isDictationReady = isDictationReady
         self.logEvent = logEvent
         self.evaluationAudio = evaluationAudio
-        // Действия кнопок знает только настоящая плашка; подставной их не имеет.
         let realHUD: HUDWindowController?
         if let hud {
             self.hud = hud
@@ -800,8 +792,7 @@ public final class AppState: ObservableObject {
     private func endRecordingAndProcess() {
         elapsedTimerTask?.cancel()
         let samples = audioCapture.stop()
-        // Имя файла — тот же идентификатор, что у записи в истории: звук и
-        // расшифровка находятся друг по другу. Сохраняется и запись без речи.
+        // Имя файла звука — id записи в истории: звук и расшифровка находятся друг по другу.
         let recordingID = UUID()
         saveEvaluationAudioIfEnabled(samples, id: recordingID)
 
@@ -840,17 +831,7 @@ public final class AppState: ObservableObject {
             frontAppSnapshot = nil
         }
 
-        // Решение «есть ли речь» принимается до плашки «расшифровка» и до
-        // модели: на записи без речи Whisper выдумывает текст.
-        let activity = await SpeechGate.analyzeOffMain(samples)
-        guard activity.hasSpeech else {
-            streamingTranscriber.cancel()
-            logEvent("dictation.noSpeech", "durationMs=\(samples.count * 1_000 / 16_000)")
-            presentHUD(.error(
-                message: NSLocalizedString("dictation.emptyAudio", comment: "")
-            ))
-            return
-        }
+        guard await confirmSpeech(in: samples) else { return }
         presentHUD(.processing)
 
         do {
@@ -939,9 +920,18 @@ public final class AppState: ObservableObject {
         }
     }
 
+    private func confirmSpeech(in samples: [Float]) async -> Bool {
+        guard await SpeechGate.analyzeOffMain(samples).hasSpeech else {
+            streamingTranscriber.cancel()
+            logEvent("dictation.noSpeech", "durationMs=\(samples.count * 1_000 / 16_000)")
+            presentHUD(.error(message: NSLocalizedString("dictation.emptyAudio", comment: "")))
+            return false
+        }
+        return true
+    }
+
     // MARK: - Смена микрофона
 
-    /// 0,5 с при 16 кГц: меньше — для модели слишком мало фонетического контекста.
     private static let minimumRecordingSamples = 8_000
 
     private func handleCaptureInterruption(_ event: AudioCaptureInterruption) {
@@ -951,14 +941,11 @@ public final class AppState: ObservableObject {
         case .failed(let reason):
             logEvent("capture.deviceChanged", "failed reason=\(reason)")
             if isLectureRecording {
-                // Лекция сохраняет прослушанное и закрывается сама.
                 toggleLectureRecording()
                 return
             }
             guard dictationStateMachine.phase == .recording, !isDictationPaused else { return }
             if audioCapture.capturedSampleCount >= Self.minimumRecordingSamples {
-                // Сказанное не теряется: запись завершается так, как если бы
-                // человек сам нажал «готово».
                 finishDictationFromHUD()
             } else {
                 _ = dictationStateMachine.cancelFromUI()
@@ -987,15 +974,13 @@ public final class AppState: ObservableObject {
         }
     }
 
-    /// Сколько записей для оценки лежит на этой машине и сколько они весят.
     public func evaluationAudioSummary() async -> EvaluationAudioSummary {
         await evaluationAudio.summary()
     }
 
-    /// Удаляет все сохранённые для оценки записи; возвращает их число.
     @discardableResult
     public func deleteEvaluationAudio() async throws -> Int {
-        // Идущее сохранение иначе обогнало бы удаление и пережило его.
+        // WHY: идущее сохранение иначе обогнало бы удаление и пережило его.
         await evaluationAudioTask?.value
         return try await evaluationAudio.deleteAll()
     }

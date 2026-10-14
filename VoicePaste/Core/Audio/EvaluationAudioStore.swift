@@ -14,15 +14,10 @@ nonisolated public struct EvaluationAudioSummary: Equatable, Sendable {
 nonisolated public protocol EvaluationAudioStoring: Sendable {
     func save(samples: [Float], id: UUID) async throws
     func summary() async -> EvaluationAudioSummary
-    /// Число удалённых записей.
     func deleteAll() async throws -> Int
 }
 
-/// Хранилище записей для оценки: только на этой машине, только владельцу.
-///
-/// Звук — персональные данные, поэтому каталог 0700, файлы 0600, из резервных
-/// копий исключено, а имя файла — только UUID записи (никакого пути извне).
-/// Пишется лишь при включённой настройке и удаляется одной кнопкой.
+/// Записи для оценки: каталог 0700, файлы 0600, вне резервных копий, имя — только UUID записи.
 public actor EvaluationAudioStore: EvaluationAudioStoring {
     private let directory: URL
     private static let sampleRate: UInt32 = 16_000
@@ -31,8 +26,7 @@ public actor EvaluationAudioStore: EvaluationAudioStoring {
         self.directory = directory
     }
 
-    /// Рабочее место: `Application Support/VoicePaste/EvaluationAudio`. Под
-    /// тестовым прогоном — временный каталог, пользовательских данных не трогаем.
+    /// Под тестовым прогоном — временный каталог: пользовательских данных не трогаем.
     public static func makeDefault() -> EvaluationAudioStore {
         if ProcessRuntime.isRunningTests {
             return EvaluationAudioStore(
@@ -98,7 +92,7 @@ public actor EvaluationAudioStore: EvaluationAudioStoring {
         try mutable.setResourceValues(values)
     }
 
-    /// WAV: PCM, 16 кГц, моно, 16 бит. Выход за ±1 насыщается.
+    /// WAV PCM 16 кГц моно 16 бит; выход за ±1 насыщается.
     private static func waveData(from samples: [Float]) -> Data {
         let dataSize = UInt32(samples.count * 2)
         var data = Data(capacity: 44 + Int(dataSize))

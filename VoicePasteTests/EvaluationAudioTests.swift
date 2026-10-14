@@ -30,8 +30,8 @@ struct EvaluationAudioStoreTests {
 
         let data = try Data(contentsOf: directory.appendingPathComponent("\(id.uuidString).wav"))
         #expect(data.count == 44 + samples.count * 2)
-        #expect(String(decoding: data[0..<4], as: UTF8.self) == "RIFF")
-        #expect(String(decoding: data[8..<12], as: UTF8.self) == "WAVE")
+        #expect(String(data: data[0..<4], encoding: .utf8) == "RIFF")
+        #expect(String(data: data[8..<12], encoding: .utf8) == "WAVE")
         func u16(_ offset: Int) -> Int { Int(data[offset]) | Int(data[offset + 1]) << 8 }
         func u32(_ offset: Int) -> Int { u16(offset) | u16(offset + 2) << 16 }
         #expect(u16(20) == 1)        // PCM
@@ -150,17 +150,18 @@ struct EvaluationAudioStoreTests {
 struct EvaluationAudioSettingTests {
 
     @Test("по умолчанию выключен")
-    func offByDefault() {
-        let defaults = UserDefaults(suiteName: "EvalAudio-\(UUID().uuidString)")!
+    func offByDefault() throws {
+        let defaults = try #require(UserDefaults(suiteName: "EvalAudio-\(UUID().uuidString)"))
         #expect(AppSettings(defaults: defaults).saveAudioForEvaluation == false)
     }
 
     @Test("включённое значение переживает перезапуск")
-    func persistsAcrossLaunches() {
+    func persistsAcrossLaunches() throws {
         let name = "EvalAudio-\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: name)!
+        let defaults = try #require(UserDefaults(suiteName: name))
         AppSettings(defaults: defaults).saveAudioForEvaluation = true
 
-        #expect(AppSettings(defaults: UserDefaults(suiteName: name)!).saveAudioForEvaluation == true)
+        let reopened = try #require(UserDefaults(suiteName: name))
+        #expect(AppSettings(defaults: reopened).saveAudioForEvaluation == true)
     }
 }

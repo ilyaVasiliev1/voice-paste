@@ -109,8 +109,7 @@ nonisolated public enum ModelCatalog {
     public static let githubModelArchiveURL = URL(
         string: "https://github.com/ilyaVasiliev1/voice-paste/releases/download/model-large-v3/whisperkit-large-v3.zip"
     )!
-    /// SHA-256 архивов релиза `model-large-v3`, как их назвал GitHub для
-    /// загруженных 22.07.2026 файлов (475 MB и 656 KB). Сверяются до распаковки.
+    /// SHA-256 архивов релиза model-large-v3 (загружены 22.07.2026), как их назвал GitHub.
     public static let githubModelArchiveSHA256 =
         "ebdac941b71fd2279e4b5cbce74304bbdd46db7e01a03c3e59e487e736861a42"
     public static let githubTokenizerArchiveSHA256 =

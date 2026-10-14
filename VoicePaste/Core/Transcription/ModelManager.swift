@@ -405,7 +405,6 @@ public final class ModelManager: ObservableObject {
           allowNetworkInstall: allowNetworkInstall
         )
       } catch {
-        // Несовпадение суммы — не сбой сети: повтор скачал бы те же байты.
         if error is CancellationError || Self.isIntegrityFailure(error) { throw error }
         lastError = error
         guard attempt < retryCount else { break }

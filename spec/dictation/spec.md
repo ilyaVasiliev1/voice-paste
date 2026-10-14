@@ -267,6 +267,7 @@ Escape во время записи SHALL останавливать тольк�
 <!-- test_macos: VoicePasteTests/SpeechGateTests.swift -->
 <!-- test_macos: VoicePasteTests/DictationTractTests.swift:steadyNoiseNeverReachesTheModel -->
 <!-- test_macos: VoicePasteTests/SpeechGateRealSpeechTests.swift:realSpeechIsFound -->
+<!-- test_macos: VoicePasteTests/SpeechGateTests.swift:quietSpeechOverNoticeableNoiseIsTheKnownBoundary -->
 
 После проверки длины и громкости записи приложение SHALL определить, есть ли в
 ней речь, сравнивая громкость кадров по 20 мс с оценкой фона самой записи.
@@ -277,6 +278,12 @@ Escape во время записи SHALL останавливать тольк�
 Основание: на записи без речи Whisper выдумывает текст — «Thank you»,
 «Продолжение следует».
 
+Известная граница: речь тише примерно двух громкостей фона отвергается (речь
+rms 0.008 над фоном 0.006 — «речи нет»; 0.035 над тем же фоном принимается).
+Прежняя проверка по записи целиком такую запись пропускала, но модель на ней
+выдумывала текст. Звук такой записи остаётся только при включённом сохранении
+для оценки.
+
 #### Scenario: ровный шум громче порога записи целиком
 <!-- test: DictationTractTests.steadyNoiseNeverReachesTheModel -->
 - **WHEN** средняя громкость выше 0.004, но речи в записи нет
@@ -286,7 +293,7 @@ Escape во время записи SHALL останавливать тольк�
 <!-- test: SpeechGateRealSpeechTests.realSpeechIsFound -->
 - **WHEN** запись содержит речь
 - **THEN** речь найдена; на окнах по секунде реальной записи теряется не более
-  2 % (измерено 0,2 %)
+  2 % (измерено: 0 из 115 окон без наложения, 0,2 % скользящими)
 
 > Last verified: 2026-10-14
 

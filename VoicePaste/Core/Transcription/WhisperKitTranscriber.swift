@@ -54,16 +54,12 @@ nonisolated public struct WhisperKitTranscriber: Transcribing {
                 endSeconds: segment.endSeconds
             )
         }
-        // Любой хвост, начавшийся после последнего слышимого звука, — не речь;
-        // только после настоящей тишины, как и у готового текста.
         if hadLongTrailingSilence, let lastAudibleSecond {
             let boundary = lastAudibleSecond + TrailingHallucinationFilter.afterSpeechMargin
             while let last = cleaned.last, last.startSeconds >= boundary {
                 cleaned.removeLast()
             }
         }
-        // Концовка из списка снимается только после настоящей тишины: та же
-        // оговорка, что у готового текста.
         while hadLongTrailingSilence,
             let last = cleaned.last,
             TrailingHallucinationFilter.isTerminalFiller(last.text) {

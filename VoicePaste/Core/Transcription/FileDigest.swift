@@ -1,12 +1,10 @@
 import CryptoKit
 import Foundation
 
-/// SHA-256 файла. Модель весит сотни мегабайт, поэтому файл читается кусками,
-/// а не целиком в память, и вне вызывающего актора.
 nonisolated public enum FileDigest {
     private static let chunkSize = 1 << 20
 
-    /// Строчные шестнадцатеричные знаки.
+    /// SHA-256 файла строчными шестнадцатеричными знаками; читается кусками — модель весит сотни МБ.
     @concurrent
     public static func sha256(of url: URL) async throws -> String {
         let handle = try FileHandle(forReadingFrom: url)

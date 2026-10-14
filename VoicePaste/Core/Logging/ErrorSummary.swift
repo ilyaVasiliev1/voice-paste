@@ -5,7 +5,6 @@ nonisolated public enum ErrorSummary {
     public static func describe(_ error: Error) -> String {
         let mirror = Mirror(reflecting: error)
         if mirror.displayStyle == .enum {
-            // Только имя случая: значения внутри могут нести пути и тексты.
             let label = mirror.children.first?.label ?? String(describing: error)
             return "\(String(describing: type(of: error))).\(label)"
         }

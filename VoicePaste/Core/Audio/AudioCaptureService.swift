@@ -6,12 +6,9 @@ public enum AudioCaptureError: Error, Equatable, Sendable {
     case engineFailed(String)
 }
 
-/// Что случилось с захватом, пока шла запись: система сменила или убрала
-/// устройство ввода.
+/// Что случилось с захватом, пока шла запись: система сменила или убрала устройство ввода.
 nonisolated public enum AudioCaptureInterruption: Equatable, Sendable {
-    /// Граф пересобран на новом устройстве, накопленное сохранено, запись идёт.
     case restarted
-    /// Продолжить не вышло: микрофона нет. Накопленное остаётся в буфере.
     case failed(String)
 }
 
@@ -209,11 +206,9 @@ public final class AudioCaptureService {
         set { accumulator.onChunk = newValue }
     }
 
-    /// Система сменила устройство посреди записи. Вызывается на главном акторе.
     public var onInterruption: ((AudioCaptureInterruption) -> Void)?
     private var configurationObserver: NSObjectProtocol?
-    /// Растёт при каждом явном `start`/`resume`/`pause`/`stop`: перезапуск после
-    /// смены устройства, начатый до них, обязан уступить.
+    /// Растёт при явном start/resume/pause/stop: начатый до них перезапуск обязан уступить.
     private var restartToken = 0
     private var levelPollTask: Task<Void, Never>?
 
@@ -311,8 +306,7 @@ public final class AudioCaptureService {
         startLevelPolling()
     }
 
-    // Смена устройства останавливает движок сама, без ошибки: прежде запись
-    // продолжала выглядеть идущей, а на выходе была тишина или падение.
+    // WHY: смена устройства останавливает движок без ошибки; запись выглядела идущей, а на выходе была тишина.
     private func observeConfigurationChanges(of engine: AVAudioEngine) {
         if let configurationObserver { NotificationCenter.default.removeObserver(configurationObserver) }
         configurationObserver = NotificationCenter.default.addObserver(
@@ -326,9 +320,7 @@ public final class AudioCaptureService {
         }
     }
 
-    /// Пересобирает граф на новом устройстве с тем же накопителем; если не
-    /// вышло — сообщает, накопленное остаётся. Уведомления приходят пачкой:
-    /// отвечаем только на то, что пришло от текущего движка.
+    /// Уведомления приходят пачкой: отвечаем только на пришедшее от текущего движка.
     func handleConfigurationChange(of identity: ObjectIdentifier) {
         guard isCapturing, let engine, ObjectIdentifier(engine) == identity else { return }
         tearDownEngine()
@@ -342,7 +334,6 @@ public final class AudioCaptureService {
                 },
                 sleep: { try? await Task.sleep(for: $0) }
             )
-            // Пока ждали, запись остановили или начали заново — сообщать нечего.
             guard self.restartToken == token else { return }
             self.onInterruption?(outcome)
         }
