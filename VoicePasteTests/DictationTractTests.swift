@@ -22,6 +22,7 @@ struct DictationTractTests {
         var capturedSampleCount: Int { recording.count }
         var onLevel: ((Float) -> Void)?
         var onAudioChunk: (@Sendable ([Float]) -> Void)?
+        var onInterruption: ((AudioCaptureInterruption) -> Void)?
         var recording: [Float] = []
         var recordingRMS: Float = 0
         private(set) var startCount = 0
@@ -348,6 +349,71 @@ struct DictationTractTests {
         #expect(await rig.state.evaluationAudioSummary().fileCount == 1)
         #expect(try await rig.state.deleteEvaluationAudio() == 1)
         #expect(await rig.state.evaluationAudioSummary().fileCount == 0)
+    }
+
+    @Test("микрофон сменился, запись продолжилась — запись идёт, плашка не меняется")
+    func deviceChangeWithRestartKeepsRecording() async throws {
+        let rig = try await makeRig()
+        defer { rig.cleanup() }
+        rig.audio.recording = Self.speech()
+        rig.audio.recordingRMS = 0.07
+        rig.state.handleHotkeyDown()
+
+        rig.audio.onInterruption?(.restarted)
+
+        #expect(rig.state.dictationPhase == .recording)
+        #expect(rig.engine.callCount == 0)
+        #expect(rig.events.details(of: "capture.deviceChanged") == ["restarted"])
+        if case .error = rig.hud.last { Issue.record("плашка показала ошибку") }
+    }
+
+    @Test("микрофон пропал посреди записи — сказанное не теряется")
+    func deviceLossFinishesWithWhatWasRecorded() async throws {
+        let rig = try await makeRig()
+        defer { rig.cleanup() }
+        rig.audio.recording = Self.speech(seconds: 2)
+        rig.audio.recordingRMS = 0.07
+        rig.state.handleHotkeyDown()
+
+        rig.audio.onInterruption?(.failed("устройство отключено"))
+        await rig.state.dictationTask?.value
+
+        #expect(rig.engine.callCount == 1)
+        #expect(rig.delivery.inserted == ["Привет, мир."])
+        #expect(rig.hud.last == .inserted)
+        #expect(rig.state.dictationPhase == .idle)
+        #expect(rig.events.details(of: "capture.deviceChanged").count == 1)
+    }
+
+    @Test("микрофон пропал, звука почти нет — ошибка микрофона, а не «пустая запись»")
+    func deviceLossWithoutAudioShowsMicrophoneError() async throws {
+        let rig = try await makeRig()
+        defer { rig.cleanup() }
+        rig.audio.recording = Array(Self.speech().prefix(2_000))
+        rig.audio.recordingRMS = 0.07
+        rig.state.handleHotkeyDown()
+
+        rig.audio.onInterruption?(.failed("устройство отключено"))
+
+        #expect(rig.engine.callCount == 0)
+        #expect(rig.hud.last == .error(
+            message: NSLocalizedString("dictation.microphoneError", comment: ""),
+            action: .selectMicrophone
+        ))
+        #expect(rig.state.dictationPhase == .idle)
+        #expect(try await savedItems(rig).isEmpty)
+    }
+
+    @Test("прерывание без записи — ничего не происходит")
+    func interruptionWithoutRecordingIsIgnored() async throws {
+        let rig = try await makeRig()
+        defer { rig.cleanup() }
+
+        rig.audio.onInterruption?(.failed("устройство отключено"))
+
+        #expect(rig.state.dictationPhase == .idle)
+        #expect(rig.hud.states.isEmpty)
+        #expect(rig.engine.callCount == 0)
     }
 
     @Test("приложение не готово — запись не начинается, плашка называет причину")
