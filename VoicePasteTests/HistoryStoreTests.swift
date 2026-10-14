@@ -513,14 +513,15 @@ final class HistoryStoreTests: XCTestCase {
         // migration this task adds) against that pre-existing data.
         try Migrations.migrator.migrate(pool)
 
-        let rows = try pool.read { db in
+        let rows: [(id: String, wordCount: Int)] = try await pool.read { db in
             try Row.fetchAll(db, sql: "SELECT id, wordCount FROM transcripts ORDER BY createdAt")
+                .map { (id: $0["id"] as String, wordCount: $0["wordCount"] as Int) }
         }
         XCTAssertEqual(rows.count, 2)
-        XCTAssertEqual(rows[0]["id"] as String, firstId)
-        XCTAssertEqual(rows[0]["wordCount"] as Int, 4)
-        XCTAssertEqual(rows[1]["id"] as String, secondId)
-        XCTAssertEqual(rows[1]["wordCount"] as Int, 1)
+        XCTAssertEqual(rows[0].id, firstId)
+        XCTAssertEqual(rows[0].wordCount, 4)
+        XCTAssertEqual(rows[1].id, secondId)
+        XCTAssertEqual(rows[1].wordCount, 1)
 
         // The store built on top of the now-migrated pool sees a coherent
         // aggregate too, not just correct raw columns.
