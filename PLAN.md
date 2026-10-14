@@ -48,10 +48,8 @@
 Ход (срезы; каждый — тест вперёд, затронутые наборы зелёные, коммит):
 - Срез 1 — сделан, 1784cb5: пакет `Packages/SpeechPipeline` без зависимостей (типы и протокол распознавания, фильтры,
   детектор речи, планировщик окон, запись о языке); охранный тест границы; в приложении `Exports.swift` с `@_exported import`.
-- Срез 2 — В РАБОЧЕМ ДЕРЕВЕ, НЕ ПРОВЕРЕН И НЕ ЗАКОММИЧЕН: `TextNormalizer`, `SpellChecking`, `VocabularyEntry` переехали в пакет,
-  `NSSpellCheckerAdapter` — отдельный файл приложения (AppKit), `@retroactive` у записей базы. Проверить: собрать и прогнать
-  `TextNormalizerTests ImportManagerTests HistoryStoreTests DictationTractTests SpeechPipelineBoundaryTests AppStateRoutingTests`
-  через `zsh scripts/test-safely.sh -only-testing:VoicePasteTests/<набор> ...`; зелёное — коммит, красное — чинить доступ (`public`).
+- Срез 2 — сделан: `TextNormalizer`, `SpellChecking`, `VocabularyEntry` в пакете; `NSSpellCheckerAdapter` — отдельный файл
+  приложения (AppKit); `@retroactive` у записей базы. Затронутые наборы зелёные (50 старых, 23 новых).
 - Срез 3: шаги конвейера, страж и `Draft` в пакете (контрактный набор на поддельном движке без модели).
 - Срез 4: `DictationCoordinator` вынесен из `AppState`; срез 5: импорт и лекция на том же конвейере; срез 6: `AppState` < 600 строк,
   полный набор (прежние 275 тестов), ревью `code-reviewer` раз по окончании.

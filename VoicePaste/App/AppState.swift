@@ -62,7 +62,7 @@ public final class AppState: ObservableObject {
     private let evaluationAudio: any EvaluationAudioStoring
     private(set) var evaluationAudioTask: Task<Void, Never>?
     private(set) var dictationTask: Task<Void, Never>?
-    private let normalizer = TextNormalizer()
+    private let normalizer = TextNormalizer(spellChecker: NSSpellCheckerAdapter())
     private var hotkeyManager: HotkeyManager?
     private var frontAppSnapshot: FrontAppSnapshot?
     private var recordingStartedAt: Date?

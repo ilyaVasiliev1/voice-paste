@@ -1,9 +1,9 @@
 # Spec: text-pipeline
 
 > Извлечено из кода (spec-miner). Дата извлечения: 2026-09-20.
-> Источник: VoicePaste/Core/Normalizer/TextNormalizer.swift,
+> Источник: Packages/SpeechPipeline/Sources/SpeechPipeline/TextNormalizer.swift,
 > VoicePaste/Core/Transcription (Transcribing, WhisperKitTranscriber,
-> TrailingHallucinationFilter), VoicePaste/Domain/VocabularyEntry.swift.
+> TrailingHallucinationFilter), Packages/SpeechPipeline/Sources/SpeechPipeline/VocabularyEntry.swift.
 > Last verified: 2026-09-20 (commit 8f51051)
 
 ---
@@ -12,7 +12,7 @@
 <!-- id: TextNormalizer.normalizeWhitespaceAndTypography -->
 <!-- entities: TextNormalizer, NormalizationChange -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/Core/Normalizer/TextNormalizer.swift -->
+<!-- enforced_macos: Packages/SpeechPipeline/Sources/SpeechPipeline/TextNormalizer.swift -->
 <!-- test_macos: VoicePasteTests/TextNormalizerTests.swift:test_AT013_collapsesRepeatedSpaces_andRemovesSpaceBeforePunctuation -->
 
 Распознанный текст SHALL проходить детерминированную чистку: повторные пробелы
@@ -36,7 +36,7 @@
 <!-- id: TextNormalizer.applyVocabulary -->
 <!-- entities: TextNormalizer, VocabularyEntry -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/Core/Normalizer/TextNormalizer.swift -->
+<!-- enforced_macos: Packages/SpeechPipeline/Sources/SpeechPipeline/TextNormalizer.swift -->
 <!-- test_macos: VoicePasteTests/TextNormalizerTests.swift:test_AT016_activeVocabularyRule_isAppliedCaseInsensitively -->
 
 Включённое правило с непустой заменой SHALL заменять произнесённую форму
@@ -64,7 +64,7 @@
 <!-- id: TextNormalizer.applySpellcheck -->
 <!-- entities: TextNormalizer, SpellChecking, NormalizationChange -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/Core/Normalizer/TextNormalizer.swift -->
+<!-- enforced_macos: Packages/SpeechPipeline/Sources/SpeechPipeline/TextNormalizer.swift -->
 <!-- test_macos: VoicePasteTests/TextNormalizerTests.swift:test_AT014_wordWithMultipleGuesses_isNotReplaced -->
 
 Слово SHALL исправляться, только когда системная проверка правописания даёт
@@ -92,7 +92,7 @@
 <!-- id: TextNormalizer.isSafeToAutocorrect -->
 <!-- entities: TextNormalizer -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/Core/Normalizer/TextNormalizer.swift -->
+<!-- enforced_macos: Packages/SpeechPipeline/Sources/SpeechPipeline/TextNormalizer.swift -->
 <!-- test_macos: VoicePasteTests/TextNormalizerTests.swift:test_AT014_doesNotTouch_URL_evenIfSpellcheckerFlagsIt -->
 
 Даже когда проверка правописания помечает слово, оно SHALL оставаться без
@@ -120,7 +120,7 @@
 <!-- id: NSSpellCheckerAdapter.misspelledRanges -->
 <!-- entities: TextNormalizer, SpellChecking, TranscriptionLanguage -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/Core/Normalizer/TextNormalizer.swift -->
+<!-- enforced_macos: Packages/SpeechPipeline/Sources/SpeechPipeline/TextNormalizer.swift -->
 <!-- test_macos: VoicePasteTests/TextNormalizerTests.swift:test_AT015_EC011_missingLanguage_skipsSpellcheckStep_withoutBlocking -->
 
 Если для выбранного языка в системе нет проверки правописания, шаг SHALL
@@ -348,7 +348,7 @@
 ### Invariant: Порядок конвейера: чистка, затем словарь, затем правописание
 <!-- entities: TextNormalizer, VocabularyEntry -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/Core/Normalizer/TextNormalizer.swift -->
+<!-- enforced_macos: Packages/SpeechPipeline/Sources/SpeechPipeline/TextNormalizer.swift -->
 <!-- verified_by_macos: VoicePasteTests/TextNormalizerTests.swift:test_pipelineOrder_vocabularyRunsBeforeSpellcheck -->
 
 Порядок шагов SHALL быть неизменным: типографская чистка, затем словарные
@@ -362,7 +362,7 @@
 ### Invariant: Нормализация никогда не выполняется на главном акторе
 <!-- entities: TextNormalizer -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/Core/Normalizer/TextNormalizer.swift -->
+<!-- enforced_macos: Packages/SpeechPipeline/Sources/SpeechPipeline/TextNormalizer.swift -->
 
 Весь конвейер SHALL запускаться через `normalizeInBackground` на отдельной
 задаче с приоритетом `utility`: расшифровка многочасового видео не должна

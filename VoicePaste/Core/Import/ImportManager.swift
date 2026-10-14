@@ -78,7 +78,7 @@ public final class ImportManager: ObservableObject {
         self.queueStore = queueStore
         self.settings = settings
         self.decoder = decoder
-        self.normalizer = normalizer ?? TextNormalizer()
+        self.normalizer = normalizer ?? TextNormalizer(spellChecker: NSSpellCheckerAdapter())
     }
 
     public var currentJob: ImportJob? {

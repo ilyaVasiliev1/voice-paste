@@ -47,7 +47,7 @@
 		C00000000000000000000134 /* ImportManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000133 /* ImportManager.swift */; };
 		C00000000000000000000136 /* TextInserter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000135 /* TextInserter.swift */; };
 		C00000000000000000000138 /* DiagnosticLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000137 /* DiagnosticLog.swift */; };
-		C0000000000000000000013A /* TextNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000139 /* TextNormalizer.swift */; };
+		C00000000000000000000A71 /* NSSpellCheckerAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A70 /* NSSpellCheckerAdapter.swift */; };
 		C0000000000000000000013C /* ReadinessCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000013B /* ReadinessCoordinator.swift */; };
 		C0000000000000000000013E /* ReadinessState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000013D /* ReadinessState.swift */; };
 		C00000000000000000000140 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000013F /* AppSettings.swift */; };
@@ -78,7 +78,6 @@
 		C00000000000000000000A69 /* HistoryDeletion.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A68 /* HistoryDeletion.swift */; };
 		C00000000000000000000154 /* Transcript.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000153 /* Transcript.swift */; };
 		C00000000000000000000156 /* TranscriptListItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000155 /* TranscriptListItem.swift */; };
-		C00000000000000000000158 /* VocabularyEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000157 /* VocabularyEntry.swift */; };
 		C0000000000000000000015A /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000159 /* Localizable.strings */; };
 		C0000000000000000000015C /* DetailEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000015B /* DetailEditor.swift */; };
 		C0000000000000000000015E /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000015D /* HistoryView.swift */; };
@@ -189,7 +188,7 @@
 		C00000000000000000000133 /* ImportManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportManager.swift; sourceTree = "<group>"; };
 		C00000000000000000000135 /* TextInserter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextInserter.swift; sourceTree = "<group>"; };
 		C00000000000000000000137 /* DiagnosticLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticLog.swift; sourceTree = "<group>"; };
-		C00000000000000000000139 /* TextNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextNormalizer.swift; sourceTree = "<group>"; };
+		C00000000000000000000A70 /* NSSpellCheckerAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NSSpellCheckerAdapter.swift; sourceTree = "<group>"; };
 		C0000000000000000000013B /* ReadinessCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadinessCoordinator.swift; sourceTree = "<group>"; };
 		C0000000000000000000013D /* ReadinessState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadinessState.swift; sourceTree = "<group>"; };
 		C0000000000000000000013F /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
@@ -206,7 +205,6 @@
 		C00000000000000000000A68 /* HistoryDeletion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryDeletion.swift; sourceTree = "<group>"; };
 		C00000000000000000000153 /* Transcript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transcript.swift; sourceTree = "<group>"; };
 		C00000000000000000000155 /* TranscriptListItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptListItem.swift; sourceTree = "<group>"; };
-		C00000000000000000000157 /* VocabularyEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularyEntry.swift; sourceTree = "<group>"; };
 		C00000000000000000000159 /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = Localizable.strings; sourceTree = "<group>"; };
 		C0000000000000000000015B /* DetailEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailEditor.swift; sourceTree = "<group>"; };
 		C0000000000000000000015D /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
@@ -462,7 +460,7 @@
 		C0000000000000000000010C /* Normalizer */ = {
 			isa = PBXGroup;
 			children = (
-				C00000000000000000000139 /* TextNormalizer.swift */,
+				C00000000000000000000A70 /* NSSpellCheckerAdapter.swift */,
 			);
 			path = Normalizer;
 			sourceTree = "<group>";
@@ -519,7 +517,6 @@
 				C00000000000000000000A68 /* HistoryDeletion.swift */,
 				C00000000000000000000153 /* Transcript.swift */,
 				C00000000000000000000155 /* TranscriptListItem.swift */,
-				C00000000000000000000157 /* VocabularyEntry.swift */,
 				C00000000000000000000500 /* UsageStats.swift */,
 			);
 			path = Domain;
@@ -834,7 +831,7 @@
 				C00000000000000000000134 /* ImportManager.swift in Sources */,
 				C00000000000000000000136 /* TextInserter.swift in Sources */,
 				C00000000000000000000138 /* DiagnosticLog.swift in Sources */,
-				C0000000000000000000013A /* TextNormalizer.swift in Sources */,
+				C00000000000000000000A71 /* NSSpellCheckerAdapter.swift in Sources */,
 				C0000000000000000000013C /* ReadinessCoordinator.swift in Sources */,
 				C0000000000000000000013E /* ReadinessState.swift in Sources */,
 				C00000000000000000000140 /* AppSettings.swift in Sources */,
@@ -853,7 +850,6 @@
 				C00000000000000000000A69 /* HistoryDeletion.swift in Sources */,
 				C00000000000000000000154 /* Transcript.swift in Sources */,
 				C00000000000000000000156 /* TranscriptListItem.swift in Sources */,
-				C00000000000000000000158 /* VocabularyEntry.swift in Sources */,
 				C0000000000000000000015C /* DetailEditor.swift in Sources */,
 				C0000000000000000000015E /* HistoryView.swift in Sources */,
 				CA000000000000000000091B /* HistoryListModel.swift in Sources */,

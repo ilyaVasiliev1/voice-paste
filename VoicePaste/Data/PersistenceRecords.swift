@@ -109,11 +109,11 @@ nonisolated extension TranscriptListItem: FetchableRecord {
     }
 }
 
-nonisolated extension VocabularyEntry: TableRecord {
+nonisolated extension VocabularyEntry: @retroactive TableRecord {
     public static let databaseTableName = "vocabulary_entries"
 }
 
-nonisolated extension VocabularyEntry: FetchableRecord, PersistableRecord {
+nonisolated extension VocabularyEntry: @retroactive FetchableRecord, @retroactive PersistableRecord {
     public init(row: Row) throws {
         guard let id = UUID(uuidString: row["id"] as String) else {
             throw DatabaseError(message: "VocabularyEntry: invalid id column")
