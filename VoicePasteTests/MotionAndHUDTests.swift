@@ -27,6 +27,29 @@ final class MotionTokensTests: XCTestCase {
     }
 }
 
+/// Плашка: размер капсулы — пружина, смена содержимого — растворение, а при
+/// «Уменьшить движение» размер не движется, но растворение остаётся.
+@MainActor
+final class HUDMotionTests: XCTestCase {
+    func test_surface_isTheSpringToken_andAFadeUnderReduceMotion() {
+        XCTAssertEqual(HUDMotion.surface(reduceMotion: false), DesignTokens.Motion.surface)
+        XCTAssertEqual(HUDMotion.surface(reduceMotion: true), DesignTokens.Motion.fade)
+    }
+
+    func test_capsuleSize_doesNotMoveUnderReduceMotion() {
+        XCTAssertNil(HUDMotion.size(reduceMotion: true), "размер капсулы двигался при Reduce Motion")
+        XCTAssertEqual(HUDMotion.size(reduceMotion: false), DesignTokens.Motion.surface)
+    }
+
+    func test_contentSwap_isAFadeInBothModes() {
+        XCTAssertEqual(HUDMotion.content, DesignTokens.Motion.fade)
+    }
+
+    func test_inspectionSlowdown_isOffByDefault() {
+        XCTAssertEqual(DesignTokens.Motion.timeScale, 1)
+    }
+}
+
 /// Полоска автозакрытия видна у двух состояний; цикл в 30 Гц нужен только им.
 final class HUDDismissProgressTests: XCTestCase {
     func test_onlyUndoAndImportResult_showTheDismissBar() {
