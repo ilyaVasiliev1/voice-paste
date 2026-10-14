@@ -125,7 +125,7 @@ Parakeet, Apple-распознавание и другие варианты Whis
 
 ## Заявки интерфейса к механике
 
-1. **Сборка на Xcode 27.** `AppState.beginFileImport`: `[weak self]` внутри `DispatchQueue.main.async` — ошибка
+1. ~~**Сборка на Xcode 27.**~~ — **закрыто слиянием 14.10.** `AppState.beginFileImport`: `[weak self]` внутри `DispatchQueue.main.async` — ошибка
    `ImplicitStrongCapture`, сборка останавливается целиком. Поправлено одной строкой в `ui/polish` (b285b37) по слову
    владельца 14.10; при слиянии хунк тот же. Ещё два места, мешающих собираться, поправлены в `ui/polish` по слову владельца: `SystemLiveTranscriber`
    (незанятая задача с `try`; механика правит настоящей правкой — при слиянии берётся её версия) и
@@ -135,8 +135,10 @@ Parakeet, Apple-распознавание и другие варианты Whis
 3. **Веер перерисовок (D1, п. 13, остаток).** `AppState` пересылает `objectWillChange` от лекции, импорта и модели,
    а `lectureElapsedSeconds` — `@Published` на самом `AppState`: любой вид с `@EnvironmentObject appState` пересчитывается
    два раза в секунду во время лекции. Дизайн сузил подписку у истории и статистики; чтобы убрать источник, тикер
-   лекции должен жить в `LectureRecorder`, а не в `AppState`. Решает механика.
-4. **Плашка до `start()` микрофона (D2, п. 12 аудита).** `AppState.beginRecording` показывает плашку после
+   лекции должен жить в `LectureRecorder`, а не в `AppState`. Решает механика — но вид лекции читает `appState.lectureElapsedSeconds`,
+   так что сначала дорожка интерфейса подписывает его на `lectureRecorder` напрямую, потом механика убирает пересылку.
+4. ~~**Плашка до `start()` микрофона (D2, п. 12 аудита).**~~ — **сделано 14.10** в `DictationCoordinator.beginRecording` (тракт-тесты: плашка до `start()`, отказ запуска сменяет её ошибкой); замер «клавиша → `orderFront`» не снят.
+   Исходная заявка: `AppState.beginRecording` показывает плашку после
    `audioCapture.start()`, который на главном акторе строит `AVAudioEngine`. Нужно: показать `.recording(0, 0)` до
    `start()`, при отказе морфить в `.error` (плашка это умеет). Сначала замер «клавиша → `orderFront`» через
    `os_signpost` в `handleHotkeyDown`; без него величина неизвестна. Решает механика.

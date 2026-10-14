@@ -178,9 +178,16 @@ final class DictationCoordinator {
         // `ensureLoaded()` coalesces, so the transcription that follows joins
         // this same load rather than starting a second one.
         modelManager.prewarm()
+        // WHY: start() строит AVAudioEngine на главном акторе; плашка идёт первой, при отказе её сменит ошибка.
+        recordingStartedAt = now()
+        elapsedBeforePause = 0
+        isPaused = false
+        pausedExpiryTask?.cancel()
+        refreshRecordingHUD(force: true)
         do {
             try audioCapture.start()
         } catch {
+            recordingStartedAt = nil
             stateMachine.handleProcessingFinished()
             host?.dictationPhaseChanged(.idle)
             // `dictation.microphoneError`'s single relevant recovery is
@@ -193,14 +200,6 @@ final class DictationCoordinator {
             streamingTranscriber.cancel()
             return
         }
-        recordingStartedAt = now()
-        elapsedBeforePause = 0
-        isPaused = false
-        pausedExpiryTask?.cancel()
-        // Present synchronously after successful capture. The ticker is only
-        // for subsequent elapsed/level updates; waiting for its task turn
-        // made the HUD vulnerable to being visually missed under load.
-        refreshRecordingHUD(force: true)
         startElapsedTicker()
         startStreamingTranscription()
     }
