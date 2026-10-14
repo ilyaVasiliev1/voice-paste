@@ -91,6 +91,8 @@
 		C00000000000000000000166 /* HotkeyRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000165 /* HotkeyRecorderView.swift */; };
 		C00000000000000000000168 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000167 /* SettingsView.swift */; };
 		CA0000000000000000000921 /* ModelLifecycleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0000000000000000000920 /* ModelLifecycleView.swift */; };
+		C00000000000000000000A87 /* EvaluationAudioSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A86 /* EvaluationAudioSection.swift */; };
+		C00000000000000000000A85 /* EvaluationAudioControlsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A84 /* EvaluationAudioControlsModel.swift */; };
 		C0000000000000000000016A /* AppTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000169 /* AppTests.swift */; };
 		C0000000000000000000016C /* DictationStateMachineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000016B /* DictationStateMachineTests.swift */; };
 		C0000000000000000000016E /* TextNormalizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000016D /* TextNormalizerTests.swift */; };
@@ -119,6 +121,7 @@
 		C00000000000000000000A45 /* LiveResultsDrainTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A44 /* LiveResultsDrainTests.swift */; };
 		C00000000000000000000A47 /* DictationTractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A46 /* DictationTractTests.swift */; };
 		C00000000000000000000A6F /* SpeechPipelineBoundaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A6E /* SpeechPipelineBoundaryTests.swift */; };
+		C00000000000000000000A83 /* EvaluationAudioControlsModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A82 /* EvaluationAudioControlsModelTests.swift */; };
 		C00000000000000000000A81 /* EngineBakeoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A80 /* EngineBakeoff.swift */; };
 		C00000000000000000000A7F /* ErrorRateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A7E /* ErrorRateTests.swift */; };
 		C00000000000000000000A7D /* HoldOrLatchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A7C /* HoldOrLatchTests.swift */; };
@@ -225,6 +228,8 @@
 		C00000000000000000000165 /* HotkeyRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyRecorderView.swift; sourceTree = "<group>"; };
 		C00000000000000000000167 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		CA0000000000000000000920 /* ModelLifecycleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelLifecycleView.swift; sourceTree = "<group>"; };
+		C00000000000000000000A86 /* EvaluationAudioSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvaluationAudioSection.swift; sourceTree = "<group>"; };
+		C00000000000000000000A84 /* EvaluationAudioControlsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvaluationAudioControlsModel.swift; sourceTree = "<group>"; };
 		C00000000000000000000169 /* AppTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTests.swift; sourceTree = "<group>"; };
 		C0000000000000000000016B /* DictationStateMachineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationStateMachineTests.swift; sourceTree = "<group>"; };
 		C0000000000000000000016D /* TextNormalizerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextNormalizerTests.swift; sourceTree = "<group>"; };
@@ -252,6 +257,7 @@
 		C00000000000000000000A44 /* LiveResultsDrainTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveResultsDrainTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A46 /* DictationTractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationTractTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A6E /* SpeechPipelineBoundaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechPipelineBoundaryTests.swift; sourceTree = "<group>"; };
+		C00000000000000000000A82 /* EvaluationAudioControlsModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvaluationAudioControlsModelTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A80 /* EngineBakeoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EngineBakeoff.swift; sourceTree = "<group>"; };
 		C00000000000000000000A7E /* ErrorRateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorRateTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A7C /* HoldOrLatchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoldOrLatchTests.swift; sourceTree = "<group>"; };
@@ -598,6 +604,8 @@
 				C00000000000000000000165 /* HotkeyRecorderView.swift */,
 				C00000000000000000000167 /* SettingsView.swift */,
 				CA0000000000000000000920 /* ModelLifecycleView.swift */,
+				C00000000000000000000A86 /* EvaluationAudioSection.swift */,
+				C00000000000000000000A84 /* EvaluationAudioControlsModel.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -647,6 +655,7 @@
 				C00000000000000000000A44 /* LiveResultsDrainTests.swift */,
 				C00000000000000000000A46 /* DictationTractTests.swift */,
 				C00000000000000000000A6E /* SpeechPipelineBoundaryTests.swift */,
+				C00000000000000000000A82 /* EvaluationAudioControlsModelTests.swift */,
 				C00000000000000000000A80 /* EngineBakeoff.swift */,
 				C00000000000000000000A7E /* ErrorRateTests.swift */,
 				C00000000000000000000A7C /* HoldOrLatchTests.swift */,
@@ -887,6 +896,8 @@
 				C00000000000000000000166 /* HotkeyRecorderView.swift in Sources */,
 				C00000000000000000000168 /* SettingsView.swift in Sources */,
 				CA0000000000000000000921 /* ModelLifecycleView.swift in Sources */,
+				C00000000000000000000A87 /* EvaluationAudioSection.swift in Sources */,
+				C00000000000000000000A85 /* EvaluationAudioControlsModel.swift in Sources */,
 				C00000000000000000000501 /* UsageStats.swift in Sources */,
 				C00000000000000000000503 /* DashboardView.swift in Sources */,
 				CA0000000000000000000913 /* SpeechDurationText.swift in Sources */,
@@ -927,6 +938,7 @@
 				C00000000000000000000A45 /* LiveResultsDrainTests.swift in Sources */,
 				C00000000000000000000A47 /* DictationTractTests.swift in Sources */,
 				C00000000000000000000A6F /* SpeechPipelineBoundaryTests.swift in Sources */,
+				C00000000000000000000A83 /* EvaluationAudioControlsModelTests.swift in Sources */,
 				C00000000000000000000A81 /* EngineBakeoff.swift in Sources */,
 				C00000000000000000000A7F /* ErrorRateTests.swift in Sources */,
 				C00000000000000000000A7D /* HoldOrLatchTests.swift in Sources */,

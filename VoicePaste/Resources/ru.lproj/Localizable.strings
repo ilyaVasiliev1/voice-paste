@@ -127,6 +127,8 @@
 "settings.dictation.mode" = "Режим диктовки";
 "settings.dictation.mode.toggle" = "Нажать для старта/остановки";
 "settings.dictation.mode.hold" = "Удерживать для записи";
+"settings.dictation.mode.holdOrLatch" = "Удержание или защёлка";
+"settings.dictation.mode.holdOrLatch.explanation" = "Держите клавишу, пока говорите, или нажмите один раз — запись пойдёт, пока не нажмёте снова.";
 "settings.dictation.language" = "Язык распознавания";
 "settings.language.auto" = "Автоматически";
 "settings.language.ru" = "Русский";
@@ -163,6 +165,14 @@
 "settings.history.clear" = "Очистить историю…";
 "settings.history.clearConfirmTitle" = "Очистить всю историю?";
 "settings.history.clearConfirmAction" = "Очистить историю";
+"settings.evaluationAudio.toggle" = "Сохранять звук для оценки качества";
+"settings.evaluationAudio.explanation" = "Звук диктовок лежит только на этом Mac и нужен, чтобы разбирать ошибки распознавания. Он удаляется вместе с записью из истории.";
+"settings.evaluationAudio.empty" = "Сохранённого звука нет";
+"settings.evaluationAudio.summary" = "Сохранено записей: %d, %@";
+"settings.evaluationAudio.delete" = "Удалить сохранённый звук…";
+"settings.evaluationAudio.deleteConfirmTitle" = "Удалить весь сохранённый звук?";
+"settings.evaluationAudio.deleteConfirmAction" = "Удалить звук";
+"settings.evaluationAudio.deleteFailed" = "Не удалось удалить звук. Попробуйте ещё раз.";
 
 "settings.vocabulary.addRule" = "Добавить правило";
 "settings.vocabulary.spokenForm" = "Произнесённая фраза";

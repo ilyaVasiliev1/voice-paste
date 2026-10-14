@@ -410,6 +410,30 @@ command, option, control, shift: сочетание без модификато�
 
 > Last verified: 2026-10-14
 
+### Requirement: Звук для оценки виден и управляется из настроек
+<!-- id: EvaluationAudioControlsModel -->
+<!-- entities: EvaluationAudioControlsModel, EvaluationAudioSummary -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/UI/Settings/EvaluationAudioControlsModel.swift, VoicePaste/UI/Settings/EvaluationAudioSection.swift -->
+<!-- test_macos: VoicePasteTests/EvaluationAudioControlsModelTests.swift:summaryShowsCountAndSize, VoicePasteTests/EvaluationAudioControlsModelTests.swift:deletionFailureIsVisible -->
+
+Раздел «История» SHALL показывать переключатель сохранения звука, строку «сколько записей и какого размера»
+и кнопку удаления всего сохранённого звука с подтверждением. Отказ удаления показывается текстом, а не молчанием.
+
+#### Scenario: звука нет
+<!-- test: EvaluationAudioControlsModelTests.emptyStateIsSaidPlainly -->
+- **WHEN** сохранённого звука нет
+- **THEN** строка говорит «Сохранённого звука нет», кнопка удаления недоступна
+
+#### Scenario: удаление обновляет строку
+<!-- test: EvaluationAudioControlsModelTests.deletionRefreshesTheSummary -->
+- **WHEN** выполнено удаление всего звука
+- **THEN** строка пересчитана, кнопка недоступна, ошибки нет
+
+> Last verified: 2026-10-14
+
+---
+
 ---
 
 <!-- uncertainty: Экраны настроек (вкладки, диалоги подтверждения, редактор словаря, записыватель сочетания) проверены чтением кода: тестов на SwiftUI/AppKit-слой в VoicePasteTests нет. -->

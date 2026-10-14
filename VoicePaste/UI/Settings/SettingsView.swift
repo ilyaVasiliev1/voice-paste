@@ -136,6 +136,12 @@ private struct SettingsBody: View {
             Picker("settings.dictation.mode", selection: $settings.recordingMode) {
                 Text("settings.dictation.mode.toggle").tag(RecordingMode.toggle)
                 Text("settings.dictation.mode.hold").tag(RecordingMode.hold)
+                Text("settings.dictation.mode.holdOrLatch").tag(RecordingMode.holdOrLatch)
+            }
+            if settings.recordingMode == .holdOrLatch {
+                Text("settings.dictation.mode.holdOrLatch.explanation")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             Picker("settings.dictation.language", selection: $settings.languageMode) {
                 Text("settings.language.auto").tag(TranscriptionLanguage.auto)
@@ -220,6 +226,7 @@ private struct SettingsBody: View {
                     Task { try? await appState.historyStore.clearAll() }
                 }
             }
+            EvaluationAudioSection(appState: appState, settings: settings)
         }
         .formStyle(.grouped)
     }
