@@ -408,7 +408,7 @@ public final class ImportManager: ObservableObject {
         case AudioDecodeError.unsupportedFormat: return "import.error.unsupportedFormat"
         case AudioDecodeError.noAudioTrack: return "import.error.noAudioTrack"
         case AudioDecodeError.decodeFailed: return "import.error.decodeFailed"
-        case TranscribingError.emptyAudio: return "dictation.emptyAudio"
+        case TranscribingError.emptyAudio: return "import.error.emptyAudio"
         case ImportManagerError.persistenceFailed: return "import.error.persistenceFailed"
         default: return "import.error.transcriptionFailed"
         }

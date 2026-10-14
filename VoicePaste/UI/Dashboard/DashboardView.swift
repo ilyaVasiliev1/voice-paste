@@ -83,7 +83,6 @@ struct DashboardView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
             Text(period.title).font(.title2.weight(.semibold))
-            Text("Локально на этом Mac").font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -106,9 +105,11 @@ struct DashboardView: View {
 
     private var metrics: some View {
         HStack(spacing: DesignTokens.Spacing.sm) {
-            metric(stats.totalWordCount.formatted(), "Слов")
-            metric(SpeechDurationText.text(milliseconds: stats.totalDurationMilliseconds), "Время речи")
-            metric(stats.totalTranscriptCount.formatted(), "Расшифровок")
+            // Отказ чтения — прочерк, а не «0»: ноль выглядел бы как «записей не было».
+            let failed = model.didFailToLoad
+            metric(failed ? "—" : stats.totalWordCount.formatted(), "Слов")
+            metric(failed ? "—" : SpeechDurationText.text(milliseconds: stats.totalDurationMilliseconds), "Время речи")
+            metric(failed ? "—" : stats.totalTranscriptCount.formatted(), "Расшифровок")
         }
     }
 

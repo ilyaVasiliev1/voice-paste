@@ -14,12 +14,6 @@
 "model.status.failed" = "Не удалось подготовить модель";
 
 /* Menu bar (UI-001) */
-"menu.startDictation" = "Начать диктовку";
-"menu.stopDictation" = "Остановить диктовку";
-"menu.startDictation.withHotkey" = "Начать диктовку (%@)";
-"menu.stopDictation.withHotkey" = "Остановить диктовку (%@)";
-"menu.transcribeFile" = "Транскрибировать файл…";
-"menu.importToHUD" = "Импортировать в панель";
 "menu.openMain" = "Открыть VoicePaste";
 "menu.statistics" = "Статистика";
 "menu.hideFromDock" = "Скрыть VoicePaste из Dock";
@@ -35,7 +29,6 @@
 "dictation.transcriptionFailed" = "Не удалось расшифровать запись";
 
 /* HUD (UI-003, DESIGN.md) */
-"hud.recording.hint" = "Нажмите %@, чтобы завершить";
 "hud.processing" = "Расшифровка…";
 "hud.inserted" = "Вставлено";
 "hud.copied" = "Текст скопирован";
@@ -54,15 +47,12 @@
 
 /* HUD import drop zone (UI-006) */
 "hud.import.title" = "Добавить файл";
-"hud.import.dropHint" = "Перетащите файл сюда";
 "hud.import.dropTargetHint" = "Перетащите аудио или видео сюда";
 "hud.import.chooseHint" = "или нажмите, чтобы выбрать файл";
 "hud.import.finished" = "Готово";
 "hud.import.copy" = "Копировать";
-"hud.import.openInHistory" = "Открыть в VoicePaste";
 
 /* Import (UI-006, EC-009/EC-010) */
-"import.error.title" = "Не удалось расшифровать файл";
 "import.error.unsupportedFormat" = "Формат файла не поддерживается";
 "import.error.decodeFailed" = "Не удалось прочитать аудиодорожку файла";
 "import.error.noAudioTrack" = "В видео нет поддерживаемой аудиодорожки";
@@ -71,16 +61,6 @@
 "common.ok" = "ОК";
 
 /* Import surface inside Транскрибация (UI-006/UI-008.1) */
-"import.dropZone.title" = "Перетащите аудио или видео сюда";
-"import.chooseFile" = "Выбрать файл…";
-"import.phase.queued" = "Подготовка…";
-"import.phase.decoding" = "Декодирование…";
-"import.phase.transcribing" = "Распознавание…";
-"import.phase.completed" = "Готово";
-"import.phase.failed" = "Ошибка";
-"import.copy" = "Копировать";
-"import.export" = "Экспорт…";
-"import.startOver" = "Начать заново";
 
 /* Onboarding (UI-002) */
 "onboarding.window.title" = "Настройка VoicePaste";
@@ -123,7 +103,6 @@
 "settings.section.text" = "Текст и орфография";
 "settings.section.model" = "Модель";
 "settings.section.history" = "История";
-"settings.section.vocabulary" = "Словарь";
 "settings.section.permissions" = "Разрешения";
 
 "settings.general.launchAtLogin" = "Запускать при входе в macOS";
@@ -157,7 +136,6 @@
 "settings.model.downloadSource.mirror" = "Китайское зеркало (hf-mirror.com)";
 "settings.model.downloadSource.official" = "Официальный (huggingface.co)";
 "settings.model.downloadSource.explanation" = "GitHub рекомендуется: он доступен из Китая и продолжает загрузку после обрыва. HuggingFace и его зеркало там часто недоступны. Выбор применится при следующей загрузке.";
-"settings.model.loadOrRetry" = "Загрузить/Повторить";
 "settings.model.unloadAfter" = "Выгружать из памяти при простое (файл модели остаётся на диске)";
 "settings.model.unloadAfter.minutes" = "%d мин";
 "settings.model.unloadAfter.keepWarm" = "Держать в памяти";
@@ -180,18 +158,12 @@
 "settings.evaluationAudio.deleteConfirmAction" = "Удалить звук";
 "settings.evaluationAudio.deleteFailed" = "Не удалось удалить звук. Попробуйте ещё раз.";
 
-"settings.vocabulary.addRule" = "Добавить правило";
-"settings.vocabulary.spokenForm" = "Произнесённая фраза";
-"settings.vocabulary.replacement" = "Замена";
-"settings.vocabulary.add" = "Добавить";
 
 "settings.permissions.microphone" = "Микрофон";
 "settings.permissions.accessibility" = "Универсальный доступ";
 "settings.permissions.openSystemSettings" = "Открыть настройки системы";
 "permissions.status.granted" = "Разрешено";
 "permissions.status.notGranted" = "Не разрешено";
-"settings.permissions.relaunchHint" = "Если после выдачи доступа статус не обновился — нажмите «Перезапустить».";
-"settings.permissions.relaunch" = "Перезапустить приложение";
 
 /* History (UI-004) */
 "history.search.prompt" = "Поиск по тексту или файлу";
@@ -209,14 +181,11 @@
 "history.deleteFailed.message" = "База не приняла удаление, запись осталась в списке.";
 
 /* Учебный режим */
-"lecture.section" = "Лекции";
 "lecture.start" = "Начать лекцию";
 "lecture.stop" = "Остановить";
 "lecture.continue" = "Продолжить запись";
 "lecture.elapsed" = "Идёт запись";
 "lecture.catchingUp" = "распознаётся…";
-"lecture.empty.title" = "Здесь появится расшифровка лекции";
-"lecture.empty.description" = "Нажмите «Начать лекцию» — текст будет пополняться по ходу, абзацами по паузам говорящего.";
 "lecture.copyParagraph" = "Скопировать абзац";
 "lecture.paragraph.startsAt" = "Начало абзаца";
 "dashboard.statsFailed.title" = "Статистика недоступна";
@@ -246,18 +215,11 @@
 "history.toolbar.startDictation" = "Начать диктовку";
 "history.toolbar.transcribeFile" = "Добавить файл…";
 "history.toolbar.copy" = "Копировать";
-"history.toolbar.export" = "Экспорт…";
 "history.toolbar.delete" = "Удалить";
 "history.toolbar.deleteConfirmTitle" = "Удалить эту запись?";
 "history.toolbar.deleteConfirmAction" = "Удалить";
 
 /* Dashboard (UI-007, US-009) */
-"dashboard.chart.title" = "Слова по дням";
-"dashboard.tile.totalWords" = "Всего слов";
-"dashboard.tile.totalTranscripts" = "Всего расшифровок";
-"dashboard.tile.averagePerDay" = "В среднем в день";
-"dashboard.empty.title" = "Здесь появится статистика ваших расшифровок";
-"dashboard.empty.description" = "Продиктуйте текст или транскрибируйте файл, чтобы увидеть статистику.";
 
 /* Main window (UI-008) */
 "main.window.title" = "VoicePaste";
@@ -278,7 +240,6 @@
 "history.list.empty.title" = "Ничего не найдено";
 
 /* Транскрибация (UI-008.1) */
-"transcribe.lastResult.title" = "Последняя расшифровка";
 "import.error.unknownState" = "Задачу записала другая версия приложения. Уберите её и добавьте файл заново.";
 "import.error.persistenceFailed" = "Не удалось сохранить состояние. Проверьте доступ к локальным данным и повторите.";
 "storage.unavailable" = "Локальные данные недоступны. История и очередь не будут сохранены до перезапуска VoicePaste.";
