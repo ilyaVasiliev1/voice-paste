@@ -390,6 +390,66 @@
 
 ---
 
+### Requirement: Дата записи — одна форма на всех экранах
+<!-- id: DisplayFormat.recordDate -->
+<!-- entities: DisplayFormat, HistoryRow, SavedLectureRow, DetailEditor -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/UI/DesignTokens.swift, VoicePaste/UI/History/HistoryView.swift, VoicePaste/UI/Lecture/LectureView.swift, VoicePaste/UI/History/DetailEditor.swift -->
+<!-- test_macos: VoicePasteTests/DisplayFormatTests.swift:test_today_isTodayWithTime -->
+
+Дата записи или лекции в списках и шапках SHALL писаться одной формой: сегодня и вчера — словом
+со временем («Сегодня, 9:05»), в текущем году — днём и месяцем со временем («3 авг., 17:16»),
+раньше — с годом и без времени. Язык записи пишется словом («Русский»), а не кодом.
+
+#### Scenario: сегодня
+<!-- test: DisplayFormatTests.test_today_isTodayWithTime -->
+- **WHEN** запись сделана сегодня
+- **THEN** «Сегодня» и время
+
+#### Scenario: вчера
+<!-- test: DisplayFormatTests.test_yesterday_isYesterdayWithTime -->
+- **WHEN** запись сделана вчера
+- **THEN** «Вчера» и время
+
+#### Scenario: раньше в этом году
+<!-- test: DisplayFormatTests.test_earlierThisYear_hasNoYear -->
+- **WHEN** запись сделана в этом году, но не вчера и не сегодня
+- **THEN** день, месяц и время без года
+
+#### Scenario: прошлый год
+<!-- test: DisplayFormatTests.test_previousYear_carriesTheYear_butNoTime -->
+- **WHEN** запись сделана в прошлом году
+- **THEN** есть год, времени нет
+
+#### Scenario: язык словом
+<!-- test: DisplayFormatTests.test_languageName_isCapitalisedAndWritten -->
+- **WHEN** у записи язык `ru`
+- **THEN** «Русский»
+
+---
+
+### Requirement: Период статистики показывает итог слов
+<!-- id: PeriodSummaries.track -->
+<!-- entities: PeriodSummaries, StatisticsPeriodList -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/UI/Dashboard/DashboardView.swift -->
+<!-- test_macos: VoicePasteTests/HistoryListModelTests.swift:test_periodSummaries_fillEveryPeriod -->
+
+Каждая строка списка периодов SHALL показывать под названием «Слов: N» и обновляться по сигналу
+изменения истории. Период, для которого чтение не удалось, остаётся без подписи, а не с нулём.
+
+#### Scenario: все периоды
+<!-- test: HistoryListModelTests.test_periodSummaries_fillEveryPeriod -->
+- **WHEN** база отвечает
+- **THEN** итог есть у каждого периода
+
+#### Scenario: отказ базы
+<!-- test: HistoryListModelTests.test_periodSummaries_areAbsent_whenTheStoreFails -->
+- **WHEN** чтение статистики завершилось ошибкой
+- **THEN** подписей нет
+
+---
+
 ### Requirement: Подгрузка страницы начинается заранее и не дублируется
 <!-- id: HistoryListModel.loadNextPageIfNeeded -->
 <!-- entities: HistoryListModel, TranscriptCursor -->
