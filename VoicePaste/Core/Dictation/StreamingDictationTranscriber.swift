@@ -24,8 +24,7 @@ final class StreamingDictationTranscriber {
     private let pollInterval: Duration
 
     private var planner: DictationWindowPlanner
-    private var mergedText = ""
-    private var detectedLanguage: String?
+    private var accumulator = TranscriptAccumulator()
     private var pump: Task<Void, Never>?
     /// Отказ окна не роняет диктовку на месте: запись идёт, пользователь
     /// говорит. Он запоминается и решается при завершении.
@@ -106,13 +105,13 @@ final class StreamingDictationTranscriber {
                 TranscriptionRequest(
                     samples: Array(totalSamples[tail]),
                     language: language,
-                    detectedLanguageHint: detectedLanguage
+                    detectedLanguageHint: accumulator.result.detectedLanguage
                 )
             )
             planner.commit(tail)
             absorb(result)
         }
-        return TranscriptionResult(rawText: mergedText, detectedLanguage: detectedLanguage)
+        return accumulator.result
     }
 
     /// Отменённая запись не оставляет следов: считанные окна выбрасываются
@@ -124,8 +123,7 @@ final class StreamingDictationTranscriber {
     }
 
     private func reset() {
-        mergedText = ""
-        detectedLanguage = nil
+        accumulator.reset()
         failure = nil
         planner = DictationWindowPlanner(
             windowSamples: windowSamples,
@@ -153,7 +151,7 @@ final class StreamingDictationTranscriber {
                     TranscriptionRequest(
                     samples: samples,
                     language: language,
-                    detectedLanguageHint: detectedLanguage
+                    detectedLanguageHint: accumulator.result.detectedLanguage
                 )
                 )
                 // Проверка отмены обязана стоять до фиксации, а не после.
@@ -172,11 +170,7 @@ final class StreamingDictationTranscriber {
         }
     }
 
-    /// Язык берётся из первого окна и держится: авто-определение на каждом
-    /// окне порознь дало бы разный язык внутри одной записи. Так же устроен
-    /// накопитель тракта импорта.
     private func absorb(_ result: TranscriptionResult) {
-        mergedText = TranscriptChunkMerger.merge(mergedText, with: result.rawText)
-        if detectedLanguage == nil { detectedLanguage = result.detectedLanguage }
+        accumulator.append(result)
     }
 }

@@ -113,17 +113,34 @@ nonisolated public struct DictationPipeline: Sendable {
         await onSpeechConfirmed()
 
         let recognized = try await recognizer.recognize(samples: samples, language: input.language)
-        let (text, _) = await normalizer.normalizeInBackground(
-            rawText: recognized.rawText,
+        return .draft(await finish(
+            recognized,
             language: input.language,
             vocabulary: input.vocabulary,
-            autoCorrectSafeTypos: input.autoCorrectSafeTypos
+            autoCorrectSafeTypos: input.autoCorrectSafeTypos,
+            durationMilliseconds: samples.count / Self.samplesPerMillisecond
+        ))
+    }
+
+    /// Приведение распознанного текста: общий последний шаг диктовки и импорта.
+    public func finish(
+        _ recognized: TranscriptionResult,
+        language: TranscriptionLanguage,
+        vocabulary: [VocabularyEntry],
+        autoCorrectSafeTypos: Bool,
+        durationMilliseconds: Int
+    ) async -> Draft {
+        let (text, _) = await normalizer.normalizeInBackground(
+            rawText: recognized.rawText,
+            language: language,
+            vocabulary: vocabulary,
+            autoCorrectSafeTypos: autoCorrectSafeTypos
         )
-        return .draft(Draft(
+        return Draft(
             rawText: recognized.rawText,
             text: text,
             detectedLanguage: recognized.detectedLanguage,
-            durationMilliseconds: samples.count / Self.samplesPerMillisecond
-        ))
+            durationMilliseconds: durationMilliseconds
+        )
     }
 }

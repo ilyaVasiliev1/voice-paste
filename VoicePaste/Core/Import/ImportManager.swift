@@ -29,16 +29,14 @@ nonisolated final class ImportProgressGate: @unchecked Sendable {
 /// Small actor-owned result, while decoded PCM windows are released after
 /// each inference. Only text grows with media duration, not audio memory.
 private actor ImportTranscriptAccumulator {
-    private var text = ""
-    private var detectedLanguage: String?
+    private var accumulator = TranscriptAccumulator()
 
     func append(_ result: TranscriptionResult) {
-        text = TranscriptChunkMerger.merge(text, with: result.rawText)
-        if detectedLanguage == nil { detectedLanguage = result.detectedLanguage }
+        accumulator.append(result)
     }
 
     func result() -> TranscriptionResult {
-        TranscriptionResult(rawText: text, detectedLanguage: detectedLanguage)
+        accumulator.result
     }
 }
 
@@ -279,12 +277,13 @@ public final class ImportManager: ObservableObject {
             try await update(id) { $0.durationMilliseconds = duration }
 
             let vocabulary = (try? await historyStore.fetchVocabulary()) ?? []
-            let (text, _) = await normalizer.normalizeInBackground(
-                rawText: result.rawText,
+            let text = await DictationPipeline(normalizer: normalizer).finish(
+                result,
                 language: settings.languageMode,
                 vocabulary: vocabulary,
-                autoCorrectSafeTypos: settings.autoCorrectSafeTypos
-            )
+                autoCorrectSafeTypos: settings.autoCorrectSafeTypos,
+                durationMilliseconds: duration
+            ).text
             guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 throw TranscribingError.emptyAudio
             }
