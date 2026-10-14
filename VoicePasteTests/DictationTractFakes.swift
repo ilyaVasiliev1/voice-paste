@@ -91,8 +91,21 @@ final class FakeEvaluationAudio: EvaluationAudioStoring, @unchecked Sendable {
     private var storedFiles: [(id: UUID, sampleCount: Int)] = []
     private var storedFailure: Error?
     private var storedDelay: Duration = .zero
+    private var storedDeletedIDs: [UUID] = []
+    private var storedDeleteAllCount = 0
+    private var storedDeleteFailure: Error?
 
     var saved: [(id: UUID, sampleCount: Int)] { lock.withLock { storedFiles } }
+
+    var deletedIDs: [UUID] { lock.withLock { storedDeletedIDs } }
+    var deleteAllCount: Int { lock.withLock { storedDeleteAllCount } }
+
+    func setDeleteFailure(_ error: Error?) { lock.withLock { storedDeleteFailure = error } }
+
+    func delete(id: UUID) async throws {
+        if let failure = lock.withLock({ storedDeleteFailure }) { throw failure }
+        lock.withLock { storedDeletedIDs.append(id) }
+    }
 
     func setFailure(_ error: Error?) { lock.withLock { storedFailure = error } }
     func setSaveDelay(_ delay: Duration) { lock.withLock { storedDelay = delay } }
@@ -109,7 +122,9 @@ final class FakeEvaluationAudio: EvaluationAudioStoring, @unchecked Sendable {
     }
 
     func deleteAll() async throws -> Int {
-        lock.withLock {
+        if let failure = lock.withLock({ storedDeleteFailure }) { throw failure }
+        return lock.withLock {
+            storedDeleteAllCount += 1
             defer { storedFiles.removeAll() }
             return storedFiles.count
         }
