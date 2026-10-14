@@ -141,6 +141,7 @@ nonisolated public struct WhisperKitTranscriber: Transcribing {
         modelDirectory: URL,
         endpoint: String = ModelCatalog.downloadEndpoint,
         tokenizerFolder: URL? = nil,
+        variant: String = ModelCatalog.modelID,
         downloadProgress: (@Sendable (Double) -> Void)? = nil
     ) async throws {
         // `L-010`/`AT-004`/`US-001`: WhisperKit's `setupModels` takes two
@@ -168,7 +169,7 @@ nonisolated public struct WhisperKitTranscriber: Transcribing {
             // through the selected endpoint (`AT-093`) so it isn't slow from
             // China when the mirror is chosen.
             let config = WhisperKitConfig(
-                model: ModelCatalog.modelID,
+                model: variant,
                 modelEndpoint: endpoint,
                 modelFolder: existing.path,
                 tokenizerFolder: tokenizerFolder,
@@ -188,7 +189,7 @@ nonisolated public struct WhisperKitTranscriber: Transcribing {
             // `ModelManager.state = .downloading(progress:)` moves instead of
             // sitting frozen at 0 for the whole 626 MB transfer.
             let downloadedFolder = try await WhisperKit.download(
-                variant: ModelCatalog.modelID,
+                variant: variant,
                 downloadBase: modelDirectory,
                 endpoint: endpoint,
                 progressCallback: { progress in
@@ -196,7 +197,7 @@ nonisolated public struct WhisperKitTranscriber: Transcribing {
                 }
             )
             let config = WhisperKitConfig(
-                model: ModelCatalog.modelID,
+                model: variant,
                 modelEndpoint: endpoint,
                 modelFolder: downloadedFolder.path,
                 tokenizerFolder: tokenizerFolder,
