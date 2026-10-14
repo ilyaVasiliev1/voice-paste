@@ -9,21 +9,21 @@
 /// Тип чистый и не знает ни про звук, ни про модель: он считает границы. Это
 /// единственный способ доказать нарезку тестами — живой `AVAudioEngine` в
 /// тестах не поднимается.
-nonisolated struct DictationWindowPlanner: Sendable {
+public struct DictationWindowPlanner: Sendable {
 
     /// Длина окна. Совпадает с окном тракта импорта: там та же нарезка уже
     /// отработана и покрыта тестами.
-    let windowSamples: Int
+    public let windowSamples: Int
 
     /// Насколько следующее окно заходит на предыдущее. Нужно, чтобы слово на
     /// границе попало в оба окна и склейка смогла убрать повтор.
-    let overlapSamples: Int
+    public let overlapSamples: Int
 
     /// Конец последнего выданного окна. Следующее начнётся раньше него на
     /// величину перекрытия.
-    private(set) var plannedUpTo: Int = 0
+    public private(set) var plannedUpTo: Int = 0
 
-    init(windowSamples: Int, overlapSamples: Int) {
+    public init(windowSamples: Int, overlapSamples: Int) {
         precondition(windowSamples > 0, "Окно нулевой длины не нарезает ничего")
         precondition(
             overlapSamples >= 0 && overlapSamples < windowSamples,
@@ -39,7 +39,7 @@ nonisolated struct DictationWindowPlanner: Sendable {
     /// Запрос ничего не сдвигает. Сдвиг — отдельным вызовом `commit`, и
     /// только когда отрезок действительно прочитан и посчитан: сдвинуться
     /// раньше значит пропустить окно, а пропущенное окно — это дыра в записи.
-    func closedWindow(availableSamples: Int) -> Range<Int>? {
+    public func closedWindow(availableSamples: Int) -> Range<Int>? {
         let start = nextWindowStart
         let end = start + windowSamples
         guard end <= availableSamples else { return nil }
@@ -51,14 +51,14 @@ nonisolated struct DictationWindowPlanner: Sendable {
     ///
     /// Когда не было зафиксировано ни одного окна, возвращается вся запись:
     /// короткая диктовка распознаётся одним проходом, как и до нарезки.
-    func tail(totalSamples: Int) -> Range<Int>? {
+    public func tail(totalSamples: Int) -> Range<Int>? {
         let start = nextWindowStart
         guard start < totalSamples else { return nil }
         return start..<totalSamples
     }
 
     /// Отмечает отрезок посчитанным. Дальше нарезка пойдёт от его конца.
-    mutating func commit(_ piece: Range<Int>) {
+    public mutating func commit(_ piece: Range<Int>) {
         precondition(
             piece.lowerBound == nextWindowStart,
             "Фиксируется не тот отрезок, который был запрошен: нарезка разъедется"

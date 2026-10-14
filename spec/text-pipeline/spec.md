@@ -138,7 +138,7 @@
 <!-- id: TrailingHallucinationFilter.filtering -->
 <!-- entities: TrailingHallucinationFilter, TranscriptionResult -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/Core/Transcription/TrailingHallucinationFilter.swift -->
+<!-- enforced_macos: Packages/SpeechPipeline/Sources/SpeechPipeline/TrailingHallucinationFilter.swift -->
 <!-- test_macos: VoicePasteTests/TrailingHallucinationFilterTests.swift:test_removesModelTerminalFillerOnlyInTrailingSilence -->
 <!-- test_macos: VoicePasteTests/AudioEvidenceFilterTests.swift:unlistedPhraseAfterSpeechIsRemoved -->
 <!-- test_macos: VoicePasteTests/AudioEvidenceFilterTests.swift:samePhraseInsideAudibleSpeechIsKept -->
@@ -187,7 +187,7 @@
 <!-- id: SubtitleCreditFilter -->
 <!-- entities: SubtitleCreditFilter, TranscribedSegment, TranscriptionResult -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/Core/Transcription/SubtitleCreditFilter.swift, VoicePaste/Core/Transcription/WhisperKitTranscriber.swift -->
+<!-- enforced_macos: Packages/SpeechPipeline/Sources/SpeechPipeline/SubtitleCreditFilter.swift, VoicePaste/Core/Transcription/WhisperKitTranscriber.swift -->
 <!-- test_macos: VoicePasteTests/SubtitleCreditFilterTests.swift:test_creditLine_isRecognized_realSpeechIsNot -->
 
 Строка-титр о субтитрах («Субтитры делал DimaTorzok», «Редактор субтитров
@@ -219,7 +219,7 @@
 <!-- id: TrailingHallucinationFilter.trimmingLongTrailingSilence -->
 <!-- entities: TrailingHallucinationFilter, TranscriptionRequest -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/Core/Transcription/TrailingHallucinationFilter.swift, VoicePaste/Core/Transcription/WhisperKitTranscriber.swift -->
+<!-- enforced_macos: Packages/SpeechPipeline/Sources/SpeechPipeline/TrailingHallucinationFilter.swift, VoicePaste/Core/Transcription/WhisperKitTranscriber.swift -->
 <!-- test_macos: VoicePasteTests/TrailingHallucinationFilterTests.swift:test_trimsOnlyLongTrailingSilenceBeforeWhisper -->
 
 Перед выводом модели хвостовая тишина SHALL обрезаться с запасом в 0,25 с —
@@ -264,7 +264,7 @@
 <!-- id: TranscriptChunkMerger.merge -->
 <!-- entities: TranscriptChunkMerger, TranscriptionResult -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/Core/Transcription/Transcribing.swift -->
+<!-- enforced_macos: Packages/SpeechPipeline/Sources/SpeechPipeline/Transcribing.swift -->
 <!-- test_macos: VoicePasteTests/WhisperDecodingPlanTests.swift:test_chunkMerger_removesExactTwoWordOverlap -->
 
 При склейке текста соседних окон SHALL отбрасываться точное совпадение
@@ -318,7 +318,7 @@
 ### Invariant: Пороги тишины измеряются окнами по 20 мс при RMS 0.004
 <!-- entities: TrailingHallucinationFilter -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/Core/Transcription/TrailingHallucinationFilter.swift -->
+<!-- enforced_macos: Packages/SpeechPipeline/Sources/SpeechPipeline/TrailingHallucinationFilter.swift -->
 <!-- verified_by_macos: VoicePasteTests/TrailingHallucinationFilterTests.swift:test_trimsOnlyLongTrailingSilenceBeforeWhisper -->
 
 Момент последней речи SHALL искаться окнами длиной 0,02 с при пороге RMS
@@ -334,7 +334,7 @@
 ### Invariant: Перекрытие при склейке — от 2 до 24 токенов
 <!-- entities: TranscriptChunkMerger -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/Core/Transcription/Transcribing.swift -->
+<!-- enforced_macos: Packages/SpeechPipeline/Sources/SpeechPipeline/Transcribing.swift -->
 <!-- verified_by_macos: VoicePasteTests/WhisperDecodingPlanTests.swift:test_chunkMerger_doesNotDropSingleCoincidentalWord -->
 
 Поиск перекрытия SHALL идти от минимума из 24, длины левого и длины правого

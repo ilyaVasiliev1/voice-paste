@@ -263,7 +263,7 @@ Escape во время записи SHALL останавливать тольк�
 <!-- id: SpeechGate.analyze -->
 <!-- entities: AppState, SpeechGate, SpeechActivity -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/Core/Dictation/SpeechGate.swift, VoicePaste/App/AppState.swift -->
+<!-- enforced_macos: Packages/SpeechPipeline/Sources/SpeechPipeline/SpeechGate.swift, VoicePaste/App/AppState.swift -->
 <!-- test_macos: VoicePasteTests/SpeechGateTests.swift -->
 <!-- test_macos: VoicePasteTests/DictationTractTests.swift:steadyNoiseNeverReachesTheModel -->
 <!-- test_macos: VoicePasteTests/SpeechGateRealSpeechTests.swift:realSpeechIsFound -->
@@ -344,7 +344,7 @@ rms 0.008 над фоном 0.006 — «речи нет»; 0.035 над тем �
 <!-- id: DictationLanguageJournal.detail -->
 <!-- entities: AppState, DictationLanguageJournal, DiagnosticLog -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/Core/Dictation/DictationLanguageJournal.swift, VoicePaste/App/AppState.swift -->
+<!-- enforced_macos: Packages/SpeechPipeline/Sources/SpeechPipeline/DictationLanguageJournal.swift, VoicePaste/App/AppState.swift -->
 <!-- test_macos: VoicePasteTests/DictationLanguageTests.swift:entryNamesModeDetectedLanguageAndScript -->
 <!-- test_macos: VoicePasteTests/DictationLanguageTests.swift:latinTailAfterCyrillicSpeechIsVisible -->
 <!-- test_macos: VoicePasteTests/DictationLanguageTests.swift:entryNeverCarriesTheText -->
@@ -574,7 +574,7 @@ VoicePaste) SHALL считаться не текстовым назначени�
 ### Invariant: Окна записи нарезаются подряд, с перекрытием и без пропусков
 <!-- entities: DictationWindowPlanner -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/Core/Dictation/DictationWindowPlanner.swift -->
+<!-- enforced_macos: Packages/SpeechPipeline/Sources/SpeechPipeline/DictationWindowPlanner.swift -->
 <!-- test_macos: VoicePasteTests/DictationWindowPlannerTests.swift -->
 
 Нарезка записи на окна SHALL покрывать её целиком: каждое следующее окно
@@ -601,6 +601,24 @@ VoicePaste) SHALL считаться не текстовым назначени�
   конца записи выдаётся одним отрезком
 
 > Last verified: 2026-09-20
+
+---
+
+### Invariant: Пакет конвейера не знает про интерфейс, базу и сеть
+<!-- entities: SpeechPipeline -->
+<!-- platforms: macos -->
+<!-- enforced_macos: Packages/SpeechPipeline/Package.swift, VoicePaste/App/Exports.swift -->
+<!-- test_macos: VoicePasteTests/SpeechPipelineBoundaryTests.swift:packageSourcesImportOnlyFoundation -->
+<!-- test_macos: VoicePasteTests/SpeechPipelineBoundaryTests.swift:manifestDeclaresNoDependencies -->
+<!-- test_macos: VoicePasteTests/SpeechPipelineBoundaryTests.swift:parserFindsForbiddenImports -->
+
+Исходники пакета `Packages/SpeechPipeline` SHALL импортировать только
+Foundation, а манифест — не объявлять зависимостей. Пакет не знает про AppKit,
+GRDB, WhisperKit, аудиосистему, сеть и файловую систему моделей: всё, что
+нужно от них конвейеру, приходит протоколами из приложения. Нарушение — красный
+тест, а не правило в документе.
+
+> Last verified: 2026-10-14
 
 ---
 

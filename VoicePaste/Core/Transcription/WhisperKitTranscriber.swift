@@ -208,7 +208,7 @@ nonisolated public struct WhisperKitTranscriber: Transcribing {
         worker = WhisperInferenceWorker(pipe: preparedPipe)
     }
 
-    public func transcribe(_ request: TranscriptionRequest) async throws -> TranscriptionResult {
+    public func transcribe(_ request: TranscriptionRequest) async throws -> SpeechPipeline.TranscriptionResult {
         try await worker.transcribe(request)
     }
 #else
@@ -222,7 +222,7 @@ nonisolated public struct WhisperKitTranscriber: Transcribing {
         )
     }
 
-    public func transcribe(_ request: TranscriptionRequest) async throws -> TranscriptionResult {
+    public func transcribe(_ request: TranscriptionRequest) async throws -> SpeechPipeline.TranscriptionResult {
         throw TranscribingError.underlying(
             "WhisperKit package is not resolvable in this build environment (see report tail)."
         )
@@ -240,7 +240,7 @@ private actor WhisperInferenceWorker {
         self.pipe = pipe
     }
 
-    func transcribe(_ request: TranscriptionRequest) async throws -> TranscriptionResult {
+    func transcribe(_ request: TranscriptionRequest) async throws -> SpeechPipeline.TranscriptionResult {
         guard !request.samples.isEmpty else { throw TranscribingError.emptyAudio }
         // `L-005`/`AT-095`: task is always transcription; `.auto` enables
         // language auto-detection instead of leaving it off by default.
@@ -284,7 +284,7 @@ private actor WhisperInferenceWorker {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw TranscribingError.emptyAudio
         }
-        return TranscriptionResult(
+        return SpeechPipeline.TranscriptionResult(
             rawText: text,
             detectedLanguage: plan.languageCode ?? results.first?.language,
             // Времена — от начала отрезка, который отдали модели. Учебный
