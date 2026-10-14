@@ -278,11 +278,8 @@ public final class ImportManager: ObservableObject {
 
             let vocabulary = (try? await historyStore.fetchVocabulary()) ?? []
             let text = await DictationPipeline(normalizer: normalizer).finish(
-                result,
-                language: settings.languageMode,
-                vocabulary: vocabulary,
-                autoCorrectSafeTypos: settings.autoCorrectSafeTypos,
-                durationMilliseconds: duration
+                result, language: settings.languageMode, vocabulary: vocabulary,
+                autoCorrectSafeTypos: settings.autoCorrectSafeTypos, durationMilliseconds: duration
             ).text
             guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 throw TranscribingError.emptyAudio
