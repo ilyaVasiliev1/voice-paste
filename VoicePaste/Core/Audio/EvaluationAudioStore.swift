@@ -13,6 +13,7 @@ nonisolated public struct EvaluationAudioSummary: Equatable, Sendable {
 /// Куда уходит звук, сохранённый для оценки качества распознавания.
 nonisolated public protocol EvaluationAudioStoring: Sendable {
     func save(samples: [Float], id: UUID) async throws
+    func delete(id: UUID) async throws
     func summary() async -> EvaluationAudioSummary
     func deleteAll() async throws -> Int
 }
@@ -55,6 +56,13 @@ public actor EvaluationAudioStore: EvaluationAudioStoring {
             total + ((try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
         }
         return EvaluationAudioSummary(fileCount: files.count, totalBytes: bytes)
+    }
+
+    public func delete(id: UUID) throws {
+        let prefix = id.uuidString
+        for url in recordings() where url.lastPathComponent.hasPrefix(prefix) {
+            try FileManager.default.removeItem(at: url)
+        }
     }
 
     public func deleteAll() throws -> Int {

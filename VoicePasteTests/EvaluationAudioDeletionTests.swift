@@ -5,6 +5,7 @@ import Testing
 @testable import VoicePaste
 
 /// Удалил запись из истории — звук для оценки ушёл вместе с ней.
+@MainActor
 @Suite("Звук для оценки и удаление записей", .serialized)
 struct EvaluationAudioDeletionTests {
 

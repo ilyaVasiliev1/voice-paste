@@ -363,6 +363,11 @@ command, option, control, shift: сочетание без модификато�
 <!-- test_macos: VoicePasteTests/DictationTractTests.swift:evaluationAudioOffSavesNothing -->
 <!-- test_macos: VoicePasteTests/DictationTractTests.swift:evaluationAudioOnSavesUnderTranscriptID -->
 <!-- test_macos: VoicePasteTests/DictationTractTests.swift:cancelledRecordingLeavesNoEvaluationAudio -->
+<!-- test_macos: VoicePasteTests/EvaluationAudioDeletionTests.swift:storeDeletesOnlyThatRecordsFiles -->
+<!-- test_macos: VoicePasteTests/EvaluationAudioDeletionTests.swift:hookDeletesRecordAudio -->
+<!-- test_macos: VoicePasteTests/EvaluationAudioDeletionTests.swift:hookDeletesEverythingOnClearAll -->
+<!-- test_macos: VoicePasteTests/EvaluationAudioDeletionTests.swift:historyDeleteReportsRecord -->
+<!-- test_macos: VoicePasteTests/EvaluationAudioDeletionTests.swift:historyClearAllReportsAll -->
 
 Настройка `saveAudioForEvaluation` SHALL быть выключена по умолчанию. Пока она
 выключена, звук диктовок нигде не сохраняется. Включённая — сохраняет
@@ -373,7 +378,10 @@ command, option, control, shift: сочетание без модификато�
 не нашлось речи (по ним оценивают тишину); отменённые записи — нет. Отказ
 сохранить не ломает диктовку и уходит в журнал как `evaluationAudio.saveFailed`.
 Сохранённое удаляется одним действием `deleteEvaluationAudio()`; чужие файлы
-в каталоге остаются.
+в каталоге остаются. Удаление записи из истории SHALL стирать и её звук (по
+идентификатору записи), очистка истории — весь сохранённый звук. Отказ
+стереть звук не отменяет удаление записи и уходит в журнал как
+`evaluationAudio.deleteFailed`.
 
 #### Scenario: настройка выключена
 <!-- test: DictationTractTests.evaluationAudioOffSavesNothing -->
@@ -384,6 +392,16 @@ command, option, control, shift: сочетание без модификато�
 <!-- test: DictationTractTests.evaluationAudioOnSavesUnderTranscriptID -->
 - **WHEN** диктовка завершена при включённой настройке
 - **THEN** сохранён один файл, названный идентификатором записи в истории
+
+#### Scenario: запись удалена из истории
+<!-- test: EvaluationAudioDeletionTests.historyDeleteReportsRecord -->
+- **WHEN** запись удалена из истории
+- **THEN** файл звука с её идентификатором стёрт, звук других записей остался
+
+#### Scenario: история очищена
+<!-- test: EvaluationAudioDeletionTests.historyClearAllReportsAll -->
+- **WHEN** выполнена очистка истории
+- **THEN** весь сохранённый звук стёрт
 
 #### Scenario: запись отменена
 <!-- test: DictationTractTests.cancelledRecordingLeavesNoEvaluationAudio -->

@@ -30,6 +30,7 @@
 		CA0000000000000000000929 /* LectureContinuation.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0000000000000000000928 /* LectureContinuation.swift */; };
 		C0000000000000000000011E /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000011D /* AppState.swift */; };
 		C00000000000000000000120 /* AudioCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000011F /* AudioCaptureService.swift */; };
+		C00000000000000000000A6B /* EvaluationAudioCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A6A /* EvaluationAudioCleanup.swift */; };
 		C00000000000000000000A61 /* CaptureRestartPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A60 /* CaptureRestartPolicy.swift */; };
 		C00000000000000000000A5D /* EvaluationAudioStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A5C /* EvaluationAudioStore.swift */; };
 		C00000000000000000000122 /* DictationStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000121 /* DictationStateMachine.swift */; };
@@ -77,6 +78,7 @@
 		C0000000000000000000014E /* Migrations.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000014D /* Migrations.swift */; };
 		C00000000000000000000150 /* PersistenceRecords.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000014F /* PersistenceRecords.swift */; };
 		C00000000000000000000152 /* HistoryStoring.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000151 /* HistoryStoring.swift */; };
+		C00000000000000000000A69 /* HistoryDeletion.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A68 /* HistoryDeletion.swift */; };
 		C00000000000000000000154 /* Transcript.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000153 /* Transcript.swift */; };
 		C00000000000000000000156 /* TranscriptListItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000155 /* TranscriptListItem.swift */; };
 		C00000000000000000000158 /* VocabularyEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000157 /* VocabularyEntry.swift */; };
@@ -176,6 +178,7 @@
 		CA0000000000000000000928 /* LectureContinuation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureContinuation.swift; sourceTree = "<group>"; };
 		C0000000000000000000011D /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		C0000000000000000000011F /* AudioCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioCaptureService.swift; sourceTree = "<group>"; };
+		C00000000000000000000A6A /* EvaluationAudioCleanup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvaluationAudioCleanup.swift; sourceTree = "<group>"; };
 		C00000000000000000000A60 /* CaptureRestartPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureRestartPolicy.swift; sourceTree = "<group>"; };
 		C00000000000000000000A5C /* EvaluationAudioStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvaluationAudioStore.swift; sourceTree = "<group>"; };
 		C00000000000000000000121 /* DictationStateMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationStateMachine.swift; sourceTree = "<group>"; };
@@ -208,6 +211,7 @@
 		C0000000000000000000014D /* Migrations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Migrations.swift; sourceTree = "<group>"; };
 		C0000000000000000000014F /* PersistenceRecords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceRecords.swift; sourceTree = "<group>"; };
 		C00000000000000000000151 /* HistoryStoring.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStoring.swift; sourceTree = "<group>"; };
+		C00000000000000000000A68 /* HistoryDeletion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryDeletion.swift; sourceTree = "<group>"; };
 		C00000000000000000000153 /* Transcript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transcript.swift; sourceTree = "<group>"; };
 		C00000000000000000000155 /* TranscriptListItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptListItem.swift; sourceTree = "<group>"; };
 		C00000000000000000000157 /* VocabularyEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VocabularyEntry.swift; sourceTree = "<group>"; };
@@ -392,6 +396,7 @@
 			isa = PBXGroup;
 			children = (
 				C0000000000000000000011F /* AudioCaptureService.swift */,
+				C00000000000000000000A6A /* EvaluationAudioCleanup.swift */,
 				C00000000000000000000A60 /* CaptureRestartPolicy.swift */,
 				C00000000000000000000A5C /* EvaluationAudioStore.swift */,
 			);
@@ -526,6 +531,7 @@
 			children = (
 				C00000000000000000000984 /* Lecture.swift */,
 				C00000000000000000000151 /* HistoryStoring.swift */,
+				C00000000000000000000A68 /* HistoryDeletion.swift */,
 				C00000000000000000000153 /* Transcript.swift */,
 				C00000000000000000000155 /* TranscriptListItem.swift */,
 				C00000000000000000000157 /* VocabularyEntry.swift */,
@@ -823,6 +829,7 @@
 				C0000000000000000000011E /* AppState.swift in Sources */,
 				C00000000000000000000301 /* AppDelegate.swift in Sources */,
 				C00000000000000000000120 /* AudioCaptureService.swift in Sources */,
+				C00000000000000000000A6B /* EvaluationAudioCleanup.swift in Sources */,
 				C00000000000000000000A61 /* CaptureRestartPolicy.swift in Sources */,
 				C00000000000000000000A5D /* EvaluationAudioStore.swift in Sources */,
 				C00000000000000000000122 /* DictationStateMachine.swift in Sources */,
@@ -861,6 +868,7 @@
 				C0000000000000000000014E /* Migrations.swift in Sources */,
 				C00000000000000000000150 /* PersistenceRecords.swift in Sources */,
 				C00000000000000000000152 /* HistoryStoring.swift in Sources */,
+				C00000000000000000000A69 /* HistoryDeletion.swift in Sources */,
 				C00000000000000000000154 /* Transcript.swift in Sources */,
 				C00000000000000000000156 /* TranscriptListItem.swift in Sources */,
 				C00000000000000000000158 /* VocabularyEntry.swift in Sources */,

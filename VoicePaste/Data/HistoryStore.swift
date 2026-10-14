@@ -22,6 +22,7 @@ public actor HistoryStore: HistoryStoring {
     // itself is `Sendable` and this is a `let` set once at `init`.
     private nonisolated let dbPool: DatabasePool
     private let historyEnabled: @Sendable () -> Bool
+    private let onDeleted: @Sendable (HistoryDeletion) async -> Void
 
     /// Lightweight sidebar columns, in `TranscriptListItem.init(row:)` order.
     /// Never includes `rawText`/`text` (`data-model.md` "Загрузка истории").
@@ -30,9 +31,14 @@ public actor HistoryStore: HistoryStoring {
         "durationMilliseconds", "language", "preview", "status", "insertionOutcome",
     ]
 
-    public init(dbPool: DatabasePool, historyEnabled: @escaping @Sendable () -> Bool = { true }) {
+    public init(
+        dbPool: DatabasePool,
+        historyEnabled: @escaping @Sendable () -> Bool = { true },
+        onDeleted: @escaping @Sendable (HistoryDeletion) async -> Void = { _ in }
+    ) {
         self.dbPool = dbPool
         self.historyEnabled = historyEnabled
+        self.onDeleted = onDeleted
     }
 
     // MARK: - Reading (keyset pagination, DM-002/DM-003 "Загрузка истории")
@@ -203,6 +209,7 @@ public actor HistoryStore: HistoryStoring {
             try db.execute(sql: "DELETE FROM transcripts WHERE id = ?", arguments: [id.uuidString])
             guard db.changesCount > 0 else { throw HistoryError.notFound }
         }
+        await onDeleted(.record(id))
     }
 
     public func clearAll() async throws {
@@ -212,6 +219,7 @@ public actor HistoryStore: HistoryStoring {
             // inside this single confirmed transaction (`data-model.md`).
             try db.execute(sql: "DELETE FROM transcripts")
         }
+        await onDeleted(.all)
     }
 
     // MARK: - Statistics

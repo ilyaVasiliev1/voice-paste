@@ -68,7 +68,16 @@ struct VoicePasteApp: App {
                 // `HistoryError.historyDisabled`. `settings.isHistoryEnabledNow`
                 // is a `@Sendable` closure over a lock-protected mirror, safe to
                 // call from `HistoryStore`'s own actor isolation.
-                store = HistoryStore(dbPool: pool, historyEnabled: settings.isHistoryEnabledNow)
+                store = HistoryStore(
+                    dbPool: pool,
+                    historyEnabled: settings.isHistoryEnabledNow,
+                    onDeleted: EvaluationAudioCleanup.hook(
+                        for: EvaluationAudioStore.makeDefault(),
+                        log: { event, detail in
+                            Task { await DiagnosticLog.shared.log(event, detail: detail) }
+                        }
+                    )
+                )
                 queueStore = ImportQueueStore(dbPool: pool)
                 lectureStore = LectureStore(dbPool: pool)
                 persistenceFailureMessage = nil
