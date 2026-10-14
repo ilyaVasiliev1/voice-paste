@@ -53,7 +53,9 @@ nonisolated enum DesignTokens {
         /// сжался, новое появляется после него. Иначе крестик остаётся в сжавшейся панели.
         static let contentOutDuration: Double = 0.07
         static let contentInDuration: Double = 0.16
-        static let contentInDelay: Double = 0.08
+        /// Пауза между уходом старого и приходом нового: капсула успевает дорасти,
+        /// и новое содержимое не режется её краем на ходу.
+        static let contentGap: Double = 0.10
 
         /// «Уменьшить движение»: любое движение заменяется коротким растворением.
         static func respecting(_ animation: Animation, reduceMotion: Bool) -> Animation {

@@ -17,18 +17,10 @@ enum HUDMotion {
         reduceMotion ? nil : DesignTokens.Motion.surface
     }
 
-    /// Основа для переходов содержимого: сами длительности — у перехода.
-    static let content = DesignTokens.Motion.fade
-
-    static func contentTransition(reduceMotion: Bool) -> AnyTransition {
+    /// Содержимое уходит быстро и приходит чуть медленнее; обе — прозрачность.
+    static func content(isLeaving: Bool) -> Animation {
         let scale = DesignTokens.Motion.timeScale
-        let out = Animation.easeOut(duration: DesignTokens.Motion.contentOutDuration * scale)
-        let into = Animation.easeOut(duration: DesignTokens.Motion.contentInDuration * scale)
-            .delay(DesignTokens.Motion.contentInDelay * scale)
-        return .asymmetric(
-            insertion: .opacity.animation(into),
-            removal: .opacity.animation(out)
-        )
+        return .easeOut(duration: (isLeaving ? DesignTokens.Motion.contentOutDuration : DesignTokens.Motion.contentInDuration) * scale)
     }
 }
 
@@ -87,18 +79,24 @@ struct HUDContentView: View {
             // black drop shadow looked like a horizontal stripe under the panel
             // on dark windows, so it is intentionally omitted.
             .overlay {
-                content(for: state)
-                    .id(state.kind)
-                    .transition(HUDMotion.contentTransition(reduceMotion: reduceMotion))
-                    .frame(width: layout.width, height: layout.height)
-                    // Уходящее содержимое шире сжимающейся капсулы: без обрезки торчит за контур.
-                    .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius, style: .continuous))
-                    // Состояния одной ширины раньше менялись жёстко: `layout` у них равен.
-                    .animation(HUDMotion.content, value: state.kind)
+                // Уходящее содержимое рисуется в своём прежнем размере: капсула
+                // сжимается вокруг него, а не перекраивает его на ходу.
+                let shown = stateHolder.departing ?? state
+                let shownLayout = HUDLayout.forState(shown)
+                content(for: shown)
+                    // Смена ветки мгновенна: порядок «старое ушло, потом новое» держит
+                    // прозрачность, а неявное растворение SwiftUI наложило бы их друг на друга.
+                    .id(shown.kind)
+                    .transition(.identity)
+                    .frame(width: shownLayout.width, height: shownLayout.height)
+                    .opacity(stateHolder.contentOpacity)
+                    .animation(HUDMotion.content(isLeaving: stateHolder.contentOpacity == 0), value: stateHolder.contentOpacity)
             }
             .overlay(alignment: .bottom) {
                 autoDismissProgress(for: state, cornerRadius: layout.cornerRadius)
             }
+            // Всё, что рисуется в капсуле, обрезано её контуром, пока она меняет размер.
+            .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius, style: .continuous))
             .onHover { stateHolder.actions.onInteractionChanged($0) }
             // Размер капсулы и размер её содержимого двигаются вместе, а при
             // Reduce Motion — оба не двигаются; растворение у содержимого своё.
@@ -480,9 +478,51 @@ struct HUDActions {
 
 @MainActor
 final class HUDStateHolder: ObservableObject {
-    @Published var state: HUDState = .hidden
+    @Published var state: HUDState = .hidden {
+        didSet { swapContent(from: oldValue) }
+    }
     @Published var dismissProgress: CGFloat = 0
+    /// Пока старое содержимое уходит, оно остаётся нарисованным здесь; `nil` — рисуется живое состояние.
+    @Published private(set) var departing: HUDState?
+    @Published private(set) var contentOpacity = 1.0
     var actions = HUDActions()
+    private let swapOutDelay: Duration
+    private let swapGap: Duration
+    private var swapTask: Task<Void, Never>?
+
+    init(
+        swapOutDelay: Duration = .seconds(DesignTokens.Motion.contentOutDuration * DesignTokens.Motion.timeScale),
+        swapGap: Duration = .seconds(DesignTokens.Motion.contentGap * DesignTokens.Motion.timeScale)
+    ) {
+        self.swapOutDelay = swapOutDelay
+        self.swapGap = swapGap
+    }
+
+    /// Смена вида: старое гаснет, затем появляется новое. Появление из пустоты,
+    /// уход в пустоту и такты внутри одного вида в порядок не входят.
+    ///
+    /// Ожидание — сном, а не завершением анимации: завершение приходит только
+    /// от отрисованного вида, а порядок должен держаться и без него.
+    private func swapContent(from old: HUDState) {
+        guard old.kind != state.kind else { return }
+        swapTask?.cancel()
+        guard old.kind != .hidden, state.kind != .hidden else {
+            departing = nil
+            contentOpacity = 1
+            return
+        }
+        departing = departing ?? old
+        contentOpacity = 0
+        swapTask = Task { [swapOutDelay, swapGap] in
+            try? await Task.sleep(for: swapOutDelay)
+            guard !Task.isCancelled else { return }
+            // Новое уже стоит на месте, но под нулевой прозрачностью: капсула пуста.
+            departing = nil
+            try? await Task.sleep(for: swapGap)
+            guard !Task.isCancelled else { return }
+            contentOpacity = 1
+        }
+    }
     /// Только для снимков движения: система «Уменьшить движение» из теста не включается.
     var reduceMotionOverride: Bool?
 }

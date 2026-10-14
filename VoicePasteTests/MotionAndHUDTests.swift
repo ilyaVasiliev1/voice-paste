@@ -45,6 +45,10 @@ final class HUDMotionTests: XCTestCase {
     func test_oldContentLeavesBeforeTheCapsuleHasShrunkMuch() {
         let motion = DesignTokens.Motion.self
         XCTAssertLessThan(motion.contentOutDuration, motion.surfaceDuration / 2, "крестик пережил сжатие капсулы")
+        XCTAssertLessThan(
+            motion.contentOutDuration + motion.contentGap + motion.contentInDuration, 0.4,
+            "смена содержимого растянулась"
+        )
     }
 
     func test_surfaceIsQuick() {
@@ -79,6 +83,18 @@ final class HUDContentSwapTests: XCTestCase {
         XCTAssertEqual(holder.contentOpacity, 0)
         let finished = await eventually { holder.departing == nil && holder.contentOpacity == 1 }
         XCTAssertTrue(finished, "новое содержимое так и не появилось")
+    }
+
+    func test_betweenOldAndNew_theCapsuleIsBlank_soTheyNeverOverlap() async {
+        let holder = HUDStateHolder(swapOutDelay: .milliseconds(30), swapGap: .milliseconds(150))
+        holder.state = .recording(elapsed: 1, level: 0.2)
+
+        holder.state = .processing
+
+        let blank = await eventually { holder.departing == nil && holder.contentOpacity == 0 }
+        XCTAssertTrue(blank, "старое и новое содержимое лежат друг на друге")
+        let shown = await eventually { holder.contentOpacity == 1 }
+        XCTAssertTrue(shown)
     }
 
     func test_tickInsideOneKind_doesNotSwap() {
