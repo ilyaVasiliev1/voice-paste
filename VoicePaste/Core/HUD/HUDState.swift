@@ -78,6 +78,14 @@ public nonisolated enum HUDState: Equatable, Sendable {
         }
     }
 
+    /// Полоска автозакрытия видна только у этих состояний; остальным 30 Гц не нужны.
+    public var showsDismissProgress: Bool {
+        switch self {
+        case .cancelledWithUndo, .importFinished: return true
+        default: return false
+        }
+    }
+
     /// Case identity ignoring associated values (elapsed/level change many
     /// times per second while `.recording` — `HUDWindowController` uses this
     /// to tell "same on-screen layout, new content" apart from "different

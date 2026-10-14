@@ -7,6 +7,8 @@ import SwiftUI
 struct LectureListColumn: View {
     @EnvironmentObject private var appState: AppState
     @State private var renaming: Lecture?
+    /// Нажатая строка подсвечивается сразу, а не после выборки лекции.
+    @State private var pendingSelection: Item?
 
     enum Item: Hashable {
         case current
@@ -49,11 +51,18 @@ struct LectureListColumn: View {
 
     private var selection: Binding<Item?> {
         Binding(
-            get: { appState.openedLecture.map { .saved($0.lecture.id) } ?? .current },
+            get: { pendingSelection ?? appState.openedLecture.map { .saved($0.lecture.id) } ?? .current },
             set: { item in
                 switch item {
-                case .current: appState.closeOpenedLecture()
-                case .saved(let id): Task { await appState.openSavedLecture(id: id) }
+                case .current:
+                    pendingSelection = nil
+                    appState.closeOpenedLecture()
+                case .saved(let id):
+                    pendingSelection = .saved(id)
+                    Task {
+                        await appState.openSavedLecture(id: id)
+                        if pendingSelection == .saved(id) { pendingSelection = nil }
+                    }
                 case nil: break
                 }
             }
@@ -66,11 +75,6 @@ struct LectureListColumn: View {
                 .foregroundStyle(appState.isLectureRecording ? Color.red : Color.accentColor)
             Text(appState.isLectureRecording ? "lecture.recordingNow" : "lecture.new")
             Spacer(minLength: 0)
-            if appState.isLectureRecording {
-                Text(LectureClock.text(appState.lectureElapsedSeconds))
-                    .font(.callout.monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
         }
         .padding(.vertical, DesignTokens.Spacing.xs)
     }
@@ -84,7 +88,7 @@ private struct SavedLectureRow: View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
             Text(lecture.title)
                 .lineLimit(2)
-            Text(lecture.createdAtDate.formatted(date: .abbreviated, time: .shortened))
+            Text(DisplayFormat.recordDate(lecture.createdAtDate))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Text(LectureSummary.text(for: lecture))
@@ -111,7 +115,6 @@ struct LectureView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            Divider()
             content
         }
         .toolbar { toolbar }
@@ -128,7 +131,7 @@ struct LectureView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, DesignTokens.detailPanePadding)
-        .padding(.vertical, DesignTokens.Spacing.lg)
+        .padding(.vertical, DesignTokens.detailPanePadding)
     }
 
     private var title: String {
@@ -152,7 +155,7 @@ struct LectureView: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(Text("lecture.elapsed"))
             } else if let opened = appState.openedLecture {
-                Text(opened.lecture.createdAtDate.formatted(date: .long, time: .shortened))
+                Text(DisplayFormat.recordDate(opened.lecture.createdAtDate))
                 Text(LectureSummary.text(for: opened.lecture))
             }
 
@@ -174,6 +177,8 @@ struct LectureView: View {
         }
         .font(.callout)
         .foregroundStyle(.secondary)
+        // Высота второй строки не зависит от состояния: заголовок и текст не «дышат».
+        .frame(minHeight: 24)
     }
 
     // MARK: - Панель инструментов
@@ -264,6 +269,9 @@ struct LectureView: View {
                 Label(startStopTitle, systemImage: appState.isLectureRecording ? "stop.fill" : "waveform")
                     .labelStyle(.titleAndIcon)
             }
+            // Главное действие раздела — единственное акцентное; «Остановить» красное.
+            .buttonStyle(.borderedProminent)
+            .tint(appState.isLectureRecording ? .red : .accentColor)
             .keyboardShortcut("l", modifiers: [.command, .shift])
             .accessibilityIdentifier("lecture-toggle")
         }
@@ -363,9 +371,10 @@ struct LectureView: View {
                 // иначе за говорящим придётся гоняться руками. У открытой на
                 // чтение лекции прокрутка остаётся за человеком.
                 guard followsTail, appState.isLectureRecording else { return }
-                // Плавно, а не прыжком: текст подъезжает, пока его читают.
+                // Пружина, а не кривая: новый кусок текста приходит раньше конца
+                // прежней прокрутки и перенацеливает её со скоростью, не с нуля.
                 // При включённом «уменьшить движение» — без анимации.
-                withAnimation(reduceMotion ? nil : .easeOut(duration: DesignTokens.Motion.deliberate)) {
+                withAnimation(reduceMotion ? nil : DesignTokens.Motion.scroll) {
                     proxy.scrollTo("live", anchor: .bottom)
                 }
             }

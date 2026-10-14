@@ -615,6 +615,67 @@ VoicePaste) SHALL считаться не текстовым назначени�
 - **THEN** хвост от конца последнего выданного окна за вычетом перекрытия и до
   конца записи выдаётся одним отрезком
 
+### Requirement: Плашка уходит растворением и прогрета до первого показа
+<!-- id: HUDWindowController.exit -->
+<!-- entities: HUDWindowController, HUDState, DesignTokens -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/Core/HUD/HUDWindowController.swift, VoicePaste/Core/HUD/HUDState.swift, VoicePaste/UI/DesignTokens.swift -->
+<!-- test_macos: VoicePasteTests/MotionAndHUDTests.swift:test_hide_fadesOutInsteadOfCuttingOff_thenResetsForTheNextShow -->
+
+Плашка SHALL исчезать растворением за `Motion.exit` (120 мс), а не обрывом; новый
+показ посреди выхода отменяет выход, и панель снова непрозрачна. Через 2 с после
+запуска панель SHALL один раз показываться невидимо (прозрачной, не ловя мышь) и
+убираться в тот же ход главного потока, чтобы первый показ сессии не платил за
+создание поверхности; идущий показ прогрев не трогает. Цикл обновления полоски
+автозакрытия (30 Гц) SHALL идти только у состояний, где полоска видна
+(`cancelledWithUndo`, `importFinished`); остальным достаточно одного ожидания.
+Смена вида плашки SHALL идти по порядку: старое содержимое остаётся нарисованным в
+своём прежнем размере и гаснет за 70 мс, капсула без содержимого плавно (пружина без
+отскока, 280 мс) меняет размер, затем через паузу в 100 мс новое содержимое проявляется
+за 160 мс. Старое и новое содержимое не накладываются; всё, что рисуется в капсуле,
+обрезано её контуром. Появление из пустоты, уход в пустоту и такты внутри одного вида
+порядка не запускают. При «Уменьшить движение» размер капсулы меняется сразу, а
+содержимое меняется по тому же порядку растворением.
+
+#### Scenario: скрытие
+<!-- test: MotionAndHUDTests.test_hide_fadesOutInsteadOfCuttingOff_thenResetsForTheNextShow -->
+- **WHEN** плашка скрывается
+- **THEN** панель остаётся видимой на время растворения, затем убирается с непрозрачностью 1
+
+#### Scenario: показ посреди выхода
+<!-- test: MotionAndHUDTests.test_presentDuringExit_cancelsTheExit -->
+- **WHEN** во время растворения приходит новое состояние
+- **THEN** панель остаётся на экране непрозрачной
+
+#### Scenario: прогрев
+<!-- test: MotionAndHUDTests.test_prewarm_leavesNothingOnScreen_andTheNextShowIsOpaque -->
+- **WHEN** выполнен прогрев
+- **THEN** на экране ничего нет, следующий показ непрозрачен
+
+#### Scenario: смена вида — старое уходит первым
+<!-- test: HUDContentSwapTests.test_kindChange_keepsTheOldContentDrawn_andHidesIt -->
+- **WHEN** состояние плашки меняется на другой вид
+- **THEN** старое содержимое остаётся нарисованным и гаснет, затем появляется новое
+
+#### Scenario: между старым и новым — пустая капсула
+<!-- test: HUDContentSwapTests.test_betweenOldAndNew_theCapsuleIsBlank_soTheyNeverOverlap -->
+- **WHEN** старое содержимое ушло, а новое ещё не проявилось
+- **THEN** ничего из содержимого не нарисовано
+
+#### Scenario: такт записи не запускает смену
+<!-- test: HUDContentSwapTests.test_tickInsideOneKind_doesNotSwap -->
+- **WHEN** меняются время и уровень записи
+- **THEN** смены содержимого нет
+
+#### Scenario: полоска автозакрытия
+<!-- test: MotionAndHUDTests.test_onlyUndoAndImportResult_showTheDismissBar -->
+- **WHEN** состояние — отмена с возвратом или результат импорта
+- **THEN** полоска видна, у остальных состояний её нет
+
+> Last verified: 2026-10-14
+
+---
+
 > Last verified: 2026-09-20
 
 ---

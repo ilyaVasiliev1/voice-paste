@@ -2,12 +2,35 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
+/// Движение плашки. Контейнер меняет размер плавной пружиной без отскока;
+/// содержимое меняется прозрачностью в порядке «старое ушло, потом новое»,
+/// и всё содержимое обрезано контуром капсулы. При «Уменьшить движение»
+/// размер встаёт на место сразу, а прозрачность остаётся.
+enum HUDMotion {
+    /// Появление и уход капсулы целиком, а также смена её размера.
+    static func surface(reduceMotion: Bool) -> Animation {
+        reduceMotion ? DesignTokens.Motion.fade : DesignTokens.Motion.surface
+    }
+
+    /// Геометрия внутри капсулы: `nil` — размер меняется без движения.
+    static func size(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : DesignTokens.Motion.surface
+    }
+
+    /// Содержимое уходит быстро и приходит чуть медленнее; обе — прозрачность.
+    static func content(isLeaving: Bool) -> Animation {
+        let scale = DesignTokens.Motion.timeScale
+        return .easeOut(duration: (isLeaving ? DesignTokens.Motion.contentOutDuration : DesignTokens.Motion.contentInDuration) * scale)
+    }
+}
+
 /// A single composited HUD surface. The NSPanel is deliberately fixed at the
 /// largest required size; only this inner shape morphs. That avoids an AppKit
 /// window resize racing SwiftUI layout during a state change.
 struct HUDContentView: View {
     @ObservedObject var stateHolder: HUDStateHolder
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
+    private var reduceMotion: Bool { stateHolder.reduceMotionOverride ?? systemReduceMotion }
     // The drop target is intentionally an inner affordance, never a second
     // panel or a border around the whole HUD. It tells the user exactly
     // where to release a file without changing the persistent surface.
@@ -34,7 +57,7 @@ struct HUDContentView: View {
         }
         .frame(width: HUDLayout.hostWidth, height: HUDLayout.hostHeight, alignment: .bottom)
         .compositingGroup()
-        .animation(reduceMotion ? nil : .easeInOut(duration: DesignTokens.Motion.standard), value: layout)  // TOK-motion.surface
+        .animation(HUDMotion.surface(reduceMotion: reduceMotion), value: layout)
     }
 
     /// Fixed-geometry capsule used by every state whose child controls have a
@@ -56,13 +79,28 @@ struct HUDContentView: View {
             // black drop shadow looked like a horizontal stripe under the panel
             // on dark windows, so it is intentionally omitted.
             .overlay {
-                content(for: state)
-                    .frame(width: layout.width, height: layout.height)
+                // Уходящее содержимое рисуется в своём прежнем размере: капсула
+                // сжимается вокруг него, а не перекраивает его на ходу.
+                let shown = stateHolder.departing ?? state
+                let shownLayout = HUDLayout.forState(shown)
+                content(for: shown)
+                    // Смена ветки мгновенна: порядок «старое ушло, потом новое» держит
+                    // прозрачность, а неявное растворение SwiftUI наложило бы их друг на друга.
+                    .id(shown.kind)
+                    .transition(.identity)
+                    .frame(width: shownLayout.width, height: shownLayout.height)
+                    .opacity(stateHolder.contentOpacity)
+                    .animation(HUDMotion.content(isLeaving: stateHolder.contentOpacity == 0), value: stateHolder.contentOpacity)
             }
             .overlay(alignment: .bottom) {
                 autoDismissProgress(for: state, cornerRadius: layout.cornerRadius)
             }
+            // Всё, что рисуется в капсуле, обрезано её контуром, пока она меняет размер.
+            .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius, style: .continuous))
             .onHover { stateHolder.actions.onInteractionChanged($0) }
+            // Размер капсулы и размер её содержимого двигаются вместе, а при
+            // Reduce Motion — оба не двигаются; растворение у содержимого своё.
+            .animation(HUDMotion.size(reduceMotion: reduceMotion), value: layout)
     }
 
     /// Content-sized plaque: the capsule wraps the message (single line) plus a
@@ -85,6 +123,7 @@ struct HUDContentView: View {
                     }
             }
             .onHover { stateHolder.actions.onInteractionChanged($0) }
+            .animation(HUDMotion.size(reduceMotion: reduceMotion), value: message)
     }
 
     @ViewBuilder
@@ -250,7 +289,7 @@ struct HUDContentView: View {
             .contentShape(RoundedRectangle(cornerRadius: DesignTokens.DropZone.cornerRadius, style: .continuous))
         }
         .padding(HUDLayout.contentInset)
-        .animation(reduceMotion ? nil : .easeOut(duration: DesignTokens.Motion.quick), value: isImportTargeted)  // TOK-motion.drop-target
+        .animation(reduceMotion ? nil : DesignTokens.Motion.fade, value: isImportTargeted)
         .onDrop(of: [.fileURL], isTargeted: $isImportTargeted, perform: loadDroppedFile)
     }
 
@@ -324,8 +363,7 @@ struct HUDContentView: View {
 
     @ViewBuilder
     private func autoDismissProgress(for state: HUDState, cornerRadius: CGFloat) -> some View {
-        switch state {
-        case .cancelledWithUndo, .importFinished:
+        if state.showsDismissProgress {
             GeometryReader { proxy in
                 Rectangle()
                     .fill(.primary.opacity(0.35))
@@ -334,8 +372,6 @@ struct HUDContentView: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .allowsHitTesting(false)
-        default:
-            EmptyView()
         }
     }
 }
@@ -360,7 +396,7 @@ private struct HUDIconButton: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            withAnimation(.easeOut(duration: DesignTokens.Motion.quick)) { isHovered = hovering }  // TOK-motion.hover
+            withAnimation(DesignTokens.Motion.fade) { isHovered = hovering }
         }
         .accessibilityLabel(Text(labelKey))
     }
@@ -442,7 +478,51 @@ struct HUDActions {
 
 @MainActor
 final class HUDStateHolder: ObservableObject {
-    @Published var state: HUDState = .hidden
+    @Published var state: HUDState = .hidden {
+        didSet { swapContent(from: oldValue) }
+    }
     @Published var dismissProgress: CGFloat = 0
+    /// Пока старое содержимое уходит, оно остаётся нарисованным здесь; `nil` — рисуется живое состояние.
+    @Published private(set) var departing: HUDState?
+    @Published private(set) var contentOpacity = 1.0
     var actions = HUDActions()
+    private let swapOutDelay: Duration
+    private let swapGap: Duration
+    private var swapTask: Task<Void, Never>?
+
+    init(
+        swapOutDelay: Duration = .seconds(DesignTokens.Motion.contentOutDuration * DesignTokens.Motion.timeScale),
+        swapGap: Duration = .seconds(DesignTokens.Motion.contentGap * DesignTokens.Motion.timeScale)
+    ) {
+        self.swapOutDelay = swapOutDelay
+        self.swapGap = swapGap
+    }
+
+    /// Смена вида: старое гаснет, затем появляется новое. Появление из пустоты,
+    /// уход в пустоту и такты внутри одного вида в порядок не входят.
+    ///
+    /// Ожидание — сном, а не завершением анимации: завершение приходит только
+    /// от отрисованного вида, а порядок должен держаться и без него.
+    private func swapContent(from old: HUDState) {
+        guard old.kind != state.kind else { return }
+        swapTask?.cancel()
+        guard old.kind != .hidden, state.kind != .hidden else {
+            departing = nil
+            contentOpacity = 1
+            return
+        }
+        departing = departing ?? old
+        contentOpacity = 0
+        swapTask = Task { [swapOutDelay, swapGap] in
+            try? await Task.sleep(for: swapOutDelay)
+            guard !Task.isCancelled else { return }
+            // Новое уже стоит на месте, но под нулевой прозрачностью: капсула пуста.
+            departing = nil
+            try? await Task.sleep(for: swapGap)
+            guard !Task.isCancelled else { return }
+            contentOpacity = 1
+        }
+    }
+    /// Только для снимков движения: система «Уменьшить движение» из теста не включается.
+    var reduceMotionOverride: Bool?
 }

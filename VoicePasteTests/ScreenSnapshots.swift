@@ -131,6 +131,74 @@ final class ScreenSnapshots: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: png.path), "наблюдатель не снял окно \(name)")
     }
 
+    /// Кадры перехода плашки. Движение растягивается переменной
+    /// `TEST_RUNNER_VOICEPASTE_MOTION_SLOWDOWN`, иначе 200 мс не поймать
+    /// внешним наблюдателем. Кадр за кадром: каждый ждёт, пока наблюдатель снимет окно.
+    func test_hudTransitionFrames() async throws {
+        try skipUnlessRequested()
+        let cases: [(String, HUDState, HUDState, Bool?)] = [
+            ("morph", .recording(elapsed: 3, level: 0.4), .processing, nil),
+            ("samewidth", .copied, .processing, nil),
+            ("expand", .recording(elapsed: 3, level: 0.4), .importIdle, nil),
+            ("collapse", .importIdle, .importing, nil),
+            ("reduce-morph", .recording(elapsed: 3, level: 0.4), .processing, true),
+            ("reduce-expand", .recording(elapsed: 3, level: 0.4), .importIdle, true),
+        ]
+        try FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
+        let scale = DesignTokens.Motion.timeScale
+        for (name, from, to, reduce) in cases {
+            let hud = HUDWindowController()
+            hud.reduceMotionOverride = reduce
+            hud.present(from)
+            try await Task.sleep(for: .seconds(0.4 * scale + 0.3))
+            hud.present(to)
+            for index in 0..<10 {
+                let frame = "hud-\(name)-\(String(format: "%02d", index))"
+                let png = outDir.appendingPathComponent("\(frame).png")
+                try? FileManager.default.removeItem(at: png)
+                try String(hud.panelWindowNumber).write(
+                    to: outDir.appendingPathComponent("\(frame).wid"), atomically: true, encoding: .utf8
+                )
+                for _ in 0..<60 where !FileManager.default.fileExists(atPath: png.path) {
+                    try await Task.sleep(for: .milliseconds(50))
+                }
+            }
+            hud.hide()
+            try await Task.sleep(for: .milliseconds(400))
+        }
+    }
+
+    /// Плашка на экране в реальном времени: посмотреть движение глазами.
+    /// Запуск: `touch ~/Library/Caches/VoicePaste/run-benchmark` и
+    /// `zsh scripts/test-safely.sh -only-testing:VoicePasteTests/ScreenSnapshots/test_hudLiveDemo`.
+    func test_hudLiveDemo() async throws {
+        try skipUnlessRequested()
+        // Тестовый хост — приложение без значка: без этого окна могут не выводиться на экран.
+        NSApp.setActivationPolicy(.accessory)
+        let hud = HUDWindowController()
+        let script: [(HUDState, Double)] = [
+            (.recording(elapsed: 2, level: 0.5), 1.4), (.processing, 1.0), (.inserted, 1.2),
+            (.recording(elapsed: 5, level: 0.3), 1.2), (.processing, 0.9), (.copied, 1.2),
+            (.recording(elapsed: 8, level: 0.6), 1.0), (.error(message: "Не удалось распознать речь"), 1.6),
+            (.importIdle, 1.6), (.importing, 1.2), (.importOpened, 1.4),
+            (.recording(elapsed: 1, level: 0.4), 0.5), (.processing, 0.35), (.recording(elapsed: 2, level: 0.4), 0.5),
+        ]
+        var logged = false
+        for (state, seconds) in script {
+            hud.present(state)
+            if !logged {
+                logged = true
+                let windows = NSApp.windows.map {
+                    "\($0.className) frame=\($0.frame) visible=\($0.isVisible) onActiveSpace=\($0.isOnActiveSpace) alpha=\($0.alphaValue) level=\($0.level.rawValue)"
+                }
+                print("DEMO policy=\(NSApp.activationPolicy().rawValue) screens=\(NSScreen.screens.map(\.frame)) windows=\(windows)")
+            }
+            try await Task.sleep(for: .seconds(seconds))
+        }
+        hud.hide()
+        try await Task.sleep(for: .milliseconds(600))
+    }
+
     private func skipUnlessRequested() throws {
         let marker = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("VoicePaste/run-benchmark")

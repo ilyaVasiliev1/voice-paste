@@ -180,8 +180,10 @@
 переоткрытия окна.
 
 #### Scenario: сохранена новая расшифровка
+<!-- test: HistoryListModelTests.test_changeTick_keepsEveryLoadedRow -->
 - **WHEN** во время открытого окна истории сохранена запись
-- **THEN** приходит сигнал и список перезапрашивается с первой страницы
+- **THEN** приходит сигнал и список перезапрашивается с первой страницы до прежней глубины:
+  уже подгруженные строки не исчезают, прокрутка не возвращается к началу
 
 #### Scenario: открыт поиск
 - **WHEN** сигнал пришёл, когда в строке поиска есть запрос
@@ -308,17 +310,274 @@
 <!-- platforms: macos -->
 <!-- enforced_macos: VoicePaste/UI/History/HistoryView.swift, VoicePaste/UI/History/DetailEditor.swift -->
 
-Ввод в строку поиска SHALL откладываться на 250 мс с отменой устаревшего
-запроса; правка текста в детали сохраняется через 500 мс после последнего
-нажатия. Нажатие Enter не запускает распознавание.
+Ввод в строку поиска SHALL откладываться на 80 мс с отменой устаревшего
+запроса (запрос к 2,4 тыс. записей — около 2 мс, замер 14.10.2026; потолок
+задержки — 100 мс); правка текста в детали сохраняется через 500 мс после
+последнего нажатия. Нажатие Enter не запускает распознавание.
 
 #### Scenario: быстрый набор запроса
+<!-- test: HistoryListModelTests.test_searchBurst_sendsOnlyTheLastQuery -->
 - **WHEN** пользователь печатает без пауз
 - **THEN** в хранилище уходит только последний запрос
+
+#### Scenario: задержка поиска короткая
+<!-- test: HistoryListModelTests.test_searchDebounce_isShortEnoughToFeelInstant -->
+- **WHEN** запрос поиска ожидает отправки
+- **THEN** ожидание не больше 100 мс
 
 #### Scenario: правка текста записи
 - **WHEN** текст изменён и 500 мс не было новых изменений
 - **THEN** правка сохранена, превью и отметка изменения обновлены
+
+---
+
+### Requirement: Окно истории не показывает «пусто» до первой выборки
+<!-- id: HistoryListModel.isLoaded -->
+<!-- entities: HistoryListModel, HistoryListColumn -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/UI/History/HistoryListModel.swift, VoicePaste/UI/History/HistoryView.swift -->
+<!-- test_macos: VoicePasteTests/HistoryListModelTests.swift:test_beforeTheFirstPage_listIsNotLoaded_soEmptyStateIsNotShown -->
+
+Пока первая выборка не завершилась, модель SHALL считаться незагруженной, а список
+показывать заглушку строк (не сразу, а через 150 мс, чтобы короткая выборка не
+давала вспышки). Состояние «Нет записей» допустимо только после завершения
+выборки с пустым результатом.
+
+#### Scenario: выборка ещё идёт
+<!-- test: HistoryListModelTests.test_beforeTheFirstPage_listIsNotLoaded_soEmptyStateIsNotShown -->
+- **WHEN** окно открыто, а первая страница ещё не пришла
+- **THEN** `isLoaded` ложно и «Нет записей» не показано
+
+#### Scenario: база пуста
+<!-- test: HistoryListModelTests.test_emptyStore_becomesLoadedWithNoItems -->
+- **WHEN** первая выборка завершилась без записей
+- **THEN** `isLoaded` истинно, список пуст, показано «Нет записей»
+
+---
+
+### Requirement: Отказ чтения истории виден, а не выдаётся за «пусто»
+<!-- id: HistoryListModel.didFailToLoad -->
+<!-- entities: HistoryListModel, HistoryListColumn, HistoryDetailColumn -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/UI/History/HistoryListModel.swift, VoicePaste/UI/History/HistoryView.swift -->
+<!-- test_macos: VoicePasteTests/HistoryListModelTests.swift:test_failedFirstLoad_isFailure_notAnEmptyHistory -->
+
+Когда выборка списка не удалась, модель SHALL поднять признак отказа, а при пустом списке
+показать состояние «История не прочиталась» с действием «Повторить», а не «Нет записей».
+Уже показанные строки при сбое обновления остаются. Когда выбранная запись не прочиталась,
+деталь SHALL показать «Не удалось открыть запись», а не «Выберите запись»; признак сбрасывается
+следующим выбором.
+
+#### Scenario: первая выборка не удалась
+<!-- test: HistoryListModelTests.test_failedFirstLoad_isFailure_notAnEmptyHistory -->
+- **WHEN** первая выборка завершилась ошибкой
+- **THEN** `didFailToLoad` истинно, `isLoaded` истинно, список пуст
+
+#### Scenario: повтор после отказа
+<!-- test: HistoryListModelTests.test_retryAfterFailure_loadsTheList_andClearsTheFailure -->
+- **WHEN** выполнен повтор и база ответила
+- **THEN** список загружен, признак отказа снят
+
+#### Scenario: сбой обновления
+<!-- test: HistoryListModelTests.test_failedRefresh_keepsTheRowsAlreadyShown -->
+- **WHEN** тик обновления закончился ошибкой при показанном списке
+- **THEN** строки остаются
+
+#### Scenario: запись не открылась
+<!-- test: HistoryListModelTests.test_failedDetail_isShown_andClearedByTheNextSelection -->
+- **WHEN** чтение выбранной записи завершилось ошибкой
+- **THEN** `didFailToOpenDetail` истинно, а следующий выбор его снимает
+
+---
+
+### Requirement: Дата записи — одна форма на всех экранах
+<!-- id: DisplayFormat.recordDate -->
+<!-- entities: DisplayFormat, HistoryRow, SavedLectureRow, DetailEditor -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/UI/DesignTokens.swift, VoicePaste/UI/History/HistoryView.swift, VoicePaste/UI/Lecture/LectureView.swift, VoicePaste/UI/History/DetailEditor.swift -->
+<!-- test_macos: VoicePasteTests/DisplayFormatTests.swift:test_today_isTodayWithTime -->
+
+Дата записи или лекции в списках и шапках SHALL писаться одной формой: сегодня и вчера — словом
+со временем («Сегодня, 9:05»), в текущем году — днём и месяцем со временем («3 авг., 17:16»),
+раньше — с годом и без времени. Язык записи пишется словом («Русский»), а не кодом.
+
+#### Scenario: сегодня
+<!-- test: DisplayFormatTests.test_today_isTodayWithTime -->
+- **WHEN** запись сделана сегодня
+- **THEN** «Сегодня» и время
+
+#### Scenario: вчера
+<!-- test: DisplayFormatTests.test_yesterday_isYesterdayWithTime -->
+- **WHEN** запись сделана вчера
+- **THEN** «Вчера» и время
+
+#### Scenario: раньше в этом году
+<!-- test: DisplayFormatTests.test_earlierThisYear_hasNoYear -->
+- **WHEN** запись сделана в этом году, но не вчера и не сегодня
+- **THEN** день, месяц и время без года
+
+#### Scenario: прошлый год
+<!-- test: DisplayFormatTests.test_previousYear_carriesTheYear_butNoTime -->
+- **WHEN** запись сделана в прошлом году
+- **THEN** есть год, времени нет
+
+#### Scenario: язык словом
+<!-- test: DisplayFormatTests.test_languageName_isCapitalisedAndWritten -->
+- **WHEN** у записи язык `ru`
+- **THEN** «Русский»
+
+---
+
+### Requirement: Период статистики показывает итог слов
+<!-- id: PeriodSummaries.track -->
+<!-- entities: PeriodSummaries, StatisticsPeriodList -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/UI/Dashboard/DashboardView.swift -->
+<!-- test_macos: VoicePasteTests/HistoryListModelTests.swift:test_periodSummaries_fillEveryPeriod -->
+
+Каждая строка списка периодов SHALL показывать под названием «Слов: N» и обновляться по сигналу
+изменения истории. Период, для которого чтение не удалось, остаётся без подписи, а не с нулём.
+
+#### Scenario: все периоды
+<!-- test: HistoryListModelTests.test_periodSummaries_fillEveryPeriod -->
+- **WHEN** база отвечает
+- **THEN** итог есть у каждого периода
+
+#### Scenario: отказ базы
+<!-- test: HistoryListModelTests.test_periodSummaries_areAbsent_whenTheStoreFails -->
+- **WHEN** чтение статистики завершилось ошибкой
+- **THEN** подписей нет
+
+---
+
+### Requirement: Подгрузка страницы начинается заранее и не дублируется
+<!-- id: HistoryListModel.loadNextPageIfNeeded -->
+<!-- entities: HistoryListModel, TranscriptCursor -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/UI/History/HistoryListModel.swift -->
+<!-- test_macos: VoicePasteTests/HistoryListModelTests.swift:test_nextPage_isRequestedBeforeTheLastRow_andOnlyOnceForRepeatedAppear -->
+
+Следующая страница SHALL запрашиваться, когда на экране появилась любая из
+последних 20 строк, и не более одного запроса по одному курсору одновременно.
+Страница поиска берётся из поиска, а не из общего списка.
+
+#### Scenario: прокрутка к концу
+<!-- test: HistoryListModelTests.test_nextPage_isRequestedBeforeTheLastRow_andOnlyOnceForRepeatedAppear -->
+- **WHEN** несколько строк из последних 20 появились подряд
+- **THEN** уходит один запрос, строки дописаны один раз
+
+---
+
+### Requirement: Деталь показывает последний выбор
+<!-- id: HistoryListModel.select -->
+<!-- entities: HistoryListModel, Transcript -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/UI/History/HistoryListModel.swift -->
+<!-- test_macos: VoicePasteTests/HistoryListModelTests.swift:test_slowAnswerToEarlierSelection_doesNotReplaceTheLaterOne -->
+
+Ответ на выбор SHALL применяться, только если выбор не изменился: поздний ответ
+на прежнюю запись не заменяет деталь нынешней, предыдущая выборка отменяется.
+
+#### Scenario: быстрая навигация стрелками
+<!-- test: HistoryListModelTests.test_slowAnswerToEarlierSelection_doesNotReplaceTheLaterOne -->
+- **WHEN** выбрана одна запись, а затем другая, и ответ на первую приходит позже
+- **THEN** деталь показывает вторую
+
+---
+
+### Requirement: Удаление убирает строку сразу, отказ возвращает её
+<!-- id: HistoryListModel.delete -->
+<!-- entities: HistoryListModel, HistoryStoring -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/UI/History/HistoryListModel.swift, VoicePaste/UI/History/HistoryView.swift -->
+<!-- test_macos: VoicePasteTests/HistoryListModelTests.swift:test_delete_removesTheRowBeforeTheStoreAnswers -->
+
+Строка SHALL уходить из списка до ответа базы. Если удалена выбранная запись,
+выбор переходит на соседнюю (следующую, иначе предыдущую). Пока база не
+ответила, обновление списка не возвращает удаляемую строку. При отказе строка
+возвращается на прежнее место и показан отказ.
+
+#### Scenario: строка исчезает без ожидания
+<!-- test: HistoryListModelTests.test_delete_removesTheRowBeforeTheStoreAnswers -->
+- **WHEN** вызвано удаление, а база отвечает не сразу
+- **THEN** строки в списке уже нет
+
+#### Scenario: удалена выбранная запись
+<!-- test: HistoryListModelTests.test_deleteOfSelectedRow_selectsTheNeighbour -->
+- **WHEN** удалена выбранная запись
+- **THEN** выбрана следующая
+
+#### Scenario: тик во время удаления
+<!-- test: HistoryListModelTests.test_refreshWhileDeleteIsPending_doesNotBringTheRowBack -->
+- **WHEN** пришёл сигнал обновления, пока удаление не подтверждено
+- **THEN** строка не появляется снова
+
+#### Scenario: база отказала
+<!-- test: HistoryListModelTests.test_failedDelete_returnsTheRowToItsPlace_andSaysSo -->
+- **WHEN** удаление завершилось ошибкой
+- **THEN** строка на прежнем месте, показан отказ
+
+---
+
+### Requirement: Просмотр записи ничего не пишет
+<!-- id: DetailEditModel.userEdited -->
+<!-- entities: DetailEditModel, DetailEditor, HistoryStore -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/UI/History/DetailEditor.swift -->
+<!-- test_macos: VoicePasteTests/HistoryListModelTests.swift:test_openingARecord_writesNothing -->
+
+Запись в базу SHALL порождать только ввод человека, изменивший текст. Открытие
+записи, выбор другой и ввод того же текста не пишут. Текст записи доступен
+редактору с первого кадра. Правка, ожидающая своих 500 мс, не теряется при
+переходе на другую запись; отказ записи виден и не выдаётся за успех.
+
+#### Scenario: запись только открыта
+<!-- test: HistoryListModelTests.test_openingARecord_writesNothing -->
+- **WHEN** запись открыта и ничего не набрано
+- **THEN** `HistoryStoring.edit` не вызывался
+
+#### Scenario: набран тот же текст
+<!-- test: HistoryListModelTests.test_sameTextTyped_writesNothing -->
+- **WHEN** в редактор приходит текст, равный текущему
+- **THEN** `HistoryStoring.edit` не вызывался
+
+#### Scenario: серия правок
+<!-- test: HistoryListModelTests.test_userEdits_areCoalescedIntoOneWrite_andReported -->
+- **WHEN** текст изменён несколько раз подряд
+- **THEN** записан один раз, последний вариант, `rawText` не тронут
+
+#### Scenario: переход на другую запись
+<!-- test: HistoryListModelTests.test_pendingEdit_survivesTheEditorBeingClosed -->
+- **WHEN** правка набрана и редактор закрыт до записи
+- **THEN** правка всё равно записана
+
+#### Scenario: база отказала
+<!-- test: HistoryListModelTests.test_failedSave_isShown_andNotReportedAsSaved -->
+- **WHEN** запись правки завершилась ошибкой
+- **THEN** поднят признак «Правка не сохранена», модель списка не обновлена
+
+---
+
+### Requirement: Статистика не показывает «пусто» до загрузки
+<!-- id: UsageStatsModel.track -->
+<!-- entities: UsageStatsModel, DashboardView -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/UI/Dashboard/DashboardView.swift -->
+<!-- test_macos: VoicePasteTests/HistoryListModelTests.swift:test_usageStats_areLoading_untilTheStoreAnswers -->
+
+До первой выборки статистика SHALL быть «загружается»: показатели и подпись
+скрыты заглушкой, «Здесь появится статистика» не показано. Отказ чтения — отдельное
+состояние, а не пустые данные.
+
+#### Scenario: выборка ещё идёт
+<!-- test: HistoryListModelTests.test_usageStats_areLoading_untilTheStoreAnswers -->
+- **WHEN** экран открыт, а данные не пришли
+- **THEN** `isLoaded` ложно
+
+#### Scenario: база отказала
+<!-- test: HistoryListModelTests.test_usageStatsFailure_isFailure_notEmptyData -->
+- **WHEN** чтение статистики завершилось ошибкой
+- **THEN** `didFailToLoad` истинно, `isLoaded` ложно
 
 ---
 

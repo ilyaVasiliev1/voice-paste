@@ -9,6 +9,7 @@ struct OnboardingView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.dismissWindow) private var dismissWindow
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var step: Step = .purpose
     @State private var accessibilityPollTask: Task<Void, Never>?
     /// `AT-092`/`UI-002`: set when `requestMicrophoneAccess()` returns
@@ -34,6 +35,8 @@ struct OnboardingView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
             stepContent
+                .id(step)
+                .transition(.opacity)
             Spacer()
             HStack {
                 if step != .purpose {
@@ -49,6 +52,7 @@ struct OnboardingView: View {
         }
         .padding(DesignTokens.Spacing.xl)
         .frame(width: 480, height: 360)
+        .animation(DesignTokens.Motion.respecting(DesignTokens.Motion.fade, reduceMotion: reduceMotion), value: step)
         .task { appState.refreshReadiness() }
         // System Settings does not send VoicePaste a dedicated “privacy
         // value changed” notification. Re-check when it becomes active

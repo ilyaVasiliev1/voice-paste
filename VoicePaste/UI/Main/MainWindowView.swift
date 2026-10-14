@@ -70,9 +70,9 @@ struct MainWindowView: View {
     private var listColumn: some View {
         switch section {
         case .lecture: LectureListColumn()
-        case .history: HistoryListColumn(model: history)
+        case .history: HistoryListColumn(model: history, appState: appState)
         case .importQueue: ImportQueueList()
-        case .dashboard: StatisticsPeriodList(period: $period)
+        case .dashboard: StatisticsPeriodList(period: $period, store: appState.historyStore)
         }
     }
 
@@ -82,7 +82,7 @@ struct MainWindowView: View {
         case .lecture: LectureView(recorder: appState.lectureRecorder, settings: appState.settings)
         case .history: HistoryDetailColumn(model: history)
         case .importQueue: ImportQueueView()
-        case .dashboard: DashboardView(period: period)
+        case .dashboard: DashboardView(period: period, appState: appState)
         }
     }
 

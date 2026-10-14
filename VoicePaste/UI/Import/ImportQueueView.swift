@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 /// раздела (`ImportQueueList`).
 struct ImportQueueView: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isDropTargeted = false
 
     var body: some View {
@@ -53,7 +54,7 @@ struct ImportQueueView: View {
                     .foregroundStyle(.secondary)
                 Text("MP3, M4A, WAV, OGG, MP4, MOV, M4V")
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, minHeight: 190)
             .padding(DesignTokens.Spacing.xl)
@@ -72,7 +73,7 @@ struct ImportQueueView: View {
                 )
                 .allowsHitTesting(false)
         }
-        .animation(.easeOut(duration: DesignTokens.Motion.quick), value: isDropTargeted)
+        .animation(DesignTokens.Motion.respecting(DesignTokens.Motion.fade, reduceMotion: reduceMotion), value: isDropTargeted)
         .accessibilityLabel("Добавить аудио или видео")
         .accessibilityHint("Открывает Finder для выбора файла")
     }
