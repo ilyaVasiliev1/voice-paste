@@ -27,34 +27,29 @@ final class MotionTokensTests: XCTestCase {
     }
 }
 
-/// Плашка — «желе»: размер и содержимое на пружинах с отскоком, на каждой смене
-/// состояния лёгкий тычок (сжатие-растяжение). При «Уменьшить движение» пружины,
-/// отскок и тычок уходят, остаётся растворение содержимого.
+/// Плашка: контейнер меняет размер плавной пружиной без отскока, старое содержимое
+/// уходит раньше, чем контейнер заметно сжался, новое появляется после него.
+/// При «Уменьшить движение» размер встаёт на место сразу, содержимое растворяется.
 @MainActor
 final class HUDMotionTests: XCTestCase {
-    func test_surface_isTheBouncySpring_andAFadeUnderReduceMotion() {
-        XCTAssertEqual(HUDMotion.surface(reduceMotion: false), DesignTokens.Motion.jelly)
+    func test_surface_isTheSmoothSpring_andAFadeUnderReduceMotion() {
+        XCTAssertEqual(HUDMotion.surface(reduceMotion: false), DesignTokens.Motion.surface)
         XCTAssertEqual(HUDMotion.surface(reduceMotion: true), DesignTokens.Motion.fade)
     }
 
     func test_capsuleSize_doesNotMoveUnderReduceMotion() {
         XCTAssertNil(HUDMotion.size(reduceMotion: true), "размер капсулы двигался при Reduce Motion")
-        XCTAssertEqual(HUDMotion.size(reduceMotion: false), DesignTokens.Motion.jelly)
+        XCTAssertEqual(HUDMotion.size(reduceMotion: false), DesignTokens.Motion.surface)
     }
 
-    func test_contentSwap_popsNormally_andFadesUnderReduceMotion() {
-        XCTAssertEqual(HUDMotion.content(reduceMotion: false), DesignTokens.Motion.pop)
-        XCTAssertEqual(HUDMotion.content(reduceMotion: true), DesignTokens.Motion.fade)
+    func test_oldContentLeavesBeforeTheNewOneArrives_andBeforeTheCapsuleSettles() {
+        let motion = DesignTokens.Motion.self
+        XCTAssertLessThan(motion.contentOutDuration, motion.surfaceDuration / 2, "крестик пережил сжатие капсулы")
+        XCTAssertGreaterThanOrEqual(motion.contentInDelay, motion.contentOutDuration, "новое легло на старое")
     }
 
-    func test_squashPoke_isOffUnderReduceMotion() {
-        XCTAssertTrue(HUDMotion.squashes(reduceMotion: false))
-        XCTAssertFalse(HUDMotion.squashes(reduceMotion: true))
-    }
-
-    func test_jelly_isFasterToSettleThanHalfASecond() {
-        XCTAssertLessThanOrEqual(DesignTokens.Motion.jellyDuration, 0.45, "желе тянется — это и есть «медленно»")
-        XCTAssertLessThanOrEqual(DesignTokens.Motion.popDuration, DesignTokens.Motion.jellyDuration)
+    func test_surfaceIsQuick() {
+        XCTAssertLessThanOrEqual(DesignTokens.Motion.surfaceDuration, 0.3)
     }
 
     func test_inspectionSlowdown_isOffByDefault() {

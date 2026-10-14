@@ -45,9 +45,14 @@ nonisolated enum DesignTokens {
         static let fade = scaled(.easeOut(duration: quick))
         /// Прокрутка за текстом, который пишется: пружина несёт скорость при каждом новом куске.
         static let scroll = scaled(.smooth(duration: 0.25))
-        /// Смена размера поверхности, которую успевают прервать: пружина несёт скорость
-        /// при перенацеливании, а `easeInOut` стартует с нуля.
-        static let surface = scaled(.snappy(duration: 0.2))
+        /// «Желе»: размер плашки идёт пружиной с отскоком и успевает прерваться на лету —
+        /// пружина несёт скорость при перенацеливании, а `easeInOut` стартовал бы с нуля.
+        /// Слово владельца 14.10.2026: плашка живая, а не вежливая; отскок — осознанный.
+        static let jellyDuration: Double = 0.4
+        static let jelly = scaled(.spring(duration: jellyDuration, bounce: 0.55))
+        /// Содержимое плашки выпрыгивает чуть быстрее, чем доезжает её размер.
+        static let popDuration: Double = 0.3
+        static let pop = scaled(.spring(duration: popDuration, bounce: 0.35))
 
         /// «Уменьшить движение»: любое движение заменяется коротким растворением.
         static func respecting(_ animation: Animation, reduceMotion: Bool) -> Animation {

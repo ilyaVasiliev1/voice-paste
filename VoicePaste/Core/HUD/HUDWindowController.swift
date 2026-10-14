@@ -11,7 +11,8 @@ public final class HUDWindowController {
     private let panel: NSPanel
     /// Keeping a concrete hosting view, rather than an autosizing hosting
     /// controller, removes the last layout negotiation between SwiftUI and
-    /// the transparent AppKit panel. The host is always 360 × 144; only the
+    /// the transparent AppKit panel. The host is always 400 × 176 (room for the
+    /// spring overshoot of the 320 × 144 drop surface); only the
     /// inner material surface changes state.
     private let hostingView: NSHostingView<HUDContentView>
     private var dismissTask: Task<Void, Never>?
@@ -31,12 +32,12 @@ public final class HUDWindowController {
 
     public init() {
         let hostingView = NSHostingView(rootView: HUDContentView(stateHolder: stateHolder))
-        hostingView.frame = NSRect(x: 0, y: 0, width: 360, height: 144)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 400, height: 176)
         hostingView.autoresizingMask = [.width, .height]
         let panel = NSPanel(
             // This frame never changes while the HUD is visible. Its
             // transparent margin hosts the animated inner material surface.
-            contentRect: NSRect(x: 0, y: 0, width: 360, height: 144),
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 176),
             styleMask: [.nonactivatingPanel, .borderless],
             backing: .buffered,
             defer: false
@@ -46,7 +47,7 @@ public final class HUDWindowController {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         // The SwiftUI material surface owns its visual shadow. A window-level
-        // shadow around a transparent 360 × 144 host can make AppKit defer
+        // shadow around a transparent 400 × 176 host can make AppKit defer
         // compositing it during a fast state update.
         panel.hasShadow = false
         panel.hidesOnDeactivate = false

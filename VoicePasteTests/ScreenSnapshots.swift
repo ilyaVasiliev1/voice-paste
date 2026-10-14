@@ -166,6 +166,27 @@ final class ScreenSnapshots: XCTestCase {
         }
     }
 
+    /// Плашка на экране в реальном времени: посмотреть движение глазами.
+    /// Запуск: `touch ~/Library/Caches/VoicePaste/run-benchmark` и
+    /// `zsh scripts/test-safely.sh -only-testing:VoicePasteTests/ScreenSnapshots/test_hudLiveDemo`.
+    func test_hudLiveDemo() async throws {
+        try skipUnlessRequested()
+        let hud = HUDWindowController()
+        let script: [(HUDState, Double)] = [
+            (.recording(elapsed: 2, level: 0.5), 1.4), (.processing, 1.0), (.inserted, 1.2),
+            (.recording(elapsed: 5, level: 0.3), 1.2), (.processing, 0.9), (.copied, 1.2),
+            (.recording(elapsed: 8, level: 0.6), 1.0), (.error(message: "Не удалось распознать речь"), 1.6),
+            (.importIdle, 1.6), (.importing, 1.2), (.importOpened, 1.4),
+            (.recording(elapsed: 1, level: 0.4), 0.5), (.processing, 0.35), (.recording(elapsed: 2, level: 0.4), 0.5),
+        ]
+        for (state, seconds) in script {
+            hud.present(state)
+            try await Task.sleep(for: .seconds(seconds))
+        }
+        hud.hide()
+        try await Task.sleep(for: .milliseconds(600))
+    }
+
     private func skipUnlessRequested() throws {
         let marker = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("VoicePaste/run-benchmark")
