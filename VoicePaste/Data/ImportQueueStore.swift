@@ -54,26 +54,38 @@ public actor ImportQueueStore: ImportQueueStoring {
         }
     }
 
+    /// Незнакомое состояние или вид носителя (строку записала другая версия) не отбрасывается:
+    /// задача остаётся и показана как неудавшаяся, чтобы её можно было увидеть и убрать.
     private nonisolated static func readJobs(_ db: Database) throws -> [ImportJob] {
-        try Row.fetchAll(
+        let rows = try Row.fetchAll(
             db,
             sql: "SELECT id, createdAt, sourceFileName, mediaKind, durationMilliseconds, state, progress, stageStartedAt, lastErrorCode FROM import_jobs ORDER BY createdAt ASC, id ASC"
-        ).compactMap { row in
-            guard let id = UUID(uuidString: row["id"] as String),
-                  let kind = ImportJob.MediaKind(rawValue: row["mediaKind"] as String),
-                  let state = ImportJob.State(rawValue: row["state"] as String) else { return nil }
+        )
+        var unreadable = 0
+        let jobs: [ImportJob] = rows.compactMap { row in
+            guard let id = UUID(uuidString: row["id"] as String) else {
+                unreadable += 1
+                return nil
+            }
+            let kind = ImportJob.MediaKind(rawValue: row["mediaKind"] as String) ?? .audio
+            let storedState = ImportJob.State(rawValue: row["state"] as String)
             return ImportJob(
                 id: id,
                 fileName: row["sourceFileName"],
                 createdAt: row["createdAt"],
                 mediaKind: kind,
                 durationMilliseconds: row["durationMilliseconds"],
-                state: state,
+                state: storedState ?? .failed,
                 progress: row["progress"],
                 stageStartedAt: row["stageStartedAt"],
-                failureKey: row["lastErrorCode"]
+                failureKey: storedState == nil ? "import.error.unknownState" : row["lastErrorCode"]
             )
         }
+        if unreadable > 0 {
+            let count = unreadable
+            Task { await DiagnosticLog.shared.log("import.restore.unreadableRows", detail: "count=\(count)") }
+        }
+        return jobs
     }
 
     private nonisolated static func nowMillis() -> Int64 {

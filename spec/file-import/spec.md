@@ -369,6 +369,24 @@ HUD SHALL быть вторым входом в ту же очередь: под
 
 > Last verified: 2026-09-20 (commit 8f51051)
 
+### Requirement: Задача с незнакомым состоянием не пропадает при восстановлении очереди
+<!-- id: ImportQueueStore.readJobs -->
+<!-- entities: ImportJob, ImportQueueStore -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/Data/ImportQueueStore.swift -->
+<!-- test_macos: VoicePasteTests/ImportQueueRestoreTests.swift:unknownStateBecomesAFailedJob, VoicePasteTests/ImportQueueRestoreTests.swift:unknownMediaKindKeepsTheJob -->
+
+При чтении сохранённой очереди строка с состоянием или видом носителя, которых эта версия не знает, SHALL оставаться
+в очереди: незнакомое состояние показывается как неудавшаяся задача с понятной причиной, незнакомый вид — как аудио.
+Строка с нечитаемым идентификатором пропускается, но число таких строк пишется в журнал.
+
+#### Scenario: незнакомое состояние
+<!-- test: ImportQueueRestoreTests.unknownStateBecomesAFailedJob -->
+- **WHEN** в очереди строка с состоянием, которого эта версия не знает
+- **THEN** задача возвращена со статусом «неудача» и ключом причины `import.error.unknownState`
+
+> Last verified: 2026-10-14
+
 ---
 
 <!-- uncertainty: Импорт через HUD (перетаскивание, выбор файла, отмена закрытием) проверен чтением AppState и HUDContentView; автотеста на этот путь в VoicePasteTests нет. -->
