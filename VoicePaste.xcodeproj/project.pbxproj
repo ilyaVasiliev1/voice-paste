@@ -117,6 +117,7 @@
 		C00000000000000000000A45 /* LiveResultsDrainTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A44 /* LiveResultsDrainTests.swift */; };
 		C00000000000000000000A47 /* DictationTractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A46 /* DictationTractTests.swift */; };
 		C00000000000000000000A6F /* SpeechPipelineBoundaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A6E /* SpeechPipelineBoundaryTests.swift */; };
+		C00000000000000000000A7D /* HoldOrLatchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A7C /* HoldOrLatchTests.swift */; };
 		C00000000000000000000A7B /* TranscriptAccumulatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A7A /* TranscriptAccumulatorTests.swift */; };
 		C00000000000000000000A77 /* PunctuationMeasurement.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A76 /* PunctuationMeasurement.swift */; };
 		C00000000000000000000A73 /* DictationPipelineContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A72 /* DictationPipelineContractTests.swift */; };
@@ -247,6 +248,7 @@
 		C00000000000000000000A44 /* LiveResultsDrainTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveResultsDrainTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A46 /* DictationTractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationTractTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A6E /* SpeechPipelineBoundaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechPipelineBoundaryTests.swift; sourceTree = "<group>"; };
+		C00000000000000000000A7C /* HoldOrLatchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoldOrLatchTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A7A /* TranscriptAccumulatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptAccumulatorTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A76 /* PunctuationMeasurement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PunctuationMeasurement.swift; sourceTree = "<group>"; };
 		C00000000000000000000A72 /* DictationPipelineContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationPipelineContractTests.swift; sourceTree = "<group>"; };
@@ -637,6 +639,7 @@
 				C00000000000000000000A44 /* LiveResultsDrainTests.swift */,
 				C00000000000000000000A46 /* DictationTractTests.swift */,
 				C00000000000000000000A6E /* SpeechPipelineBoundaryTests.swift */,
+				C00000000000000000000A7C /* HoldOrLatchTests.swift */,
 				C00000000000000000000A7A /* TranscriptAccumulatorTests.swift */,
 				C00000000000000000000A76 /* PunctuationMeasurement.swift */,
 				C00000000000000000000A72 /* DictationPipelineContractTests.swift */,
@@ -912,6 +915,7 @@
 				C00000000000000000000A45 /* LiveResultsDrainTests.swift in Sources */,
 				C00000000000000000000A47 /* DictationTractTests.swift in Sources */,
 				C00000000000000000000A6F /* SpeechPipelineBoundaryTests.swift in Sources */,
+				C00000000000000000000A7D /* HoldOrLatchTests.swift in Sources */,
 				C00000000000000000000A7B /* TranscriptAccumulatorTests.swift in Sources */,
 				C00000000000000000000A77 /* PunctuationMeasurement.swift in Sources */,
 				C00000000000000000000A73 /* DictationPipelineContractTests.swift in Sources */,

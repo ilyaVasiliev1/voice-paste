@@ -12,11 +12,13 @@
 <!-- entities: DictationStateMachine, DictationPhase, RecordingMode -->
 <!-- platforms: macos -->
 <!-- enforced_macos: VoicePaste/Core/Dictation/DictationStateMachine.swift, VoicePaste/App/AppState.swift -->
-<!-- test_macos: VoicePasteTests/DictationStateMachineTests.swift:test_toggle_secondPress_stopsAndProcesses -->
+<!-- test_macos: VoicePasteTests/DictationStateMachineTests.swift:test_toggle_secondPress_stopsAndProcesses, VoicePasteTests/HoldOrLatchTests.swift:shortTapLatches -->
 
 Приложение SHALL вести диктовку конечным автоматом из трёх фаз (`idle`,
 `recording`, `processing`). В режиме `toggle` запись начинается и
-заканчивается нажатиями клавиши; в режиме `hold` — нажатием и отпусканием.
+заканчивается нажатиями клавиши; в режиме `hold` — нажатием и отпусканием;
+в режиме `holdOrLatch` — одна клавиша: удержание пишет, пока держат, короткий
+тап защёлкивает запись до следующего нажатия.
 Автомат не выполняет ввода-вывода: он возвращает эффект, который исполняет
 `AppState`.
 
@@ -44,6 +46,18 @@
 <!-- test: DictationStateMachineTests.test_toggle_keyUp_isNoOp_inAnyPhase -->
 - **WHEN** режим `toggle`, приходит отпускание клавиши в любой фазе
 - **THEN** эффект `none`, фаза не меняется
+
+#### Scenario: удержание или защёлка — долгое удержание
+<!-- test: HoldOrLatchTests.longHoldStopsOnRelease -->
+- **WHEN** режим `holdOrLatch`: нажатие из `idle`, клавишу держат не меньше порога защёлки (0,35 с), затем отпускают
+- **THEN** на отпускании возвращается `stopCaptureAndProcess`
+
+#### Scenario: удержание или защёлка — короткий тап защёлкивает запись
+<!-- test: HoldOrLatchTests.shortTapLatches -->
+- **WHEN** режим `holdOrLatch`: нажатие из `idle`, отпускание раньше порога
+- **THEN** запись продолжается (`none`, фаза `recording`), а следующее нажатие возвращает `stopCaptureAndProcess`
+  (`HoldOrLatchTests.nextPressAfterLatchStops`); автоповтор клавиши при удержании запись не останавливает
+  (`HoldOrLatchTests.keyRepeatWhileHeldIsIgnored`)
 
 ---
 
