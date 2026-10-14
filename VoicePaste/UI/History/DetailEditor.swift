@@ -131,7 +131,6 @@ struct DetailEditor: View {
     }
 
     private var durationString: String {
-        let totalSeconds = transcript.durationMilliseconds / 1_000
-        return String(format: "%d:%02d", totalSeconds / 60, totalSeconds % 60)
+        DisplayFormat.duration(milliseconds: transcript.durationMilliseconds)
     }
 }

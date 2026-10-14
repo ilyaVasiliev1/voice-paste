@@ -150,7 +150,7 @@
 "settings.model.downloadSource.github" = "GitHub";
 "settings.model.downloadSource.mirror" = "Китайское зеркало (hf-mirror.com)";
 "settings.model.downloadSource.official" = "Официальный (huggingface.co)";
-"settings.model.downloadSource.explanation" = "GitHub — рекомендуется и работает из Китая, с докачкой при обрыве. HuggingFace и зеркало оттуда часто недоступны. Смена применится к следующей загрузке.";
+"settings.model.downloadSource.explanation" = "GitHub рекомендуется: он доступен из Китая и продолжает загрузку после обрыва. HuggingFace и его зеркало там часто недоступны. Выбор применится при следующей загрузке.";
 "settings.model.loadOrRetry" = "Загрузить/Повторить";
 "settings.model.unloadAfter" = "Выгружать из памяти при простое (файл модели остаётся на диске)";
 "settings.model.unloadAfter.minutes" = "%d мин";
@@ -221,13 +221,12 @@
 "lecture.delete" = "Удалить лекцию";
 "lecture.saved" = "Сохранённые";
 "lecture.language" = "Язык лекции";
-"lecture.engine" = "Движок";
+"lecture.engine" = "Способ распознавания";
 "lecture.listening" = "Слушаю…";
-"lecture.engine.auto" = "По языку";
+"lecture.engine.auto" = "Авто";
 "lecture.engine.system" = "Системный (быстрый)";
 "lecture.engine.whisper" = "Whisper (точнее на русском)";
-"lecture.language.autoWarning" = "На автоматическом модель может ошибиться и передать речь словами чужого языка";
-"lecture.row.summary" = "%@ · %d слов";
+"lecture.language.autoWarning" = "В режиме «Автоматически» модель может принять речь за другой язык и записать её чужими словами.";
 "lecture.copyAll" = "Скопировать лекцию";
 "lecture.rename" = "Переименовать";
 "lecture.rename.confirm" = "Переименовать";
@@ -265,11 +264,12 @@
 "lecture.recordingNow" = "Идёт запись";
 "lecture.engine.label" = "Распознавание: %@";
 "lecture.language.label" = "Язык: %@";
+"lecture.language.label.continue" = "Продолжить на языке: %@";
 "lecture.detail.idle.title" = "Текст появится здесь по ходу речи";
-"lecture.detail.idle.description" = "Язык выбирается в панели инструментов.";
+"lecture.detail.idle.description" = "Выберите язык сверху и нажмите «Начать лекцию».";
 "import.queue.empty.title" = "Очередь пуста";
 "import.queue.empty.description" = "Добавленные файлы появятся здесь и будут обработаны по очереди.";
-"history.list.empty.title" = "Записей пока нет";
+"history.list.empty.title" = "Ничего не найдено";
 
 /* Транскрибация (UI-008.1) */
 "transcribe.lastResult.title" = "Последняя расшифровка";

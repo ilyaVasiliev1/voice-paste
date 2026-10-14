@@ -207,17 +207,13 @@ private struct HistoryRow: View {
                 .lineLimit(2)
             HStack(spacing: DesignTokens.Spacing.sm) {
                 Text(DisplayFormat.recordDate(Date(timeIntervalSince1970: Double(item.createdAt) / 1_000)))
-                Text(durationString(item.durationMilliseconds))
+                Text("·")
+                Text(DisplayFormat.duration(milliseconds: item.durationMilliseconds))
             }
             .font(.caption)
             .foregroundStyle(.secondary)
         }
         .padding(.vertical, DesignTokens.Spacing.xs)
-    }
-
-    private func durationString(_ milliseconds: Int) -> String {
-        let totalSeconds = milliseconds / 1_000
-        return String(format: "%d:%02d", totalSeconds / 60, totalSeconds % 60)
     }
 }
 

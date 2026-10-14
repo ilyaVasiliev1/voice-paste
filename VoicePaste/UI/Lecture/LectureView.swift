@@ -23,12 +23,15 @@ struct LectureListColumn: View {
             if !appState.savedLectures.isEmpty {
                 Section("lecture.saved") {
                     ForEach(appState.savedLectures) { lecture in
-                        SavedLectureRow(lecture: lecture)
+                        SavedLectureRow(
+                            lecture: lecture,
+                            isBeingContinued: appState.isLectureRecording && appState.continuingLectureID == lecture.id
+                        )
                             .tag(Item.saved(lecture.id))
                             // Открыть сохранённую посреди записи нельзя —
                             // `openSavedLecture` откажет. Выключено, а не
                             // молча не срабатывает.
-                            .disabled(appState.isLectureRecording)
+                            .disabled(appState.isLectureRecording && appState.continuingLectureID != lecture.id)
                             .contextMenu {
                                 Button {
                                     renaming = lecture
@@ -70,10 +73,12 @@ struct LectureListColumn: View {
     }
 
     private var currentRow: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            Image(systemName: appState.isLectureRecording ? "record.circle.fill" : "plus.circle")
-                .foregroundStyle(appState.isLectureRecording ? Color.red : Color.accentColor)
-            Text(appState.isLectureRecording ? "lecture.recordingNow" : "lecture.new")
+        // Дописывание сохранённой лекции — не новая запись: красная точка стоит на строке самой лекции.
+        let isNewRecording = appState.isLectureRecording && appState.continuingLectureID == nil
+        return HStack(spacing: DesignTokens.Spacing.sm) {
+            Image(systemName: isNewRecording ? "record.circle.fill" : "plus.circle")
+                .foregroundStyle(isNewRecording ? Color.red : Color.accentColor)
+            Text(isNewRecording ? "lecture.recordingNow" : "lecture.new")
             Spacer(minLength: 0)
         }
         .padding(.vertical, DesignTokens.Spacing.xs)
@@ -83,11 +88,19 @@ struct LectureListColumn: View {
 /// Сохранённая лекция в списке: название, дата, длительность и объём.
 private struct SavedLectureRow: View {
     let lecture: Lecture
+    var isBeingContinued = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-            Text(lecture.title)
-                .lineLimit(2)
+            HStack(spacing: DesignTokens.Spacing.sm) {
+                if isBeingContinued {
+                    Image(systemName: "record.circle.fill")
+                        .foregroundStyle(.red)
+                        .accessibilityLabel(Text("lecture.recordingNow"))
+                }
+                Text(lecture.title)
+                    .lineLimit(2)
+            }
             Text(DisplayFormat.recordDate(lecture.createdAtDate))
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -172,7 +185,7 @@ struct LectureView: View {
                 Text("lecture.language.autoWarning")
                     .multilineTextAlignment(.trailing)
             } else if let language = recorder.detectedLanguage, appState.openedLecture == nil {
-                Text(language.uppercased())
+                Text(DisplayFormat.languageName(language) ?? language.uppercased())
             }
         }
         .font(.callout)
@@ -224,7 +237,10 @@ struct LectureView: View {
                 .labelsHidden()
             } label: {
                 Text(String(
-                    format: NSLocalizedString("lecture.language.label", comment: ""),
+                    format: NSLocalizedString(
+                        appState.openedLecture == nil ? "lecture.language.label" : "lecture.language.label.continue",
+                        comment: ""
+                    ),
                     LectureMenuText.name(of: settings.lectureLanguage)
                 ))
             }
@@ -394,13 +410,8 @@ enum LectureClock {
 /// секунд показывалась как «0 мин», и строка выглядела пустой.
 enum LectureSummary {
     static func text(for lecture: Lecture) -> String {
-        let seconds = lecture.durationMilliseconds / 1_000
-        let clock = String(format: "%d:%02d", seconds / 60, seconds % 60)
-        return String(
-            format: NSLocalizedString("lecture.row.summary", comment: ""),
-            clock,
-            lecture.wordCount
-        )
+        DisplayFormat.duration(milliseconds: lecture.durationMilliseconds)
+            + " · " + DisplayFormat.words(lecture.wordCount)
     }
 }
 

@@ -204,9 +204,14 @@ struct DashboardView: View {
     private func tooltip(for day: DailyUsageStat) -> some View {
         let pointDate = period == .day
             ? day.day.formatted(date: .omitted, time: .shortened)
-            : day.day.formatted(date: .abbreviated, time: .omitted)
-        return Text("\(pointDate) · \(day.wordCount) слов · \(day.transcriptCount) расш. · \(SpeechDurationText.text(milliseconds: day.durationMilliseconds))")
-            .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+            : day.day.formatted(Date.FormatStyle().day().month(.abbreviated))
+        return Text(DisplayFormat.dayUsage(
+            dateText: pointDate,
+            words: day.wordCount,
+            transcriptions: day.transcriptCount,
+            durationMilliseconds: day.durationMilliseconds
+        ))
+        .font(.caption).foregroundStyle(.secondary).monospacedDigit()
     }
 
     private func nearestDay(to date: Date) -> DailyUsageStat? {
