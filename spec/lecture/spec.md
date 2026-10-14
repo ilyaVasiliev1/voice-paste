@@ -219,4 +219,32 @@
 
 ---
 
+### Requirement: Поток обновлений лекции заканчивается при отказе распознавателя
+<!-- id: SystemLiveTranscriber.drain -->
+<!-- entities: SystemLiveTranscriber, LiveTranscriptUpdate -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/Core/Lecture/SystemLiveTranscriber.swift -->
+<!-- test_macos: VoicePasteTests/LiveResultsDrainTests.swift:failureFinishesTheStreamKeepingWhatArrived -->
+<!-- test_macos: VoicePasteTests/LiveResultsDrainTests.swift:normalEndFinishesTheStream -->
+
+Системный потоковый распознаватель SHALL закрывать поток обновлений при любом
+исходе: и при обычном конце результатов, и при ошибке. Уже принятые
+обновления не теряются, причина ошибки уходит в журнал как
+`lecture.liveResults.failed`.
+
+#### Scenario: распознаватель бросил ошибку посреди записи
+<!-- test: LiveResultsDrainTests.failureFinishesTheStreamKeepingWhatArrived -->
+- **WHEN** результаты отдали часть обновлений и затем бросили ошибку
+- **THEN** поток закрыт, принятые обновления доставлены, запись лекции не
+  ждёт новых обновлений вечно
+
+#### Scenario: результаты кончились штатно
+<!-- test: LiveResultsDrainTests.normalEndFinishesTheStream -->
+- **WHEN** распознаватель отдал все результаты и закончил
+- **THEN** поток закрыт после последнего обновления
+
+> Last verified: 2026-10-14
+
+---
+
 <!-- uncertainty: Экран учебного режима и перевод выделенного проверены только чтением кода — слой SwiftUI в проекте не тестируется. -->

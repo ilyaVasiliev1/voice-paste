@@ -99,6 +99,7 @@
 <!-- entities: AppState, ReadinessState, HUDState -->
 <!-- platforms: macos -->
 <!-- enforced_macos: VoicePaste/App/AppState.swift -->
+<!-- test_macos: VoicePasteTests/DictationTractTests.swift:notReadyAppRefusesToStartRecording -->
 
 Если на момент нажатия из фазы `idle` `readiness.state` не равен `.ready`,
 приложение SHALL не начинать запись, показать причину в HUD и записать
@@ -190,16 +191,20 @@ Escape во время записи SHALL останавливать тольк�
 <!-- entities: AppState, AudioCaptureService, HUDState -->
 <!-- platforms: macos -->
 <!-- enforced_macos: VoicePaste/App/AppState.swift -->
+<!-- test_macos: VoicePasteTests/DictationTractTests.swift:tooShortRecordingNeverReachesTheModel -->
+<!-- test_macos: VoicePasteTests/DictationTractTests.swift:silentRecordingNeverReachesTheModel -->
 
 Перед показом состояния «расшифровка» приложение SHALL проверять длину буфера
 и его RMS. Не прошедший проверку буфер не передаётся в модель, история не
 пишется, показывается `dictation.emptyAudio`.
 
 #### Scenario: случайное двойное нажатие
+<!-- test: DictationTractTests.tooShortRecordingNeverReachesTheModel -->
 - **WHEN** в буфере меньше 8000 сэмплов (0,5 с при 16 кГц)
 - **THEN** фаза `idle`, HUD `.error(dictation.emptyAudio)`, модель не вызывается
 
 #### Scenario: тишина в течение всей записи
+<!-- test: DictationTractTests.silentRecordingNeverReachesTheModel -->
 - **WHEN** RMS последнего захвата меньше 0.004
 - **THEN** фаза `idle`, HUD `.error(dictation.emptyAudio)`, модель не вызывается
 
@@ -209,7 +214,11 @@ Escape во время записи SHALL останавливать тольк�
 <!-- id: AppState.transcribeAndFinish -->
 <!-- entities: AppState, ModelManager, TextNormalizer, TextInserter, Transcript -->
 <!-- platforms: macos -->
-<!-- enforced_macos: VoicePaste/App/AppState.swift -->
+<!-- enforced_macos: VoicePaste/App/AppState.swift, VoicePaste/App/DictationSeams.swift -->
+<!-- test_macos: VoicePasteTests/DictationTractTests.swift:speechIsRecognisedDeliveredAndSaved -->
+<!-- test_macos: VoicePasteTests/DictationTractTests.swift:autoInsertOffCopiesInsteadOfPasting -->
+<!-- test_macos: VoicePasteTests/DictationTractTests.swift:recognitionFailureShowsErrorAndKeepsNothing -->
+<!-- test_macos: VoicePasteTests/DictationTractTests.swift:refusedPasteLeavesTextCopied -->
 
 После остановки записи приложение SHALL загрузить модель, распознать речь,
 применить словарь и нормализацию, доставить текст в активное приложение или
@@ -217,16 +226,19 @@ Escape во время записи SHALL останавливать тольк�
 исход в HUD.
 
 #### Scenario: удачная диктовка с включённой авто-вставкой
+<!-- test: DictationTractTests.speechIsRecognisedDeliveredAndSaved -->
 - **WHEN** распознавание завершилось и `settings.autoInsertEnabled == true`
 - **THEN** текст нормализован, выполнена попытка вставки, запись сохранена
   со `source = .dictation` и исходом `inserted` либо `copied`
 
 #### Scenario: авто-вставка выключена
+<!-- test: DictationTractTests.autoInsertOffCopiesInsteadOfPasting -->
 - **WHEN** `settings.autoInsertEnabled == false`
 - **THEN** текст кладётся в буфер обмена, исход записи `copied` — текст
   никогда не отбрасывается молча
 
 #### Scenario: сбой распознавания
+<!-- test: DictationTractTests.recognitionFailureShowsErrorAndKeepsNothing -->
 - **WHEN** загрузка модели или распознавание бросили ошибку
 - **THEN** показан `dictation.transcriptionFailed`, таймер выгрузки модели
   перезапущен, причина ушла в журнал

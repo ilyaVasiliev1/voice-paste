@@ -45,7 +45,7 @@ public final class AppState: ObservableObject {
     /// `internal`, а не `private`: захват нужен и учебному режиму,
     /// живущему в `AppState+Lecture.swift`. Микрофон один, и заводить
     /// второй захват ради инкапсуляции значило бы драться за устройство.
-    let audioCapture = AudioCaptureService()
+    let audioCapture: any AudioSource
     /// Считает закрывшиеся окна длинной записи, пока она идёт, чтобы после
     /// остановки досчитывался только хвост. Короткую диктовку не трогает:
     /// планировщик не выдаёт окон, пока их не набралось, и запись уходит в
@@ -54,7 +54,14 @@ public final class AppState: ObservableObject {
         windowSamples: 28 * 16_000,
         overlapSamples: Int(0.75 * 16_000)
     )
-    private let hud = HUDWindowController()
+    private let hud: any HUDPresenting
+    private let textDelivery: any TextDelivering
+    /// Часы тракта: время старта записи, таймер на плашке и метка записи в истории.
+    private let now: () -> Date
+    /// Подмена условия готовности. `nil` — решает `readiness`, как в приложении.
+    private let isDictationReady: (@MainActor () -> Bool)?
+    /// Идущая расшифровка. Внутренний, чтобы тест мог дождаться её конца.
+    private(set) var dictationTask: Task<Void, Never>?
     private let normalizer = TextNormalizer()
     private var hotkeyManager: HotkeyManager?
     private var frontAppSnapshot: FrontAppSnapshot?
@@ -115,7 +122,8 @@ public final class AppState: ObservableObject {
     private var importJobCancellable: AnyCancellable?
     private var hudImportJobID: UUID?
 
-    public init(
+    /// Прежний публичный вход: настоящие микрофон, вставка, плашка и часы.
+    public convenience init(
         settings: AppSettings,
         modelManager: ModelManager,
         historyStore: any HistoryStoring,
@@ -124,6 +132,52 @@ public final class AppState: ObservableObject {
         persistenceFailureMessage: String? = nil,
         enableGlobalHotkey: Bool = !ProcessRuntime.isRunningTests
     ) {
+        self.init(
+            settings: settings,
+            modelManager: modelManager,
+            historyStore: historyStore,
+            importManager: importManager,
+            lectureStore: lectureStore,
+            persistenceFailureMessage: persistenceFailureMessage,
+            enableGlobalHotkey: enableGlobalHotkey,
+            audioSource: nil,
+            textDelivery: nil,
+            hud: nil,
+            now: Date.init,
+            isDictationReady: nil
+        )
+    }
+
+    /// Полный вход с подменяемыми частями — для тестов тракта. Без значений
+    /// по умолчанию, чтобы не спорить с публичным входом выше.
+    init(
+        settings: AppSettings,
+        modelManager: ModelManager,
+        historyStore: any HistoryStoring,
+        importManager: ImportManager,
+        lectureStore: (any LectureStoring)? = nil,
+        persistenceFailureMessage: String? = nil,
+        enableGlobalHotkey: Bool,
+        audioSource: (any AudioSource)?,
+        textDelivery: (any TextDelivering)?,
+        hud: (any HUDPresenting)?,
+        now: @escaping () -> Date,
+        isDictationReady: (@MainActor () -> Bool)?
+    ) {
+        self.audioCapture = audioSource ?? AudioCaptureService()
+        self.textDelivery = textDelivery ?? SystemTextDelivery()
+        self.now = now
+        self.isDictationReady = isDictationReady
+        // Действия кнопок знает только настоящая плашка; подставной их не имеет.
+        let realHUD: HUDWindowController?
+        if let hud {
+            self.hud = hud
+            realHUD = nil
+        } else {
+            let controller = HUDWindowController()
+            self.hud = controller
+            realHUD = controller
+        }
         self.lectureStore = lectureStore
         self.settings = settings
         self.modelManager = modelManager
@@ -180,7 +234,7 @@ public final class AppState: ObservableObject {
 
         // `UI-003`: the HUD's mouse controls call back into the same
         // dictation logic the hotkey/menu drive — never a separate path.
-        hud.configureActions(
+        realHUD?.configureActions(
             onFinish: { [weak self] in self?.finishDictationFromHUD() },
             onCancel: { [weak self] in self?.cancelDictationFromHUD() },
             onRetry: { [weak self] in self?.retryDictationFromHUD() },
@@ -296,7 +350,7 @@ public final class AppState: ObservableObject {
             resumeDictationAfterEscape()
             return
         }
-        if dictationStateMachine.phase == .idle, readiness.state != .ready {
+        if dictationStateMachine.phase == .idle, !isReadyToDictate {
             presentNotReadyMessage()
             return
         }
@@ -325,6 +379,10 @@ public final class AppState: ObservableObject {
             break
         }
         synchronizeDictationPhase()
+    }
+
+    private var isReadyToDictate: Bool {
+        isDictationReady?() ?? (readiness.state == .ready)
     }
 
     private func presentNotReadyMessage() {
@@ -358,7 +416,7 @@ public final class AppState: ObservableObject {
             Task { await DiagnosticLog.shared.log("dictation.refused.lectureRecording") }
             return
         }
-        frontAppSnapshot = TextInserter.captureFrontAppSnapshot()
+        frontAppSnapshot = textDelivery.captureFrontApp()
         // `L-010`: start loading the model the moment recording begins, so it
         // warms up *while the user is still speaking* if the one-time launch
         // warm-up has not completed (or the model was later unloaded).
@@ -380,7 +438,7 @@ public final class AppState: ObservableObject {
             streamingTranscriber.cancel()
             return
         }
-        recordingStartedAt = Date()
+        recordingStartedAt = now()
         elapsedBeforePause = 0
         isDictationPaused = false
         pausedDictationExpiryTask?.cancel()
@@ -429,7 +487,7 @@ public final class AppState: ObservableObject {
         guard dictationStateMachine.phase == .recording,
               !isDictationPaused,
               let startedAt = recordingStartedAt else { return }
-        let now = Date()
+        let now = self.now()
         guard force || now.timeIntervalSince(lastRecordingHUDRefreshAt) >= 0.1 else { return }
         lastRecordingHUDRefreshAt = now
         presentHUD(.recording(
@@ -479,7 +537,7 @@ public final class AppState: ObservableObject {
         guard dictationStateMachine.phase == .recording, !isDictationPaused else { return }
         elapsedTimerTask?.cancel()
         if let recordingStartedAt {
-            elapsedBeforePause += Date().timeIntervalSince(recordingStartedAt)
+            elapsedBeforePause += now().timeIntervalSince(recordingStartedAt)
         }
         self.recordingStartedAt = nil
         audioCapture.pause()
@@ -513,7 +571,7 @@ public final class AppState: ObservableObject {
             try audioCapture.resume()
             isDictationPaused = false
             pausedDictationExpiryTask?.cancel()
-            recordingStartedAt = Date()
+            recordingStartedAt = now()
             hotkeyManager?.setEscapeCancellationEnabled(true)
             refreshRecordingHUD(force: true)
             startElapsedTicker()
@@ -752,7 +810,7 @@ public final class AppState: ObservableObject {
 
         presentHUD(.processing)
 
-        Task { [weak self] in
+        dictationTask = Task { [weak self] in
             await self?.transcribeAndFinish(samples: samples)
         }
     }
@@ -785,16 +843,15 @@ public final class AppState: ObservableObject {
 
             var outcome: Transcript.InsertionOutcome = .notRequested
             if settings.autoInsertEnabled {
-                let inserter = TextInserter()
-                outcome = inserter.insert(normalizedText, into: frontAppSnapshot) == .inserted ? .inserted : .copied
+                outcome = textDelivery.insert(normalizedText, into: frontAppSnapshot) == .inserted ? .inserted : .copied
             } else {
                 // "Не вставлять автоматически" is a deliberate clipboard
                 // workflow, never a silent discard of the finished text.
-                TextInserter.copyToClipboard(normalizedText)
+                textDelivery.copyToClipboard(normalizedText)
                 outcome = .copied
             }
 
-            let now = Int64(Date().timeIntervalSince1970 * 1_000)
+            let now = Int64(self.now().timeIntervalSince1970 * 1_000)
             let transcript = Transcript(
                 id: UUID(),
                 createdAt: now,

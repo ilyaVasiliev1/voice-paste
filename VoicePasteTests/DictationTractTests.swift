@@ -100,7 +100,8 @@ struct DictationTractTests {
         engineResult: Result<TranscriptionResult, Error> = .success(
             TranscriptionResult(rawText: "Привет, мир.", detectedLanguage: "ru")
         ),
-        autoInsert: Bool = true
+        autoInsert: Bool = true,
+        ready: Bool = true
     ) async throws -> Rig {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("DictationTract-\(UUID().uuidString)", isDirectory: true)
@@ -146,7 +147,7 @@ struct DictationTractTests {
             textDelivery: delivery,
             hud: hud,
             now: { Self.fixedNow },
-            isDictationReady: { true }
+            isDictationReady: { ready }
         )
         return Rig(
             state: state, audio: audio, delivery: delivery, hud: hud,
@@ -199,6 +200,22 @@ struct DictationTractTests {
         #expect(rig.engine.callCount == 0)
         #expect(rig.hud.last == .error(message: NSLocalizedString("dictation.emptyAudio", comment: "")))
         #expect(try await savedItems(rig).isEmpty)
+    }
+
+    @Test("приложение не готово — запись не начинается, плашка называет причину")
+    func notReadyAppRefusesToStartRecording() async throws {
+        let rig = try await makeRig(ready: false)
+        defer { rig.cleanup() }
+
+        rig.state.handleHotkeyDown()
+
+        #expect(rig.audio.startCount == 0)
+        #expect(rig.audio.isCapturing == false)
+        #expect(rig.engine.callCount == 0)
+        #expect(rig.hud.last == .error(
+            message: NSLocalizedString(rig.state.readiness.state.statusLocalizationKey, comment: "")
+        ))
+        #expect(rig.state.dictationPhase == .idle)
     }
 
     // MARK: - Удачная ветка
