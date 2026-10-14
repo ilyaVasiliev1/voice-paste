@@ -214,14 +214,58 @@ struct DashboardView: View {
     }
 }
 
-/// Список раздела статистики: периоды. Прежде — переключатель в шапке.
+/// Слов за каждый период — подпись под названием в списке раздела статистики.
+@MainActor
+final class PeriodSummaries: ObservableObject {
+    @Published private(set) var words: [StatisticsPeriod: Int] = [:]
+
+    private let store: any HistoryStoring
+
+    init(store: any HistoryStoring) {
+        self.store = store
+    }
+
+    func track() async {
+        for await _ in store.changes() {
+            await load()
+        }
+    }
+
+    /// Недоступный период остаётся без подписи, а не с нулём: ноль был бы ложью.
+    private func load() async {
+        for period in StatisticsPeriod.allCases {
+            if let stats = try? await store.fetchUsageStats(now: Date(), dayCount: period.dayCount) {
+                words[period] = stats.totalWordCount
+            }
+        }
+    }
+}
+
+/// Список раздела статистики: периоды с итогом под каждым.
 struct StatisticsPeriodList: View {
     @Binding var period: StatisticsPeriod
+    @StateObject private var summaries: PeriodSummaries
+
+    init(period: Binding<StatisticsPeriod>, store: any HistoryStoring) {
+        _period = period
+        _summaries = StateObject(wrappedValue: PeriodSummaries(store: store))
+    }
 
     var body: some View {
         List(StatisticsPeriod.allCases, selection: selection) { item in
-            Text(item.title).tag(item)
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                Text(item.title)
+                if let words = summaries.words[item] {
+                    Text("Слов: \(words.formatted())")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            }
+            .padding(.vertical, DesignTokens.Spacing.xs)
+            .tag(item)
         }
+        .task { await summaries.track() }
     }
 
     private var selection: Binding<StatisticsPeriod?> {

@@ -144,7 +144,9 @@ nonisolated enum DisplayFormat {
         calendar: Calendar = .current,
         locale: Locale = .current
     ) -> String {
-        let time = date.formatted(Date.FormatStyle(date: .omitted, time: .shortened, locale: locale, calendar: calendar))
+        let time = date.formatted(Date.FormatStyle(
+            date: .omitted, time: .shortened, locale: locale, calendar: calendar, timeZone: calendar.timeZone
+        ))
         if calendar.isDate(date, inSameDayAs: now) {
             return NSLocalizedString("date.today", value: "Сегодня", comment: "") + ", " + time
         }
@@ -152,7 +154,8 @@ nonisolated enum DisplayFormat {
             return NSLocalizedString("date.yesterday", value: "Вчера", comment: "") + ", " + time
         }
         let sameYear = calendar.isDate(date, equalTo: now, toGranularity: .year)
-        var style = Date.FormatStyle(locale: locale, calendar: calendar).day().month(.abbreviated)
+        var style = Date.FormatStyle(locale: locale, calendar: calendar, timeZone: calendar.timeZone)
+            .day().month(.abbreviated)
         if sameYear { return date.formatted(style) + ", " + time }
         style = style.year()
         return date.formatted(style)

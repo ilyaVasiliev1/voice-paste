@@ -22,7 +22,7 @@ final class DisplayFormatTests: XCTestCase {
     }
 
     func test_today_isTodayWithTime() {
-        XCTAssertEqual(text("2026-10-14T09:05:00Z"), "Сегодня, 09:05")
+        XCTAssertEqual(text("2026-10-14T09:05:00Z"), "Сегодня, 9:05")
     }
 
     func test_yesterday_isYesterdayWithTime() {

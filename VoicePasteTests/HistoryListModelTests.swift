@@ -405,6 +405,29 @@ final class HistoryListModelTests: XCTestCase {
         XCTAssertEqual(saved, 0)
     }
 
+    // MARK: - Список периодов: итог под названием
+
+    func test_periodSummaries_fillEveryPeriod() async throws {
+        let model = PeriodSummaries(store: FakeHistoryStore(count: 0))
+
+        let tracking = Task { await model.track() }
+        defer { tracking.cancel() }
+        let filled = await eventually { model.words.count == StatisticsPeriod.allCases.count }
+
+        XCTAssertTrue(filled)
+        XCTAssertEqual(model.words[.month], 5)
+    }
+
+    func test_periodSummaries_areAbsent_whenTheStoreFails() async throws {
+        let model = PeriodSummaries(store: FakeHistoryStore(count: 0, failsUsage: true))
+
+        let tracking = Task { await model.track() }
+        defer { tracking.cancel() }
+        try await Task.sleep(for: .milliseconds(150))
+
+        XCTAssertTrue(model.words.isEmpty, "отказ базы показан нулём слов")
+    }
+
     // MARK: - Статистика: «пусто» только после загрузки
 
     func test_usageStats_areLoading_untilTheStoreAnswers() async throws {

@@ -145,10 +145,10 @@
 "settings.model.size" = "Размер";
 "settings.model.status" = "Готовность";
 "settings.model.downloadSource" = "Источник загрузки";
-"settings.model.downloadSource.github" = "GitHub (рекомендуется, работает из Китая)";
+"settings.model.downloadSource.github" = "GitHub";
 "settings.model.downloadSource.mirror" = "Китайское зеркало (hf-mirror.com)";
 "settings.model.downloadSource.official" = "Официальный (huggingface.co)";
-"settings.model.downloadSource.explanation" = "GitHub качает модель напрямую с релиза проекта — единственный источник, доступный из материкового Китая, с докачкой при обрыве. HuggingFace и зеркало часто недоступны оттуда. Смена применится к следующей загрузке.";
+"settings.model.downloadSource.explanation" = "GitHub — рекомендуется и работает из Китая, с докачкой при обрыве. HuggingFace и зеркало оттуда часто недоступны. Смена применится к следующей загрузке.";
 "settings.model.loadOrRetry" = "Загрузить/Повторить";
 "settings.model.unloadAfter" = "Выгружать из памяти при простое (файл модели остаётся на диске)";
 "settings.model.unloadAfter.minutes" = "%d мин";
@@ -253,10 +253,10 @@
 "main.sections" = "Разделы";
 "lecture.new" = "Новая лекция";
 "lecture.recordingNow" = "Идёт запись";
-"lecture.engine.label" = "Движок: %@";
+"lecture.engine.label" = "Распознавание: %@";
 "lecture.language.label" = "Язык: %@";
-"lecture.detail.idle.title" = "Новая лекция";
-"lecture.detail.idle.description" = "Выберите язык и движок в панели инструментов и нажмите «Начать лекцию». Текст будет пополняться по ходу, абзацами по паузам говорящего.";
+"lecture.detail.idle.title" = "Текст появится здесь по ходу речи";
+"lecture.detail.idle.description" = "Язык выбирается в панели инструментов.";
 "import.queue.empty.title" = "Очередь пуста";
 "import.queue.empty.description" = "Добавленные файлы появятся здесь и будут обработаны по очереди.";
 "history.list.empty.title" = "Записей пока нет";

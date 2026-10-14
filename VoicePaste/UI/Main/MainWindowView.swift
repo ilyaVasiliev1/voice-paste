@@ -72,7 +72,7 @@ struct MainWindowView: View {
         case .lecture: LectureListColumn()
         case .history: HistoryListColumn(model: history, appState: appState)
         case .importQueue: ImportQueueList()
-        case .dashboard: StatisticsPeriodList(period: $period)
+        case .dashboard: StatisticsPeriodList(period: $period, store: appState.historyStore)
         }
     }
 

@@ -75,11 +75,6 @@ struct LectureListColumn: View {
                 .foregroundStyle(appState.isLectureRecording ? Color.red : Color.accentColor)
             Text(appState.isLectureRecording ? "lecture.recordingNow" : "lecture.new")
             Spacer(minLength: 0)
-            if appState.isLectureRecording {
-                Text(LectureClock.text(appState.lectureElapsedSeconds))
-                    .font(.callout.monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
         }
         .padding(.vertical, DesignTokens.Spacing.xs)
     }
@@ -120,7 +115,6 @@ struct LectureView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            Divider()
             content
         }
         .toolbar { toolbar }
@@ -137,7 +131,7 @@ struct LectureView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, DesignTokens.detailPanePadding)
-        .padding(.vertical, DesignTokens.Spacing.lg)
+        .padding(.vertical, DesignTokens.detailPanePadding)
     }
 
     private var title: String {
@@ -183,6 +177,8 @@ struct LectureView: View {
         }
         .font(.callout)
         .foregroundStyle(.secondary)
+        // Высота второй строки не зависит от состояния: заголовок и текст не «дышат».
+        .frame(minHeight: 24)
     }
 
     // MARK: - Панель инструментов
@@ -273,6 +269,9 @@ struct LectureView: View {
                 Label(startStopTitle, systemImage: appState.isLectureRecording ? "stop.fill" : "waveform")
                     .labelStyle(.titleAndIcon)
             }
+            // Главное действие раздела — единственное акцентное; «Остановить» красное.
+            .buttonStyle(.borderedProminent)
+            .tint(appState.isLectureRecording ? .red : .accentColor)
             .keyboardShortcut("l", modifiers: [.command, .shift])
             .accessibilityIdentifier("lecture-toggle")
         }
