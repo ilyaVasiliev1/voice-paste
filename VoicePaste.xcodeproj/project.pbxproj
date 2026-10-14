@@ -52,6 +52,7 @@
 		C00000000000000000000927 /* MainWindowLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000926 /* MainWindowLayoutTests.swift */; };
 		CA000000000000000000091F /* ModelStateInstalledTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA000000000000000000091E /* ModelStateInstalledTests.swift */; };
 		CA000000000000000000091D /* HistoryListModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA000000000000000000091C /* HistoryListModelTests.swift */; };
+		CA0000000000000000000A02 /* MotionAndHUDTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0000000000000000000A01 /* MotionAndHUDTests.swift */; };
 		CA0000000000000000000917 /* MainContentSectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0000000000000000000916 /* MainContentSectionTests.swift */; };
 		CA0000000000000000000915 /* SpeechDurationTextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0000000000000000000914 /* SpeechDurationTextTests.swift */; };
 		C00000000000000000000929 /* TranscriptionSpeedBenchmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000928 /* TranscriptionSpeedBenchmark.swift */; };
@@ -237,6 +238,7 @@
 		C00000000000000000000926 /* MainWindowLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowLayoutTests.swift; sourceTree = "<group>"; };
 		CA000000000000000000091E /* ModelStateInstalledTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelStateInstalledTests.swift; sourceTree = "<group>"; };
 		CA000000000000000000091C /* HistoryListModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryListModelTests.swift; sourceTree = "<group>"; };
+		CA0000000000000000000A01 /* MotionAndHUDTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionAndHUDTests.swift; sourceTree = "<group>"; };
 		CA0000000000000000000916 /* MainContentSectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainContentSectionTests.swift; sourceTree = "<group>"; };
 		CA0000000000000000000914 /* SpeechDurationTextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechDurationTextTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000928 /* TranscriptionSpeedBenchmark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionSpeedBenchmark.swift; sourceTree = "<group>"; };
@@ -606,6 +608,7 @@
 				C00000000000000000000926 /* MainWindowLayoutTests.swift */,
 				CA000000000000000000091E /* ModelStateInstalledTests.swift */,
 				CA000000000000000000091C /* HistoryListModelTests.swift */,
+				CA0000000000000000000A01 /* MotionAndHUDTests.swift */,
 				CA0000000000000000000916 /* MainContentSectionTests.swift */,
 				CA0000000000000000000914 /* SpeechDurationTextTests.swift */,
 				C00000000000000000000928 /* TranscriptionSpeedBenchmark.swift */,
@@ -861,6 +864,7 @@
 				C00000000000000000000927 /* MainWindowLayoutTests.swift in Sources */,
 				CA000000000000000000091F /* ModelStateInstalledTests.swift in Sources */,
 				CA000000000000000000091D /* HistoryListModelTests.swift in Sources */,
+				CA0000000000000000000A02 /* MotionAndHUDTests.swift in Sources */,
 				CA0000000000000000000917 /* MainContentSectionTests.swift in Sources */,
 				CA0000000000000000000915 /* SpeechDurationTextTests.swift in Sources */,
 				C00000000000000000000929 /* TranscriptionSpeedBenchmark.swift in Sources */,
