@@ -255,7 +255,7 @@ public final class SystemLiveTranscriber: LiveTranscribing {
                 continuation.yield(map(result))
             }
         } catch {
-            await DiagnosticLog.shared.log("lecture.liveResults.failed", detail: String(describing: error))
+            await DiagnosticLog.shared.log("lecture.liveResults.failed", detail: ErrorSummary.describe(error))
         }
         continuation.finish()
     }

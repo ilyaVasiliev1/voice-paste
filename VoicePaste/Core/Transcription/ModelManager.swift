@@ -305,7 +305,7 @@ public final class ModelManager: ObservableObject {
         let corruptFolder = LocalModelDetection.discoverModelFolder(in: modelDirectory)
       else {
         if loadGeneration == generation {
-          state = .failed((error as? ModelError) ?? .downloadFailed)
+          state = .failed(Self.modelError(for: error))
         }
         throw error
       }
@@ -405,7 +405,8 @@ public final class ModelManager: ObservableObject {
           allowNetworkInstall: allowNetworkInstall
         )
       } catch {
-        if error is CancellationError { throw error }
+        // Несовпадение суммы — не сбой сети: повтор скачал бы те же байты.
+        if error is CancellationError || Self.isIntegrityFailure(error) { throw error }
         lastError = error
         guard attempt < retryCount else { break }
         Task {
@@ -415,6 +416,15 @@ public final class ModelManager: ObservableObject {
       }
     }
     throw lastError ?? ModelError.downloadFailed
+  }
+
+  static func isIntegrityFailure(_ error: Error) -> Bool {
+    (error as? GitHubModelDownloader.DownloadError) == .checksumMismatch
+  }
+
+  static func modelError(for error: Error) -> ModelError {
+    if isIntegrityFailure(error) { return .verificationFailed }
+    return (error as? ModelError) ?? .downloadFailed
   }
 
   /// Bounds the blind auto-retry in `loadWithAutoRetry()`: a network blip

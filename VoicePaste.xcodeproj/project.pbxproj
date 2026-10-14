@@ -30,6 +30,7 @@
 		CA0000000000000000000929 /* LectureContinuation.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0000000000000000000928 /* LectureContinuation.swift */; };
 		C0000000000000000000011E /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000011D /* AppState.swift */; };
 		C00000000000000000000120 /* AudioCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000011F /* AudioCaptureService.swift */; };
+		C00000000000000000000A61 /* CaptureRestartPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A60 /* CaptureRestartPolicy.swift */; };
 		C00000000000000000000A5D /* EvaluationAudioStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A5C /* EvaluationAudioStore.swift */; };
 		C00000000000000000000122 /* DictationStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000121 /* DictationStateMachine.swift */; };
 		C00000000000000000000A53 /* SpeechGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A52 /* SpeechGate.swift */; };
@@ -45,6 +46,7 @@
 		C00000000000000000000134 /* ImportManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000133 /* ImportManager.swift */; };
 		C00000000000000000000136 /* TextInserter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000135 /* TextInserter.swift */; };
 		C00000000000000000000138 /* DiagnosticLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000137 /* DiagnosticLog.swift */; };
+		C00000000000000000000A63 /* ErrorSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A62 /* ErrorSummary.swift */; };
 		C0000000000000000000013A /* TextNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000139 /* TextNormalizer.swift */; };
 		C0000000000000000000013C /* ReadinessCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000013B /* ReadinessCoordinator.swift */; };
 		C0000000000000000000013E /* ReadinessState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000013D /* ReadinessState.swift */; };
@@ -172,6 +174,7 @@
 		CA0000000000000000000928 /* LectureContinuation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LectureContinuation.swift; sourceTree = "<group>"; };
 		C0000000000000000000011D /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		C0000000000000000000011F /* AudioCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioCaptureService.swift; sourceTree = "<group>"; };
+		C00000000000000000000A60 /* CaptureRestartPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureRestartPolicy.swift; sourceTree = "<group>"; };
 		C00000000000000000000A5C /* EvaluationAudioStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvaluationAudioStore.swift; sourceTree = "<group>"; };
 		C00000000000000000000121 /* DictationStateMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationStateMachine.swift; sourceTree = "<group>"; };
 		C00000000000000000000A52 /* SpeechGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechGate.swift; sourceTree = "<group>"; };
@@ -187,6 +190,7 @@
 		C00000000000000000000133 /* ImportManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportManager.swift; sourceTree = "<group>"; };
 		C00000000000000000000135 /* TextInserter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextInserter.swift; sourceTree = "<group>"; };
 		C00000000000000000000137 /* DiagnosticLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticLog.swift; sourceTree = "<group>"; };
+		C00000000000000000000A62 /* ErrorSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorSummary.swift; sourceTree = "<group>"; };
 		C00000000000000000000139 /* TextNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextNormalizer.swift; sourceTree = "<group>"; };
 		C0000000000000000000013B /* ReadinessCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadinessCoordinator.swift; sourceTree = "<group>"; };
 		C0000000000000000000013D /* ReadinessState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadinessState.swift; sourceTree = "<group>"; };
@@ -384,6 +388,7 @@
 			isa = PBXGroup;
 			children = (
 				C0000000000000000000011F /* AudioCaptureService.swift */,
+				C00000000000000000000A60 /* CaptureRestartPolicy.swift */,
 				C00000000000000000000A5C /* EvaluationAudioStore.swift */,
 			);
 			path = Audio;
@@ -451,6 +456,7 @@
 			isa = PBXGroup;
 			children = (
 				C00000000000000000000137 /* DiagnosticLog.swift */,
+				C00000000000000000000A62 /* ErrorSummary.swift */,
 			);
 			path = Logging;
 			sourceTree = "<group>";
@@ -811,6 +817,7 @@
 				C0000000000000000000011E /* AppState.swift in Sources */,
 				C00000000000000000000301 /* AppDelegate.swift in Sources */,
 				C00000000000000000000120 /* AudioCaptureService.swift in Sources */,
+				C00000000000000000000A61 /* CaptureRestartPolicy.swift in Sources */,
 				C00000000000000000000A5D /* EvaluationAudioStore.swift in Sources */,
 				C00000000000000000000122 /* DictationStateMachine.swift in Sources */,
 				C00000000000000000000A53 /* SpeechGate.swift in Sources */,
@@ -828,6 +835,7 @@
 				C00000000000000000000134 /* ImportManager.swift in Sources */,
 				C00000000000000000000136 /* TextInserter.swift in Sources */,
 				C00000000000000000000138 /* DiagnosticLog.swift in Sources */,
+				C00000000000000000000A63 /* ErrorSummary.swift in Sources */,
 				C0000000000000000000013A /* TextNormalizer.swift in Sources */,
 				C0000000000000000000013C /* ReadinessCoordinator.swift in Sources */,
 				C0000000000000000000013E /* ReadinessState.swift in Sources */,

@@ -52,7 +52,8 @@ public enum TrailingHallucinationFilter {
         if let lastAudible = lastAudibleSecond(in: samples, sampleRate: sampleRate) {
             while let terminal = remaining.last,
                   terminal.startSeconds >= lastAudible + afterSpeechMargin {
-                let suffix = terminal.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                // В тексте отдельного сегмента остаются метки времени, в готовом тексте их нет.
+                let suffix = WhisperSpecialTokens.strip(terminal.text)
                 let current = text.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !suffix.isEmpty, current.hasSuffix(suffix) else { break }
                 text = String(current.dropLast(suffix.count))

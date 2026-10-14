@@ -78,7 +78,8 @@ public actor EvaluationAudioStore: EvaluationAudioStoring {
         let contents = (try? FileManager.default.contentsOfDirectory(
             at: directory, includingPropertiesForKeys: nil
         )) ?? []
-        return contents.filter { $0.pathExtension == "wav" }
+        // Имя начинается с UUID записи: сюда же попадает недописанный временный файл.
+        return contents.filter { UUID(uuidString: String($0.lastPathComponent.prefix(36))) != nil }
     }
 
     private func prepareDirectory() throws {

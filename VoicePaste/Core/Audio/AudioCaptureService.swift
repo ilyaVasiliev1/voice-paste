@@ -8,7 +8,7 @@ public enum AudioCaptureError: Error, Equatable, Sendable {
 
 /// Что случилось с захватом, пока шла запись: система сменила или убрала
 /// устройство ввода.
-public enum AudioCaptureInterruption: Equatable, Sendable {
+nonisolated public enum AudioCaptureInterruption: Equatable, Sendable {
     /// Граф пересобран на новом устройстве, накопленное сохранено, запись идёт.
     case restarted
     /// Продолжить не вышло: микрофона нет. Накопленное остаётся в буфере.
@@ -212,6 +212,9 @@ public final class AudioCaptureService {
     /// Система сменила устройство посреди записи. Вызывается на главном акторе.
     public var onInterruption: ((AudioCaptureInterruption) -> Void)?
     private var configurationObserver: NSObjectProtocol?
+    /// Растёт при каждом явном `start`/`resume`/`pause`/`stop`: перезапуск после
+    /// смены устройства, начатый до них, обязан уступить.
+    private var restartToken = 0
     private var levelPollTask: Task<Void, Never>?
 
     public init() {}
@@ -226,6 +229,7 @@ public final class AudioCaptureService {
     }
 
     public func start() throws {
+        restartToken += 1
         try beginCapture(clearingExistingSamples: true)
     }
 
@@ -233,6 +237,7 @@ public final class AudioCaptureService {
     /// itself is intentionally fresh, but the accumulator is preserved so
     /// both spoken segments become one transcription.
     public func resume() throws {
+        restartToken += 1
         try beginCapture(clearingExistingSamples: false)
     }
 
@@ -314,21 +319,32 @@ public final class AudioCaptureService {
             forName: .AVAudioEngineConfigurationChange,
             object: engine,
             queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in self?.handleConfigurationChange() }
+        ) { [weak self, weak engine] _ in
+            guard let engine else { return }
+            let identity = ObjectIdentifier(engine)
+            Task { @MainActor in self?.handleConfigurationChange(of: identity) }
         }
     }
 
     /// Пересобирает граф на новом устройстве с тем же накопителем; если не
-    /// вышло — сообщает, накопленное остаётся.
-    func handleConfigurationChange() {
-        guard isCapturing else { return }
-        pause()
-        do {
-            try beginCapture(clearingExistingSamples: false)
-            onInterruption?(.restarted)
-        } catch {
-            onInterruption?(.failed(String(describing: error)))
+    /// вышло — сообщает, накопленное остаётся. Уведомления приходят пачкой:
+    /// отвечаем только на то, что пришло от текущего движка.
+    func handleConfigurationChange(of identity: ObjectIdentifier) {
+        guard isCapturing, let engine, ObjectIdentifier(engine) == identity else { return }
+        tearDownEngine()
+        let token = restartToken
+        Task { [weak self] in
+            guard let self else { return }
+            let outcome = await CaptureRestartPolicy.run(
+                restart: {
+                    guard self.restartToken == token else { throw CancellationError() }
+                    try self.beginCapture(clearingExistingSamples: false)
+                },
+                sleep: { try? await Task.sleep(for: $0) }
+            )
+            // Пока ждали, запись остановили или начали заново — сообщать нечего.
+            guard self.restartToken == token else { return }
+            self.onInterruption?(outcome)
         }
     }
 
@@ -347,6 +363,11 @@ public final class AudioCaptureService {
     /// Used exclusively for the reversible Escape pause; a later `resume()`
     /// attaches a fresh audio engine to the same accumulator.
     public func pause() {
+        restartToken += 1
+        tearDownEngine()
+    }
+
+    private func tearDownEngine() {
         guard isCapturing, let engine else { return }
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()

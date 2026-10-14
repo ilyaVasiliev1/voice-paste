@@ -982,7 +982,7 @@ public final class AppState: ObservableObject {
             do {
                 try await store.save(samples: samples, id: id)
             } catch {
-                log("evaluationAudio.saveFailed", String(describing: error))
+                log("evaluationAudio.saveFailed", ErrorSummary.describe(error))
             }
         }
     }
@@ -995,7 +995,9 @@ public final class AppState: ObservableObject {
     /// Удаляет все сохранённые для оценки записи; возвращает их число.
     @discardableResult
     public func deleteEvaluationAudio() async throws -> Int {
-        try await evaluationAudio.deleteAll()
+        // Идущее сохранение иначе обогнало бы удаление и пережило его.
+        await evaluationAudioTask?.value
+        return try await evaluationAudio.deleteAll()
     }
 
     // MARK: - Lifecycle (EC-014, L-010/L-011)
