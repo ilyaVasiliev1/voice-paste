@@ -83,6 +83,8 @@ final class EventLog: @unchecked Sendable {
     func details(of event: String) -> [String] {
         lock.withLock { entries.filter { $0.event == event }.map(\.detail) }
     }
+
+    var order: [String] { lock.withLock { entries.map(\.event) } }
 }
 
 /// Хранилище звука для оценки: что и под каким именем сохранили.
