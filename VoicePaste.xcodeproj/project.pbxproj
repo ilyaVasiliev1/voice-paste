@@ -119,6 +119,7 @@
 		C00000000000000000000A47 /* DictationTractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A46 /* DictationTractTests.swift */; };
 		C00000000000000000000A51 /* AudioEvidenceFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A50 /* AudioEvidenceFilterTests.swift */; };
 		C00000000000000000000A4F /* SpeechGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A4E /* SpeechGateTests.swift */; };
+		C00000000000000000000A5F /* CaptureRestartPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A5E /* CaptureRestartPolicyTests.swift */; };
 		C00000000000000000000A5B /* EvaluationAudioTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A5A /* EvaluationAudioTests.swift */; };
 		C00000000000000000000A57 /* ModelArchiveChecksumTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A56 /* ModelArchiveChecksumTests.swift */; };
 		C00000000000000000000A55 /* SpeechGateRealSpeechTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A54 /* SpeechGateRealSpeechTests.swift */; };
@@ -244,6 +245,7 @@
 		C00000000000000000000A46 /* DictationTractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationTractTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A50 /* AudioEvidenceFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEvidenceFilterTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A4E /* SpeechGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechGateTests.swift; sourceTree = "<group>"; };
+		C00000000000000000000A5E /* CaptureRestartPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureRestartPolicyTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A5A /* EvaluationAudioTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvaluationAudioTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A56 /* ModelArchiveChecksumTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelArchiveChecksumTests.swift; sourceTree = "<group>"; };
 		C00000000000000000000A54 /* SpeechGateRealSpeechTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechGateRealSpeechTests.swift; sourceTree = "<group>"; };
@@ -629,6 +631,7 @@
 				C00000000000000000000A46 /* DictationTractTests.swift */,
 				C00000000000000000000A50 /* AudioEvidenceFilterTests.swift */,
 				C00000000000000000000A4E /* SpeechGateTests.swift */,
+				C00000000000000000000A5E /* CaptureRestartPolicyTests.swift */,
 				C00000000000000000000A5A /* EvaluationAudioTests.swift */,
 				C00000000000000000000A56 /* ModelArchiveChecksumTests.swift */,
 				C00000000000000000000A54 /* SpeechGateRealSpeechTests.swift */,
@@ -897,6 +900,7 @@
 				C00000000000000000000A47 /* DictationTractTests.swift in Sources */,
 				C00000000000000000000A51 /* AudioEvidenceFilterTests.swift in Sources */,
 				C00000000000000000000A4F /* SpeechGateTests.swift in Sources */,
+				C00000000000000000000A5F /* CaptureRestartPolicyTests.swift in Sources */,
 				C00000000000000000000A5B /* EvaluationAudioTests.swift in Sources */,
 				C00000000000000000000A57 /* ModelArchiveChecksumTests.swift in Sources */,
 				C00000000000000000000A55 /* SpeechGateRealSpeechTests.swift in Sources */,

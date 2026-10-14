@@ -68,6 +68,22 @@ struct SpeechGateTests {
         #expect(activity.hasSpeech)
     }
 
+    @Test("граница: очень тихая речь на заметном фоне отвергается, ясная — принимается")
+    func quietSpeechOverNoticeableNoiseIsTheKnownBoundary() {
+        // Фон rms 0.006 (вентилятор, улица): порог кадра выше 0.012.
+        let background = Self.noise(seconds: 3, level: 0.0104)
+        func mixed(speechAmplitude: Float) -> [Float] {
+            let speech = Self.tone(seconds: 1.5, amplitude: speechAmplitude)
+            return zip(background, Self.silence(seconds: 0.75) + speech + Self.silence(seconds: 0.75))
+                .map { $0 + $1 }
+        }
+
+        // rms речи 0.008 — отвергается по замыслу (спека: запись без речи).
+        #expect(!SpeechGate.analyze(mixed(speechAmplitude: 0.0113)).hasSpeech)
+        // rms речи 0.035 — принимается.
+        #expect(SpeechGate.analyze(mixed(speechAmplitude: 0.05)).hasSpeech)
+    }
+
     @Test("щелчок в десять миллисекунд — не речь")
     func clickIsNotSpeech() {
         var samples = Self.silence(seconds: 2)

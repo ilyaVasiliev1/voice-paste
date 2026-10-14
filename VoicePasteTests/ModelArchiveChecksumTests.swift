@@ -135,6 +135,28 @@ struct ModelArchiveChecksumTests {
         #expect(elapsed < .seconds(8))
     }
 
+    // MARK: - Менеджер модели
+
+    @Test("несовпадение суммы — отказ проверки, а не сбой сети")
+    @MainActor
+    func integrityFailureIsMappedToVerificationFailed() {
+        let error = GitHubModelDownloader.DownloadError.checksumMismatch
+
+        #expect(ModelManager.isIntegrityFailure(error))
+        #expect(ModelManager.modelError(for: error) == .verificationFailed)
+    }
+
+    @Test("обычный сбой сети остаётся сбоем загрузки и повторяется")
+    @MainActor
+    func networkFailureStaysRetryable() {
+        let error = GitHubModelDownloader.DownloadError.httpStatus(503)
+
+        #expect(!ModelManager.isIntegrityFailure(error))
+        #expect(ModelManager.modelError(for: error) == .downloadFailed)
+        #expect(ModelManager.modelError(for: ModelError.insufficientStorage(requiredBytes: 1, availableBytes: 0))
+            == .insufficientStorage(requiredBytes: 1, availableBytes: 0))
+    }
+
     // MARK: - Каталог
 
     @Test("для обоих архивов закреплены суммы: 64 шестнадцатеричных знака")

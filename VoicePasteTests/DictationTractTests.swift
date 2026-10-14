@@ -100,10 +100,13 @@ struct DictationTractTests {
     actor FakeEvaluationAudio: EvaluationAudioStoring {
         private(set) var saved: [(id: UUID, sampleCount: Int)] = []
         var failure: Error?
+        var saveDelay: Duration = .zero
 
         func setFailure(_ error: Error?) { failure = error }
+        func setSaveDelay(_ delay: Duration) { saveDelay = delay }
 
         func save(samples: [Float], id: UUID) async throws {
+            if saveDelay > .zero { try await Task.sleep(for: saveDelay) }
             if let failure { throw failure }
             saved.append((id, samples.count))
         }
@@ -278,6 +281,24 @@ struct DictationTractTests {
         #expect(rig.delivery.inserted.isEmpty && rig.delivery.copied.isEmpty)
         #expect(try await savedItems(rig).isEmpty)
         #expect(rig.state.dictationPhase == .idle)
+        #expect(rig.events.details(of: "dictation.noSpeech").count == 1)
+    }
+
+    @Test("удаление звука дожидается сохранения, которое ещё идёт")
+    func deletionWaitsForPendingSave() async throws {
+        let rig = try await makeRig(saveAudio: true)
+        defer { rig.cleanup() }
+        await rig.evaluation.setSaveDelay(.milliseconds(200))
+        rig.audio.recording = Self.speech()
+        rig.audio.recordingRMS = 0.07
+        rig.state.handleHotkeyDown()
+        rig.state.handleHotkeyDown()
+        await rig.state.dictationTask?.value
+
+        let removed = try await rig.state.deleteEvaluationAudio()
+
+        #expect(removed == 1)
+        #expect(await rig.evaluation.saved.isEmpty)
     }
 
     @Test("звук для оценки выключен — ничего не сохраняется")

@@ -112,6 +112,30 @@ struct EvaluationAudioStoreTests {
         #expect(await store.summary().fileCount == 1)
     }
 
+    @Test("недописанный временный файл записи считается и удаляется")
+    func interruptedWriteLeftoverIsCountedAndDeleted() async throws {
+        let (store, directory) = try makeStore()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try await store.save(samples: Self.tone(1_600), id: UUID())
+        let leftover = directory.appendingPathComponent("\(UUID().uuidString).wav.sb-1a2b3c-XyZ")
+        try Data(repeating: 1, count: 64).write(to: leftover)
+
+        #expect(await store.summary().fileCount == 2)
+        #expect(try await store.deleteAll() == 2)
+        #expect(!FileManager.default.fileExists(atPath: leftover.path))
+    }
+
+    @Test("каталог исключён из резервных копий")
+    func directoryIsExcludedFromBackup() async throws {
+        let (store, directory) = try makeStore()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        try await store.save(samples: Self.tone(1_600), id: UUID())
+
+        let values = try directory.resourceValues(forKeys: [.isExcludedFromBackupKey])
+        #expect(values.isExcludedFromBackup == true)
+    }
+
     @Test("удаление там, где ничего не сохранялось, — ноль и без ошибки")
     func deleteAllOnEmptyIsZero() async throws {
         let (store, directory) = try makeStore()

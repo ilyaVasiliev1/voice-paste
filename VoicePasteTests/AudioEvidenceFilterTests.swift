@@ -33,6 +33,20 @@ struct AudioEvidenceFilterTests {
         #expect(text == "Привет, мир.")
     }
 
+    @Test("сегменты в боевой форме — с метками времени WhisperKit — снимаются так же")
+    func segmentsWithTimestampTokensAreMatched() {
+        let samples = Self.speech(seconds: 2) + Self.silence(seconds: 1)
+        let text = TrailingHallucinationFilter.filtering(
+            rawText: "Привет, мир. Thank you.",
+            segments: [
+                Segment(text: "<|0.00|> Привет, мир.<|2.00|>", startSeconds: 0),
+                Segment(text: "<|2.30|> Thank you.<|3.10|>", startSeconds: 2.3),
+            ],
+            samples: samples
+        )
+        #expect(text == "Привет, мир.")
+    }
+
     @Test("любая другая концовка после тишины тоже снимается")
     func anyTrailingTextAfterSilenceIsRemoved() {
         let samples = Self.speech(seconds: 2) + Self.silence(seconds: 1)
