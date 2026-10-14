@@ -379,6 +379,8 @@ struct LectureView: View {
                             .id("live")
                     }
                 }
+                .frame(maxWidth: DesignTokens.readingMeasure, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(DesignTokens.detailPanePadding)
                 .textSelection(.enabled)
             }

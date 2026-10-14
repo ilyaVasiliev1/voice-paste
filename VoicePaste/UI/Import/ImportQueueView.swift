@@ -17,7 +17,7 @@ struct ImportQueueView: View {
                 dropStage
             }
             .padding(DesignTokens.detailPanePadding)
-            .frame(maxWidth: 860, alignment: .leading)
+            .frame(maxWidth: DesignTokens.formMeasure, alignment: .leading)
         }
         .onDrop(of: [.fileURL], isTargeted: $isDropTargeted, perform: acceptDrop)
         .toolbar {
@@ -61,6 +61,7 @@ struct ImportQueueView: View {
             .contentShape(RoundedRectangle(cornerRadius: DesignTokens.DropZone.cornerRadius, style: .continuous))
         }
         .buttonStyle(.plain)
+        .disabled(appState.readiness.state != .ready)
         .background(
             DesignTokens.DropZone.fill(isTargeted: isDropTargeted),
             in: RoundedRectangle(cornerRadius: DesignTokens.DropZone.cornerRadius, style: .continuous)
@@ -90,6 +91,7 @@ struct ImportQueueView: View {
     }
 
     private func acceptDrop(_ providers: [NSItemProvider]) -> Bool {
+        guard appState.readiness.state == .ready else { return false }
         let available = providers.filter { $0.canLoadObject(ofClass: URL.self) }
         guard !available.isEmpty else { return false }
         for provider in available {

@@ -109,6 +109,9 @@ nonisolated enum DesignTokens {
     /// Предельная ширина текста записи: длиннее строка читается тяжело.
     static let readingMeasure: CGFloat = 680
 
+    /// Предельная ширина экрана-формы (импорт): шире зона приёма растягивается без пользы.
+    static let formMeasure: CGFloat = 860
+
     /// Внешний отступ правой части главного окна. Два экрана из четырёх уже
     /// держали 24 — остальные подведены под них.
     static let detailPanePadding: CGFloat = Spacing.xl

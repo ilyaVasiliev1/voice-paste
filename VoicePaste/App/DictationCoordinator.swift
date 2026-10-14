@@ -231,7 +231,7 @@ final class DictationCoordinator {
         elapsedTimerTask = Task { [weak self] in
             while let self, self.stateMachine.phase == .recording, !Task.isCancelled {
                 self.refreshRecordingHUD()
-                // TOK-hud.recording-updates — не более десяти обновлений в секунду.
+                // не более десяти обновлений в секунду.
                 try? await Task.sleep(nanoseconds: 200_000_000)
             }
         }

@@ -41,7 +41,29 @@ struct MainWindowView: View {
             minWidth: MainWindowLayout.windowMinWidth,
             minHeight: MainWindowLayout.windowMinHeight
         )
-        .safeAreaInset(edge: .top, spacing: 0) {
+        .task { await history.observeChanges() }
+        .onAppear {
+            consumeRequestedSection()
+            consumeRequestedHistorySelection()
+        }
+        .onChange(of: appState.requestedMainContentSection) { _, _ in consumeRequestedSection() }
+        .onChange(of: appState.requestedHistorySelection) { _, _ in consumeRequestedHistorySelection() }
+    }
+
+    @ViewBuilder
+    private var listColumn: some View {
+        switch section {
+        case .lecture: LectureListColumn()
+        case .history: HistoryListColumn(model: history, appState: appState)
+        case .importQueue: ImportQueueList()
+        case .dashboard: StatisticsPeriodList(period: $period, store: appState.historyStore)
+        }
+    }
+
+    /// Плашки состояния над деталью: готовность и хранилище. Внутри правой колонки, а не окна:
+    /// над всем окном они ложились поверх боковой колонки и списка.
+    @ViewBuilder
+    private var statusBanners: some View {
             if appState.readiness.state != .ready {
                 HStack(spacing: DesignTokens.Spacing.md) {
                     Label(
@@ -74,28 +96,19 @@ struct MainWindowView: View {
                 .overlay(alignment: .bottom) { Divider() }
                 .accessibilityIdentifier("storage-unavailable-banner")
             }
-        }
-        .task { await history.observeChanges() }
-        .onAppear {
-            consumeRequestedSection()
-            consumeRequestedHistorySelection()
-        }
-        .onChange(of: appState.requestedMainContentSection) { _, _ in consumeRequestedSection() }
-        .onChange(of: appState.requestedHistorySelection) { _, _ in consumeRequestedHistorySelection() }
     }
 
-    @ViewBuilder
-    private var listColumn: some View {
-        switch section {
-        case .lecture: LectureListColumn()
-        case .history: HistoryListColumn(model: history, appState: appState)
-        case .importQueue: ImportQueueList()
-        case .dashboard: StatisticsPeriodList(period: $period, store: appState.historyStore)
-        }
-    }
-
-    @ViewBuilder
     private var detailColumn: some View {
+        VStack(spacing: 0) {
+            statusBanners
+            detailContent
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    @ViewBuilder
+    private var detailContent: some View {
         switch section {
         case .lecture: LectureView(recorder: appState.lectureRecorder, settings: appState.settings)
         case .history: HistoryDetailColumn(model: history)
