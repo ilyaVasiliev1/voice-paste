@@ -539,7 +539,8 @@ public final class ModelManager: ObservableObject {
           expectedChild: ModelCatalog.modelFolderName,
           // The tokenizer is ~640 KB against the model's ~450 MB, so it
           // barely moves the bar; give the model essentially all of it.
-          progressWeight: tokenizer ? 0.99 : 1.0
+          progressWeight: tokenizer ? 0.99 : 1.0,
+          expectedSHA256: ModelCatalog.githubModelArchiveSHA256
         ))
     }
     if tokenizer {
@@ -548,7 +549,8 @@ public final class ModelManager: ObservableObject {
           url: ModelCatalog.githubTokenizerArchiveURL,
           destination: tokenizerDestination,
           expectedChild: ModelCatalog.tokenizerRepoPath,
-          progressWeight: model ? 0.01 : 1.0
+          progressWeight: model ? 0.01 : 1.0,
+          expectedSHA256: ModelCatalog.githubTokenizerArchiveSHA256
         ))
     }
     guard !archives.isEmpty else { return }

@@ -483,5 +483,37 @@ HuggingFace-хаб. Уже проверенная локальная модел�
 
 ---
 
+### Requirement: Скачанный архив модели сверяется с вшитой суммой SHA-256
+<!-- id: GitHubModelDownloader.checksum -->
+<!-- entities: GitHubModelDownloader, ModelCatalog, FileDigest -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/Core/Transcription/GitHubModelDownloader.swift, VoicePaste/Core/Transcription/FileDigest.swift, VoicePaste/Core/Transcription/ModelState.swift -->
+<!-- test_macos: VoicePasteTests/ModelArchiveChecksumTests.swift:matchingChecksumInstalls -->
+<!-- test_macos: VoicePasteTests/ModelArchiveChecksumTests.swift:mismatchedChecksumIsRefusedWithoutInstalling -->
+<!-- test_macos: VoicePasteTests/ModelArchiveChecksumTests.swift:catalogPinsBothArchives -->
+
+Загрузка модели и токенайзера с GitHub SHA-256 SHALL сверять сумму скачанного
+архива с вшитой в приложение (`ModelCatalog`) до распаковки. При несовпадении
+архив удаляется и ничего не ставится: сначала один раз загрузка повторяется с
+нуля, при втором несовпадении — отказ `checksumMismatch`. Несовпадение не
+повторяется с паузами: это не сбой сети.
+
+Область: только источник «GitHub». Загрузка через Hugging Face (зеркало и
+официальный адрес) идёт средствами WhisperKit и этой проверкой не охвачена.
+
+#### Scenario: сумма совпала
+<!-- test: ModelArchiveChecksumTests.matchingChecksumInstalls -->
+- **WHEN** сумма архива равна вшитой
+- **THEN** архив распакован и установлен
+
+#### Scenario: сумма не совпала
+<!-- test: ModelArchiveChecksumTests.mismatchedChecksumIsRefusedWithoutInstalling -->
+- **WHEN** сумма скачанного архива отличается от вшитой
+- **THEN** отказ `checksumMismatch`, в каталоге модели ничего нет, архив удалён
+
+> Last verified: 2026-10-14
+
+---
+
 <!-- uncertainty: Проверка свободного места (checkStorage) и реакция на нехватку памяти не покрыты тестами: обе зависят от состояния реальной системы. -->
 <!-- uncertainty: GitHubModelDownloader прочитан по вызовам из ModelManager; отдельного теста на распаковку архивов и докачку по частям в VoicePasteTests нет. -->

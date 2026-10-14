@@ -68,6 +68,7 @@
 		C00000000000000000000146 /* Transcribing.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000145 /* Transcribing.swift */; };
 		C00000000000000000000148 /* WhisperKitTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000147 /* WhisperKitTranscriber.swift */; };
 		C00000000000000000000201 /* GitHubModelDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000200 /* GitHubModelDownloader.swift */; };
+		C00000000000000000000A59 /* FileDigest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000A58 /* FileDigest.swift */; };
 		C0000000000000000000014A /* AppDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000149 /* AppDatabase.swift */; };
 		C0000000000000000000014C /* HistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000014B /* HistoryStore.swift */; };
 		C0000000000000000000014E /* Migrations.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000014D /* Migrations.swift */; };
@@ -191,6 +192,7 @@
 		C00000000000000000000145 /* Transcribing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transcribing.swift; sourceTree = "<group>"; };
 		C00000000000000000000147 /* WhisperKitTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperKitTranscriber.swift; sourceTree = "<group>"; };
 		C00000000000000000000200 /* GitHubModelDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubModelDownloader.swift; sourceTree = "<group>"; };
+		C00000000000000000000A58 /* FileDigest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileDigest.swift; sourceTree = "<group>"; };
 		C00000000000000000000149 /* AppDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDatabase.swift; sourceTree = "<group>"; };
 		C0000000000000000000014B /* HistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStore.swift; sourceTree = "<group>"; };
 		C0000000000000000000014D /* Migrations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Migrations.swift; sourceTree = "<group>"; };
@@ -481,6 +483,7 @@
 				C00000000000000000000145 /* Transcribing.swift */,
 				C00000000000000000000147 /* WhisperKitTranscriber.swift */,
 				C00000000000000000000200 /* GitHubModelDownloader.swift */,
+				C00000000000000000000A58 /* FileDigest.swift */,
 				C00000000000000000000807 /* TrailingHallucinationFilter.swift */,
 				CA0000000000000000000924 /* SubtitleCreditFilter.swift */,
 				C0000000000000000000024B /* LocalModelDetection.swift */,
@@ -825,6 +828,7 @@
 				C00000000000000000000146 /* Transcribing.swift in Sources */,
 				C00000000000000000000148 /* WhisperKitTranscriber.swift in Sources */,
 				C00000000000000000000201 /* GitHubModelDownloader.swift in Sources */,
+				C00000000000000000000A59 /* FileDigest.swift in Sources */,
 				C00000000000000000000806 /* TrailingHallucinationFilter.swift in Sources */,
 				CA0000000000000000000925 /* SubtitleCreditFilter.swift in Sources */,
 				C0000000000000000000024A /* LocalModelDetection.swift in Sources */,

@@ -109,6 +109,12 @@ nonisolated public enum ModelCatalog {
     public static let githubModelArchiveURL = URL(
         string: "https://github.com/ilyaVasiliev1/voice-paste/releases/download/model-large-v3/whisperkit-large-v3.zip"
     )!
+    /// SHA-256 архивов релиза `model-large-v3`, как их назвал GitHub для
+    /// загруженных 22.07.2026 файлов (475 MB и 656 KB). Сверяются до распаковки.
+    public static let githubModelArchiveSHA256 =
+        "ebdac941b71fd2279e4b5cbce74304bbdd46db7e01a03c3e59e487e736861a42"
+    public static let githubTokenizerArchiveSHA256 =
+        "d301928de7edab2cd38476a5e4bd640fc2a8fa3f8559f04d9b2cf238c641b8f6"
     /// The tokenizer WhisperKit otherwise fetches from HuggingFace separately
     /// from the model (`openai/whisper-large-v3`). Bundling it lets the
     /// `.github` source load fully offline; ~640 KB.

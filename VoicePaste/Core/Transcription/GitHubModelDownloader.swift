@@ -35,12 +35,22 @@ public actor GitHubModelDownloader {
         /// Weight of this archive in the combined progress (`0...1`). The model
         /// dwarfs the tokenizer, so the tokenizer barely moves the bar.
         public let progressWeight: Double
+        /// SHA-256 архива. Сверяется до распаковки: без совпадения ничего не
+        /// ставится. Обязательна — архив без суммы не проверялся бы вовсе.
+        public let expectedSHA256: String
 
-        public init(url: URL, destination: URL, expectedChild: String, progressWeight: Double) {
+        public init(
+            url: URL,
+            destination: URL,
+            expectedChild: String,
+            progressWeight: Double,
+            expectedSHA256: String
+        ) {
             self.url = url
             self.destination = destination
             self.expectedChild = expectedChild
             self.progressWeight = progressWeight
+            self.expectedSHA256 = expectedSHA256
         }
     }
 
@@ -49,6 +59,8 @@ public actor GitHubModelDownloader {
         case httpStatus(Int)
         case extractionFailed
         case verificationFailed
+        /// Скачанный архив не совпал с вшитой суммой.
+        case checksumMismatch
     }
 
     private static let maxAttemptsPerArchive = 5
@@ -110,6 +122,7 @@ public actor GitHubModelDownloader {
     ) async throws {
         var resumeData: Data?
         var lastError: Error = DownloadError.httpStatus(-1)
+        var didRetryAfterMismatch = false
 
         for attempt in 0..<Self.maxAttemptsPerArchive {
             try checkCancelled()
@@ -119,11 +132,25 @@ public actor GitHubModelDownloader {
                     resumeData: resumeData,
                     progress: progress
                 )
+                let actual = try await FileDigest.sha256(of: downloaded)
+                guard actual == archive.expectedSHA256.lowercased() else {
+                    try? FileManager.default.removeItem(at: downloaded)
+                    throw DownloadError.checksumMismatch
+                }
                 try await installAtomically(zip: downloaded, archive: archive)
                 try? FileManager.default.removeItem(at: downloaded)
                 return
             } catch let error as DownloadError where error == .cancelled {
                 throw error
+            } catch let error as DownloadError where error == .checksumMismatch {
+                // Несовпадение — не сбой сети: ждать и повторять с паузами
+                // незачем. Один раз качаем заново с нуля (продолженная
+                // загрузка могла склеить куски разных ответов), второй раз —
+                // отказ.
+                guard !didRetryAfterMismatch else { throw error }
+                didRetryAfterMismatch = true
+                resumeData = nil
+                lastError = error
             } catch {
                 lastError = error
                 // Keep resume data if the failure produced any, so the next
