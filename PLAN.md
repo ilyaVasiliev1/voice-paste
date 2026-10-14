@@ -44,7 +44,19 @@
 Не охвачено и записано: загрузка с Hugging Face без проверки суммы (M3); вынос из `AppState` (M2, сейчас 1011 строк).
 
 ### M2. Конвейер и координатор
-Статус: ждёт; зависит от M1
+Статус: идёт (14.10.2026); зависит от M1 — сделан
+Ход (срезы; каждый — тест вперёд, затронутые наборы зелёные, коммит):
+- Срез 1 — сделан, 1784cb5: пакет `Packages/SpeechPipeline` без зависимостей (типы и протокол распознавания, фильтры,
+  детектор речи, планировщик окон, запись о языке); охранный тест границы; в приложении `Exports.swift` с `@_exported import`.
+- Срез 2 — В РАБОЧЕМ ДЕРЕВЕ, НЕ ПРОВЕРЕН И НЕ ЗАКОММИЧЕН: `TextNormalizer`, `SpellChecking`, `VocabularyEntry` переехали в пакет,
+  `NSSpellCheckerAdapter` — отдельный файл приложения (AppKit), `@retroactive` у записей базы. Проверить: собрать и прогнать
+  `TextNormalizerTests ImportManagerTests HistoryStoreTests DictationTractTests SpeechPipelineBoundaryTests AppStateRoutingTests`
+  через `zsh scripts/test-safely.sh -only-testing:VoicePasteTests/<набор> ...`; зелёное — коммит, красное — чинить доступ (`public`).
+- Срез 3: шаги конвейера, страж и `Draft` в пакете (контрактный набор на поддельном движке без модели).
+- Срез 4: `DictationCoordinator` вынесен из `AppState`; срез 5: импорт и лекция на том же конвейере; срез 6: `AppState` < 600 строк,
+  полный набор (прежние 275 тестов), ревью `code-reviewer` раз по окончании.
+Заметки: файлы регистрируются в `project.pbxproj` вручную; тяжёлое (`swift build`) — через `depo-heavy.py run`; соседняя дорожка
+интерфейса делит каталог сборки — скрипт тестов отказывает «жив xcodebuild», ждать.
 Части: пакет `Packages/SpeechPipeline` (шаги, страж, `Draft`); `DictationCoordinator` вынесен из `AppState`;
 три входа (диктовка, импорт, лекция) на одном конвейере.
 Навыки: `architecture`, `tdd-workflow`, `swift-concurrency:swift-concurrency`
