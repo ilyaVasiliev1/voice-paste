@@ -445,14 +445,17 @@ public final class AudioCaptureService {
     // WHY: смена устройства останавливает движок без ошибки; запись выглядела идущей, а на выходе была тишина.
     private func observeConfigurationChanges(of engine: AVAudioEngine) {
         if let configurationObserver { NotificationCenter.default.removeObserver(configurationObserver) }
+        let identity = ObjectIdentifier(engine)
+        let generation = restartToken
         configurationObserver = NotificationCenter.default.addObserver(
             forName: .AVAudioEngineConfigurationChange,
             object: engine,
             queue: .main
-        ) { [weak self, weak engine] _ in
-            guard let engine else { return }
-            let identity = ObjectIdentifier(engine)
-            Task { @MainActor in self?.handleConfigurationChange(of: identity) }
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.restartToken == generation else { return }
+                self.handleConfigurationChange(of: identity)
+            }
         }
     }
 

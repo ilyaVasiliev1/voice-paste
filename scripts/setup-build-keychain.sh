@@ -18,8 +18,12 @@ if [[ -f "$KEYCHAIN" && ! -f "$SECRET_FILE" ]]; then
 fi
 
 if [[ -f "$KEYCHAIN" && -f "$SECRET_FILE" ]]; then
-    print "Связка уже есть: $KEYCHAIN"
-    exit 0
+    if security unlock-keychain -p "$(cat "$SECRET_FILE")" "$KEYCHAIN" >/dev/null 2>&1; then
+        print "Существующая подпись готова; сертификат не изменён."
+        exit 0
+    fi
+    print -u2 "Служебная подпись не открывается сохранённым паролем; связка не изменена."
+    exit 2
 fi
 
 mkdir -p "${SECRET_FILE:h}"
