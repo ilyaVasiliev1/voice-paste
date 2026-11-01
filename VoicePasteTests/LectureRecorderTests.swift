@@ -15,7 +15,7 @@ final class LectureRecorderTests: XCTestCase {
     private let sampleRate = 16_000
 
     private func samples(seconds: Double) -> [Float] {
-        Array(repeating: 0, count: Int(seconds * Double(sampleRate)))
+        Array(repeating: 0.0001, count: Int(seconds * Double(sampleRate)))
     }
 
     // MARK: - Инвариант окна
@@ -148,6 +148,32 @@ final class LectureRecorderTests: XCTestCase {
         )
 
         XCTAssertEqual(recorder.detectedLanguage, "ru")
+    }
+
+    func test_exactSilenceSkipsModel_butFaintSpeechIsPreserved() async {
+        let model = ScriptedLectureTranscriber(scripts: [[], []])
+        let silent = LectureRecorder()
+        _ = await silent.finish(transcriber: model, language: .zh,
+            totalSamples: Array(repeating: 0, count: 32_000))
+        let silentCalls = await model.callCount
+        XCTAssertEqual(silentCalls, 0)
+        let faint = LectureRecorder()
+        _ = await faint.finish(transcriber: model, language: .zh,
+            totalSamples: Array(repeating: 0.0001, count: 32_000))
+        let faintCalls = await model.callCount
+        XCTAssertEqual(faintCalls, 1)
+    }
+
+    func test_stopDuringWindow_waitsBeforeReadingTheTail() async throws {
+        let recorder = LectureRecorder(pollInterval: .milliseconds(1))
+        let model = DelayedLectureTranscriber()
+        let audio = samples(seconds: 8)
+        recorder.begin(transcriber: model, language: .en, pauseSeconds: 2,
+            availableSamples: { audio.count }, readSamples: { Array(audio[$0]) })
+        try await waitUntil { await model.calls > 0 }
+        _ = await recorder.finish(transcriber: model, language: .en, totalSamples: audio)
+        let sizes = await model.requestSizes
+        XCTAssertEqual(sizes, [96_000, 48_000])
     }
 
     // MARK: - Отказ и отмена
@@ -292,4 +318,15 @@ private struct SegmentSeed {
     let text: String
     let start: Double
     let end: Double
+}
+
+private actor DelayedLectureTranscriber: Transcribing {
+    private(set) var calls = 0
+    private(set) var requestSizes: [Int] = []
+    func transcribe(_ request: TranscriptionRequest) async throws -> TranscriptionResult {
+        calls += 1
+        requestSizes.append(request.samples.count)
+        try? await Task.sleep(for: .milliseconds(50))
+        return TranscriptionResult(rawText: "text", detectedLanguage: "en", segments: [])
+    }
 }

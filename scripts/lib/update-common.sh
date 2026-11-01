@@ -73,17 +73,9 @@ quit_and_wait() {
     fi
 }
 
-# Отпечаток дерева, из которого поставлена копия: короткий хэш HEAD, с
-# пометкой -dirty при незакоммиченных изменениях. Не версия — версия ничего не
-# говорит о том, какой именно код собран, а коммит говорит однозначно.
+# Отпечаток исходников включает незакоммиченные изменения, а не только HEAD.
 compute_fingerprint() {
-    local root="$1"
-    local hash
-    hash=$(git -C "$root" rev-parse --short=12 HEAD 2>/dev/null) || hash="unknown"
-    if [[ -n "$(git -C "$root" status --porcelain 2>/dev/null)" ]]; then
-        hash="${hash}-dirty"
-    fi
-    print -r -- "$hash"
+    python3 "${${(%):-%x}:A:h:h}/build-info.py" fingerprint "$1"
 }
 
 # Кладёт отпечаток в Info.plist устанавливаемой копии. Выполняется над копией
@@ -224,9 +216,9 @@ build_debug() {
 # (scripts/setup-build-keychain.sh) — у всех сборок одно требование подписи,
 # и выданные системой разрешения переживают пересборку; нет связки — ad-hoc,
 # как раньше, и тогда каждая установка для системы новое приложение.
-BUILD_KEYCHAIN="${VOICEPASTE_BUILD_KEYCHAIN:-$HOME/Library/Keychains/voicepaste-build.keychain-db}"
+BUILD_KEYCHAIN="${VOICEPASTE_BUILD_KEYCHAIN:-$HOME/Library/Keychains/voicepaste-local-signing.keychain-db}"
 BUILD_IDENTITY="VoicePaste Local Build"
-BUILD_KEYCHAIN_SECRET="${VOICEPASTE_BUILD_KEYCHAIN_SECRET:-${${(%):-%x}:A:h:h:h:h:h}/.secrets/voicepaste-build-keychain.txt}"
+BUILD_KEYCHAIN_SECRET="${VOICEPASTE_BUILD_KEYCHAIN_SECRET:-$HOME/.depo-lab/secrets/VOICEPASTE_BUILD_KEYCHAIN_PASSWORD_FILE}"
 
 stable_signing_ready() {
     [[ -f "$BUILD_KEYCHAIN" && -f "$BUILD_KEYCHAIN_SECRET" ]]
@@ -246,16 +238,6 @@ is_stably_signed() {
 # Подпись обязательна: без неё macOS отказывает приложению в правах доступности
 # и микрофона. Она ставится после штампа отпечатка — штамп меняет бандл.
 install_app() {
-    local source="$1" target="$2" fingerprint="$3"
-    rm -rf "$target"
-    ditto "$source" "$target"
-    stamp_fingerprint "$target" "$fingerprint"
-    if stable_signing_ready; then
-        security unlock-keychain -p "$(<"$BUILD_KEYCHAIN_SECRET")" "$BUILD_KEYCHAIN" >/dev/null 2>&1 || true
-        if codesign --force --deep --sign "$BUILD_IDENTITY" --keychain "$BUILD_KEYCHAIN" "$target" >/dev/null 2>&1; then
-            return 0
-        fi
-        print -u2 "Подпись из своей связки не удалась — ставлю ad-hoc."
-    fi
-    codesign --force --deep --sign - "$target" >/dev/null 2>&1 || true
+    print -u2 "Используйте scripts/install-local.sh: замена без проверки подписи запрещена."
+    return 2
 }

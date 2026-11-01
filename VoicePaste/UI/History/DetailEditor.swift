@@ -83,12 +83,15 @@ struct DetailEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
             header
+            Divider()
             TextEditor(text: Binding(get: { model.text }, set: { model.userEdited($0) }))
-                .font(.body)
-                .lineSpacing(3)
+                .font(.system(size: 15))
+                .lineSpacing(6)
+                .scrollContentBackground(.hidden)
+                .accessibilityLabel(Text("history.detail.editor"))
         }
         .frame(maxWidth: DesignTokens.readingMeasure, alignment: .leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .center)
         .padding(DesignTokens.detailPanePadding)
     }
 

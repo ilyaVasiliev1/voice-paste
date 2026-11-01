@@ -22,6 +22,20 @@ import XCTest
 @MainActor
 final class AppStateRoutingTests: XCTestCase {
 
+    func test_failedMicrophoneRestartStopsLecture_andKeepsIncompleteMarker() async throws {
+        let state = try makeAppState()
+        state.isLectureRecording = true
+        state.lectureSession = LectureRecordingSession(startedAt: Date())
+        state.audioCapture.onInterruption?(.failed("Device disconnected"))
+        let deadline = ContinuousClock.now + .seconds(3)
+        while state.isLectureRecording, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        XCTAssertFalse(state.isLectureRecording)
+        XCTAssertNotNil(state.lectureRecorder.completionIssue)
+        XCTAssertFalse(state.audioCapture.isCapturing)
+    }
+
     func test_processRuntime_detectsXCTestHost() {
         XCTAssertTrue(ProcessRuntime.isRunningTests)
     }

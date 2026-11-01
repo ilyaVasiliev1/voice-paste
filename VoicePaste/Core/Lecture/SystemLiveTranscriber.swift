@@ -20,6 +20,7 @@ import Speech
 @MainActor
 public final class SystemLiveTranscriber: LiveTranscribing {
 
+    public private(set) var failureDescription: String?
     private var analyzer: SpeechAnalyzer?
     private var inputContinuation: AsyncStream<AnalyzerInput>.Continuation?
     private var collector: Task<Void, Never>?
@@ -34,7 +35,7 @@ public final class SystemLiveTranscriber: LiveTranscribing {
     public var updates: AsyncStream<LiveTranscriptUpdate> { updateStream }
 
     public init() {
-        (updateStream, updateContinuation) = AsyncStream<LiveTranscriptUpdate>.makeStream()
+        (updateStream, updateContinuation) = AsyncStream<LiveTranscriptUpdate>.makeStream(bufferingPolicy: .bufferingOldest(256))
     }
 
     private enum ModuleKind { case speech, dictation }
@@ -70,7 +71,7 @@ public final class SystemLiveTranscriber: LiveTranscribing {
         let locale = Locale(identifier: identifier)
 
         let module: any SpeechModule
-        let results: AsyncStream<LiveTranscriptUpdate>
+        let startCollector: () -> Task<Void, Never>
         switch kind {
         case .speech:
             let transcriber = SpeechTranscriber(
@@ -78,27 +79,37 @@ public final class SystemLiveTranscriber: LiveTranscribing {
                 preset: .timeIndexedProgressiveTranscription
             )
             module = transcriber
-            results = Self.stream(from: transcriber)
+            startCollector = { [weak self] in Task { [weak self] in
+                guard let self else { return }
+                await Self.drain(transcriber.results, into: self.updateContinuation,
+                    onFailure: { self.failureDescription = "Speech result stream failed" }) { result in
+                    Self.update(text: String(result.text.characters), isFinal: result.isFinal, range: result.range)
+                }
+            } }
         case .dictation:
             let transcriber = DictationTranscriber(
                 locale: locale,
                 preset: .progressiveLongDictation
             )
             module = transcriber
-            results = Self.stream(from: transcriber)
+            startCollector = { [weak self] in Task { [weak self] in
+                guard let self else { return }
+                await Self.drain(transcriber.results, into: self.updateContinuation,
+                    onFailure: { self.failureDescription = "Speech result stream failed" }) { result in
+                    Self.update(text: String(result.text.characters), isFinal: result.isFinal, range: result.range)
+                }
+            } }
         }
 
-        // Языковые данные ставятся системой по запросу. Без этого шага первая
-        // лекция на новом языке молча не распозналась бы.
-        if let request = try? await AssetInventory.assetInstallationRequest(supporting: [module]) {
-            try await request.downloadAndInstall()
+        guard await AssetInventory.status(forModules: [module]) == .installed else {
+            throw LiveTranscribingError.assetsNotInstalled(identifier)
         }
 
         let analyzer = SpeechAnalyzer(modules: [module])
         let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module])
         try await analyzer.prepareToAnalyze(in: format)
 
-        let (input, continuation) = AsyncStream<AnalyzerInput>.makeStream()
+        let (input, continuation) = AsyncStream<AnalyzerInput>.makeStream(bufferingPolicy: .bufferingOldest(128))
         try await analyzer.start(inputSequence: input)
 
         self.analyzer = analyzer
@@ -106,32 +117,39 @@ public final class SystemLiveTranscriber: LiveTranscribing {
         self.inputFormat = format
         self.converter = Self.makeConverter(to: format)
 
-        collector = Task { [updateContinuation] in
-            for await update in results {
-                updateContinuation.yield(update)
-            }
-        }
+        collector = startCollector()
     }
 
     public func append(samples: [Float]) {
         guard let continuation = inputContinuation,
             let format = inputFormat,
             let buffer = Self.buffer(from: samples, to: format, using: converter)
-        else { return }
-        continuation.yield(AnalyzerInput(buffer: buffer))
+        else {
+            if !samples.isEmpty { failureDescription = "Speech audio conversion failed" }
+            return
+        }
+        if case .dropped = continuation.yield(AnalyzerInput(buffer: buffer)) {
+            failureDescription = "Speech input overloaded; transcription is incomplete"
+        }
         fedSamples += samples.count
     }
 
     public func settle() async {
         guard let analyzer, fedSamples > 0 else { return }
         let through = CMTime(value: CMTimeValue(fedSamples), timescale: 16_000)
-        try? await analyzer.finalize(through: through)
+        do { try await analyzer.finalize(through: through) }
+        catch { failureDescription = "Speech finalization failed" }
     }
 
     public func finish() async {
         inputContinuation?.finish()
         inputContinuation = nil
-        try? await analyzer?.finalizeAndFinishThroughEndOfInput()
+        do { try await analyzer?.finalizeAndFinishThroughEndOfInput() }
+        catch {
+            failureDescription = "Speech finalization failed"
+            await analyzer?.cancelAndFinishNow()
+            collector?.cancel()
+        }
         // Дождаться, пока пересылка доставит последние результаты, а не
         // обрывать её. Прежде здесь стояла отмена сразу после команды
         // закончить — а весь устоявшийся текст приходит именно в этот момент,
@@ -214,45 +232,19 @@ public final class SystemLiveTranscriber: LiveTranscribing {
 
     // MARK: - Результаты
 
-    private static func stream(from transcriber: SpeechTranscriber) -> AsyncStream<LiveTranscriptUpdate> {
-        AsyncStream { continuation in
-            Task {
-                await drain(transcriber.results, into: continuation) { result in
-                    Self.update(
-                        text: String(result.text.characters),
-                        isFinal: result.isFinal,
-                        range: result.range
-                    )
-                }
-            }
-        }
-    }
-
-    private static func stream(from transcriber: DictationTranscriber) -> AsyncStream<LiveTranscriptUpdate> {
-        AsyncStream { continuation in
-            Task {
-                await drain(transcriber.results, into: continuation) { result in
-                    Self.update(
-                        text: String(result.text.characters),
-                        isFinal: result.isFinal,
-                        range: result.range
-                    )
-                }
-            }
-        }
-    }
-
     /// Закрывает поток при любом исходе: потерянная ошибка прежде оставляла лекцию ждать вечно.
     static func drain<Results: AsyncSequence>(
         _ results: Results,
         into continuation: AsyncStream<LiveTranscriptUpdate>.Continuation,
+        onFailure: () -> Void = {},
         map: (Results.Element) -> LiveTranscriptUpdate
     ) async {
         do {
             for try await result in results {
-                continuation.yield(map(result))
+                if case .dropped = continuation.yield(map(result)) { onFailure() }
             }
         } catch {
+            onFailure()
             await DiagnosticLog.shared.log("lecture.liveResults.failed", detail: ErrorSummary.describe(error))
         }
         continuation.finish()

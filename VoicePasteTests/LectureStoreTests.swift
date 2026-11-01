@@ -78,6 +78,23 @@ final class LectureStoreTests: XCTestCase {
 
     // MARK: - Запись и чтение
 
+    func test_incompleteCheckpointSurvivesReopen_andFinalReplacesIt() async throws {
+        let pool = try makePool()
+        let store = LectureStore(dbPool: pool)
+        var detail = makeDetail()
+        detail.lecture.transcriptionIssue = "Recording was interrupted"
+        try await store.save(detail)
+        let reopened = LectureStore(dbPool: try makePool())
+        let checkpoint = try await reopened.fetchDetail(id: detail.lecture.id)
+        XCTAssertEqual(checkpoint?.lecture.transcriptionIssue, "Recording was interrupted")
+        detail.lecture.transcriptionIssue = nil
+        try await reopened.save(detail)
+        let final = try await reopened.fetchDetail(id: detail.lecture.id)
+        XCTAssertNil(final?.lecture.transcriptionIssue)
+        let all = try await reopened.fetchAll()
+        XCTAssertEqual(all.count, 1)
+    }
+
     func test_savedLecture_survivesReopeningTheDatabase() async throws {
         let id = UUID()
         let detail = makeDetail(id: id)

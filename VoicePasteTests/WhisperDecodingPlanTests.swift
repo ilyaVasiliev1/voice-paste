@@ -8,6 +8,14 @@ import XCTest
 /// linking WhisperKit or running real audio through the model.
 @MainActor
 final class WhisperDecodingPlanTests: XCTestCase {
+    func test_silentAndInvalidSamplesAreRejectedButQuietSpeechPasses() {
+        XCTAssertFalse(WhisperAudioInput.hasSignal(in: []))
+        XCTAssertFalse(WhisperAudioInput.hasSignal(in: Array(repeating: 0, count: 16_000)))
+        XCTAssertFalse(WhisperAudioInput.hasSignal(in: [.nan, 0.1]))
+        XCTAssertFalse(WhisperAudioInput.hasSignal(in: [.infinity]))
+        XCTAssertTrue(WhisperAudioInput.hasSignal(in: [0, 0.000_01, -0.000_01]))
+    }
+
     func test_autoDetectsLanguageAndNeverTranslates() {
         let plan = WhisperKitTranscriber.decodingPlan(for: .auto)
 

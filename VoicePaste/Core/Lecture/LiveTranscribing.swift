@@ -74,8 +74,9 @@ nonisolated public struct LiveTranscriptUpdate: Sendable, Equatable {
 /// потери на стыках.
 @MainActor
 public protocol LiveTranscribing: AnyObject {
-    /// Готовит движок к работе: язык, при необходимости — доустановка
-    /// языковых данных. Вызывается до первого звука.
+    var failureDescription: String? { get }
+
+    /// Подготовка не загружает языковые данные: запись не должна зависеть от сети.
     func prepare(language: TranscriptionLanguage) async throws
 
     /// Принимает очередной кусок звука: 16 кГц, моно, Float32.
@@ -102,4 +103,9 @@ public protocol LiveTranscribing: AnyObject {
 nonisolated public enum LiveTranscribingError: Error, Equatable, Sendable {
     /// Язык не поддерживается этим движком.
     case unsupportedLanguage(String)
+    case assetsNotInstalled(String)
+}
+
+extension LiveTranscribing {
+    public var failureDescription: String? { nil }
 }

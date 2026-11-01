@@ -63,6 +63,8 @@ struct DashboardView: View {
     private var stats: UsageStats { model.stats }
 
     var body: some View {
+        VStack(spacing: 0) {
+            WorkspaceHeader(title: "Статистика") { EmptyView() }
         ScrollView {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
                 header
@@ -72,6 +74,9 @@ struct DashboardView: View {
                 chart
             }
             .padding(DesignTokens.detailPanePadding)
+            .frame(maxWidth: DesignTokens.formMeasure, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
         }
         // Смена периода перезапускает слежение, а с ним и загрузку.
         .task(id: period) {
@@ -168,13 +173,13 @@ struct DashboardView: View {
                 // Подписи по X без вертикальной сетки: двойная сетка читалась как шум.
                 .chartXAxis {
                     AxisMarks(values: .stride(by: period == .day ? .hour : .day, count: period == .day ? 3 : period == .month ? 7 : 1)) { _ in
-                        AxisValueLabel()
+                        AxisValueLabel(anchor: .top)
                     }
                 }
                 .chartYAxis {
                     AxisMarks(values: .automatic(desiredCount: 3)) { _ in
                         AxisGridLine()
-                        AxisValueLabel()
+                        AxisValueLabel(anchor: .leading)
                     }
                 }
                 .chartOverlay { proxy in
@@ -182,7 +187,8 @@ struct DashboardView: View {
                         Rectangle().fill(.clear).contentShape(Rectangle())
                             .onContinuousHover { phase in
                                 guard case .active(let location) = phase,
-                                      let date: Date = proxy.value(atX: location.x) else {
+                                      let plotFrame = proxy.plotFrame,
+                                      let date: Date = proxy.value(atX: location.x - geometry[plotFrame].minX) else {
                                     if case .ended = phase { selectedDay = nil }
                                     return
                                 }
@@ -265,18 +271,29 @@ struct StatisticsPeriodList: View {
     }
 
     var body: some View {
-        List(StatisticsPeriod.allCases, selection: selection) { item in
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                Text(item.title)
-                if let words = summaries.words[item] {
-                    Text("Слов: \(words.formatted())")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
+        ScrollView {
+            VStack(spacing: 6) {
+                ForEach(StatisticsPeriod.allCases) { item in
+                    Button { period = item } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(item.title).font(.system(size: 13, weight: .medium))
+                                if let words = summaries.words[item] {
+                                    Text("Слов: \(words.formatted())")
+                                        .font(.system(size: 12)).foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                            if period == item { Image(systemName: "checkmark").font(.caption) }
+                        }
+                        .padding(12).contentShape(Rectangle())
+                        .background(Color.primary.opacity(period == item ? 0.07 : 0),
+                            in: RoundedRectangle(cornerRadius: 8))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(period == item ? .isSelected : [])
                 }
-            }
-            .padding(.vertical, DesignTokens.Spacing.xs)
-            .tag(item)
+            }.padding(12)
         }
         .task { await summaries.track() }
     }

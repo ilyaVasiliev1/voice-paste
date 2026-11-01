@@ -437,3 +437,20 @@ command, option, control, shift: сочетание без модификато�
 ---
 
 <!-- uncertainty: Экраны настроек (вкладки, диалоги подтверждения, редактор словаря, записыватель сочетания) проверены чтением кода: тестов на SwiftUI/AppKit-слой в VoicePasteTests нет. -->
+
+---
+
+### Requirement: Разделы настроек доступны без меню переполнения
+<!-- id: SettingsView.sections -->
+<!-- entities: SettingsView, SettingsTabItem -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/UI/Settings/SettingsView.swift -->
+<!-- test_macos: VoicePasteTests/ScreenSnapshots.swift:test_settingsTabs_andOnboardingSteps -->
+
+Пять разделов настроек SHALL быть доступны подписанными элементами внутри окна:
+Основное, Диктовка, Текст и орфография, Модель, История. При минимальной ширине
+720 pt ни один раздел не SHALL скрываться в меню переполнения.
+
+#### Scenario: минимальное окно настроек
+- **WHEN** настройки открыты при ширине 720 pt
+- **THEN** все пять подписей видны и выбранная страница доступна без дополнительного меню

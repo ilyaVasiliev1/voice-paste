@@ -11,18 +11,18 @@ import CoreFoundation
 enum MainWindowLayout {
 
     /// Разделы: четыре строки с подписями.
-    static let sidebarMinWidth: CGFloat = 170
-    static let sidebarIdealWidth: CGFloat = 190
-    static let sidebarMaxWidth: CGFloat = 240
+    static let sidebarMinWidth: CGFloat = 220
+    static let sidebarIdealWidth: CGFloat = 220
+    static let sidebarMaxWidth: CGFloat = 220
 
     /// Список раздела: записи с поиском, лекции, очередь, периоды.
-    static let listMinWidth: CGFloat = 240
-    static let listIdealWidth: CGFloat = 280
+    static let listMinWidth: CGFloat = 260
+    static let listIdealWidth: CGFloat = 300
     static let listMaxWidth: CGFloat = 340
 
     /// Деталь: текст записи, лекция, статистика. Диаграммы статистики — самое
     /// широкое из этого, они и задают предел.
-    static let detailMinWidth: CGFloat = 520
+    static let detailMinWidth: CGFloat = 450
 
     /// Выведенная величина. Менять её отдельно нельзя — только через ширины
     /// колонок, из которых она складывается.

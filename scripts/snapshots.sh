@@ -10,8 +10,14 @@
 set -euo pipefail
 
 OUT_DIR="${1:?каталог для снимков}"
+shift
+SNAPSHOT_FILTERS=("$@")
+if (( ${#SNAPSHOT_FILTERS[@]} == 0 )); then
+  SNAPSHOT_FILTERS=(-only-testing:VoicePasteTests/ScreenSnapshots)
+fi
 MARKER="$HOME/Library/Caches/VoicePaste/run-benchmark"
 mkdir -p "$OUT_DIR"
+OUT_DIR="${OUT_DIR:A}"
 rm -f "$OUT_DIR"/*.wid(N) "$OUT_DIR"/*.png(N)
 
 # Наблюдатель ограничен по времени сам: осиротевший фоновый процесс однажды
@@ -32,4 +38,4 @@ touch "$MARKER"
 cleanup() { rm -f "$MARKER"; kill "$WATCHER" 2>/dev/null || true; }
 trap cleanup EXIT
 
-TEST_RUNNER_SNAPSHOT_DIR="$OUT_DIR" zsh "${0:A:h}/test-safely.sh" -only-testing:VoicePasteTests/ScreenSnapshots
+TEST_RUNNER_SNAPSHOT_DIR="$OUT_DIR" zsh "${0:A:h}/test-safely.sh" "${SNAPSHOT_FILTERS[@]}"

@@ -10,11 +10,22 @@ protocol AudioSource: AnyObject {
     var onAudioChunk: (@Sendable ([Float]) -> Void)? { get set }
     var onInterruption: ((AudioCaptureInterruption) -> Void)? { get set }
 
+    var captureStorageFailure: String? { get }
+    func startLecture() throws
+    func stopPreservingSamples() -> Int
+    func resetCapturedSamples()
     func start() throws
     func resume() throws
     func pause()
     @discardableResult func stop() -> [Float]
     func capturedSamples(in range: Range<Int>) -> [Float]
+}
+
+extension AudioSource {
+    var captureStorageFailure: String? { nil }
+    func startLecture() throws { try start() }
+    func stopPreservingSamples() -> Int { pause(); return capturedSampleCount }
+    func resetCapturedSamples() { _ = stop() }
 }
 
 extension AudioCaptureService: AudioSource {}

@@ -77,3 +77,25 @@ final class AudioTapProcessorTests: XCTestCase {
         XCTAssertTrue(drained.allSatisfy { $0.isFinite })
     }
 }
+
+final class LectureSpoolTests: XCTestCase {
+    func test_spoolOverflowIsExplicit_andDoesNotPretendAudioWasStored() throws {
+        let spool = try LectureAudioSpool(maxPendingBytes: 4)
+        spool.append([0.1, 0.2])
+        XCTAssertNotNil(spool.failure)
+        XCTAssertTrue(spool.snapshot(0..<2).isEmpty)
+    }
+
+    func test_spoolReadsRangesAndReleasesMemoryForLongCapture() throws {
+        let accumulator = AudioSampleAccumulator()
+        try accumulator.useDiskStorage()
+        let chunk = Array(repeating: Float(0.001), count: 16_000)
+        for _ in 0..<120 { accumulator.append(chunk) }
+        XCTAssertEqual(accumulator.count, 1_920_000)
+        XCTAssertEqual(accumulator.snapshot(16_000..<32_000), chunk)
+        XCTAssertEqual(accumulator.residentSampleCount, 0)
+        XCTAssertNil(accumulator.storageFailure)
+        accumulator.clear()
+        XCTAssertEqual(accumulator.count, 0)
+    }
+}

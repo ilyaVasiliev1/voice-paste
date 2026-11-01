@@ -6,6 +6,28 @@ import XCTest
 @MainActor
 final class LectureContinuationTests: XCTestCase {
 
+    func test_checkpointAndFinalUseSameID_andFinalClearsIncomplete() {
+        let now = Date(timeIntervalSince1970: 100)
+        let session = LectureRecordingSession(startedAt: now)
+        let paragraphs = [LectureParagraph(text: "A thought", startSeconds: 0, endSeconds: 2)]
+        let checkpoint = session.detail(paragraphs: paragraphs, sampleCount: 32_000,
+            language: "en", issue: "incomplete", now: now, title: "Lecture")
+        let final = session.detail(paragraphs: paragraphs, sampleCount: 48_000,
+            language: "en", issue: nil, now: now, title: "Lecture")
+        XCTAssertEqual(checkpoint.lecture.id, final.lecture.id)
+        XCTAssertEqual(checkpoint.lecture.transcriptionIssue, "incomplete")
+        XCTAssertNil(final.lecture.transcriptionIssue)
+        XCTAssertEqual(final.lecture.durationMilliseconds, 3_000)
+    }
+
+    func test_checkpointFirstTextIsImmediate_thenAtMostEveryFifteenSeconds() {
+        let now = Date(timeIntervalSince1970: 100)
+        XCTAssertFalse(LectureRecordingSession.checkpointDue(hasText: false, lastCheckpoint: nil, now: now))
+        XCTAssertTrue(LectureRecordingSession.checkpointDue(hasText: true, lastCheckpoint: nil, now: now))
+        XCTAssertFalse(LectureRecordingSession.checkpointDue(hasText: true, lastCheckpoint: now, now: now.addingTimeInterval(14)))
+        XCTAssertTrue(LectureRecordingSession.checkpointDue(hasText: true, lastCheckpoint: now, now: now.addingTimeInterval(15)))
+    }
+
     private let lectureID = UUID()
 
     private var saved: LectureDetail {

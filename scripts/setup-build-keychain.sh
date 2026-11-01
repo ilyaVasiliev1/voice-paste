@@ -8,9 +8,14 @@ set -euo pipefail
 #
 #   scripts/setup-build-keychain.sh [файл-с-паролем]
 
-KEYCHAIN="${VOICEPASTE_BUILD_KEYCHAIN:-$HOME/Library/Keychains/voicepaste-build.keychain-db}"
+KEYCHAIN="${VOICEPASTE_BUILD_KEYCHAIN:-$HOME/Library/Keychains/voicepaste-local-signing.keychain-db}"
 IDENTITY="VoicePaste Local Build"
-SECRET_FILE="${1:-${VOICEPASTE_BUILD_KEYCHAIN_SECRET:-${0:A:h:h:h:h}/.secrets/voicepaste-build-keychain.txt}}"
+SECRET_FILE="${1:-${VOICEPASTE_BUILD_KEYCHAIN_SECRET:-$HOME/.depo-lab/secrets/VOICEPASTE_BUILD_KEYCHAIN_PASSWORD_FILE}}"
+
+if [[ -f "$KEYCHAIN" && ! -f "$SECRET_FILE" ]]; then
+    print -u2 "Существующая связка не изменена: сначала восстановите её пароль через реестр секретов."
+    exit 2
+fi
 
 if [[ -f "$KEYCHAIN" && -f "$SECRET_FILE" ]]; then
     print "Связка уже есть: $KEYCHAIN"

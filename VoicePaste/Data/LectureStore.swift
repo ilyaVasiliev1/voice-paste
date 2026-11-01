@@ -41,19 +41,20 @@ public actor LectureStore: LectureStoring {
             try db.execute(
                 sql: """
                     INSERT INTO lectures
-                        (id, createdAt, updatedAt, title, durationMilliseconds, language, wordCount)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                        (id, createdAt, updatedAt, title, durationMilliseconds, language, wordCount, transcriptionIssue)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET
                         updatedAt = excluded.updatedAt,
                         title = excluded.title,
                         durationMilliseconds = excluded.durationMilliseconds,
                         language = excluded.language,
-                        wordCount = excluded.wordCount
+                        wordCount = excluded.wordCount,
+                        transcriptionIssue = excluded.transcriptionIssue
                     """,
                 arguments: [
                     lecture.id.uuidString, lecture.createdAt, lecture.updatedAt,
                     lecture.title, lecture.durationMilliseconds, lecture.language,
-                    lecture.wordCount,
+                    lecture.wordCount, lecture.transcriptionIssue,
                 ]
             )
             try db.execute(
@@ -86,7 +87,7 @@ public actor LectureStore: LectureStoring {
                 .fetchAll(
                     db,
                     sql: """
-                        SELECT id, createdAt, updatedAt, title, durationMilliseconds, language, wordCount
+                        SELECT id, createdAt, updatedAt, title, durationMilliseconds, language, wordCount, transcriptionIssue
                         FROM lectures ORDER BY createdAt DESC, id DESC
                         """
                 )
@@ -99,7 +100,7 @@ public actor LectureStore: LectureStoring {
             let lectureRow = try Row.fetchOne(
                 db,
                 sql: """
-                    SELECT id, createdAt, updatedAt, title, durationMilliseconds, language, wordCount
+                    SELECT id, createdAt, updatedAt, title, durationMilliseconds, language, wordCount, transcriptionIssue
                     FROM lectures WHERE id = ?
                     """,
                 arguments: [id.uuidString]
@@ -156,7 +157,8 @@ public actor LectureStore: LectureStoring {
             title: row["title"],
             durationMilliseconds: row["durationMilliseconds"],
             language: row["language"],
-            wordCount: row["wordCount"]
+            wordCount: row["wordCount"],
+            transcriptionIssue: row["transcriptionIssue"]
         )
     }
 

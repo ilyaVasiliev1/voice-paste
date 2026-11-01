@@ -37,43 +37,67 @@ struct OnboardingView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
-            stepContent
-                .id(step)
-                .transition(.opacity)
-            Spacer()
-            if step == .model, let missing = missingPermissionStep {
-                HStack(spacing: DesignTokens.Spacing.sm) {
-                    Label(
-                        NSLocalizedString(appState.readiness.state.statusLocalizationKey, comment: ""),
-                        systemImage: "exclamationmark.triangle"
-                    )
-                    .foregroundStyle(.orange)
-                    Spacer()
-                    Button("onboarding.fixPermission") { step = missing }
+        HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 28) {
+                HStack(spacing: 8) {
+                    Image(systemName: "waveform").font(.system(size: 20, weight: .semibold))
+                    Text("VoicePaste").font(.system(size: 16, weight: .semibold))
                 }
-                .font(.callout)
-            }
-            HStack {
-                if step != .purpose {
-                    Button("onboarding.back") { goBack() }
+                VStack(alignment: .leading, spacing: 20) {
+                    ForEach(Step.allCases, id: \.rawValue) { item in
+                        HStack(spacing: 10) {
+                            Text("\(item.rawValue + 1)")
+                                .font(.system(size: 10, weight: .medium))
+                                .frame(width: 18, height: 18)
+                                .overlay { Circle().strokeBorder(Color.primary.opacity(item == step ? 0.7 : 0.2)) }
+                            Text(stepName(item)).font(.system(size: 12, weight: item == step ? .semibold : .regular))
+                        }
+                        .foregroundStyle(item.rawValue <= step.rawValue ? Color.primary : Color.secondary)
+                        .accessibilityAddTraits(item == step ? .isSelected : [])
+                    }
                 }
-                Text(String(
-                    format: NSLocalizedString("onboarding.step", comment: ""),
-                    step.rawValue + 1, Step.allCases.count
-                ))
-                .font(.caption)
-                .foregroundStyle(.secondary)
                 Spacer()
-                Button(step == .model ? "onboarding.finish" : "onboarding.next") {
-                    goNext()
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(step == .model && !canFinishModelStep)
+                Text("На вашем Mac.\nБез аккаунта и подписки.")
+                    .font(.system(size: 11)).foregroundStyle(.secondary).lineSpacing(4)
             }
+            .padding(24).frame(width: 190, alignment: .leading)
+            .frame(maxHeight: .infinity)
+            .background(WorkspacePalette.sidebar)
+            Rectangle().fill(WorkspacePalette.line).frame(width: 1)
+            VStack(alignment: .leading, spacing: 20) {
+                Text(String(format: NSLocalizedString("onboarding.step", comment: ""),
+                    step.rawValue + 1, Step.allCases.count))
+                    .font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
+                ScrollView {
+                    stepContent.id(step).transition(.opacity)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .scrollBounceBehavior(.basedOnSize)
+                Spacer(minLength: 0)
+                if step == .model, let missing = missingPermissionStep {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle")
+                        Text(NSLocalizedString(appState.readiness.state.statusLocalizationKey, comment: ""))
+                        Spacer()
+                        Button("onboarding.fixPermission") { step = missing }
+                            .buttonStyle(WorkspaceActionStyle())
+                    }.font(.caption).foregroundStyle(.orange)
+                }
+                HStack {
+                    if step != .purpose {
+                        Button("onboarding.back") { goBack() }.buttonStyle(WorkspaceActionStyle())
+                    }
+                    Spacer()
+                    Button(step == .model ? "onboarding.finish" : "onboarding.next") { goNext() }
+                        .buttonStyle(WorkspaceActionStyle(primary: true))
+                        .disabled(step == .model && !canFinishModelStep)
+                }
+            }
+            .padding(28).frame(maxWidth: .infinity)
+            .buttonStyle(WorkspaceActionStyle())
+            .background(WorkspacePalette.document)
         }
-        .padding(DesignTokens.Spacing.xl)
-        .frame(width: 480, height: 360)
+        .frame(width: 720, height: 480)
         .animation(DesignTokens.Motion.respecting(DesignTokens.Motion.fade, reduceMotion: reduceMotion), value: step)
         .task { appState.refreshReadiness() }
         // System Settings does not send VoicePaste a dedicated “privacy
@@ -103,6 +127,15 @@ struct OnboardingView: View {
             stopAccessibilityPolling()
             accessibilityFallbackTask?.cancel()
             appState.setOnboardingVisible(false)
+        }
+    }
+
+    private func stepName(_ step: Step) -> String {
+        switch step {
+        case .purpose: return "Начало"
+        case .microphone: return "Микрофон"
+        case .accessibility: return "Вставка текста"
+        case .model: return "Модель"
         }
     }
 

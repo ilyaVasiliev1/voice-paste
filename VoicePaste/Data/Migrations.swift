@@ -151,6 +151,12 @@ public enum Migrations {
             )
         }
 
+        migrator.registerMigration("v5_lecture_transcription_issue") { db in
+            try db.alter(table: "lectures") { t in
+                t.add(column: "transcriptionIssue", .text)
+            }
+        }
+
         return migrator
     }
 }

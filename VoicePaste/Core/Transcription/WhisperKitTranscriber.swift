@@ -4,6 +4,12 @@ import Foundation
 import WhisperKit
 #endif
 
+nonisolated enum WhisperAudioInput {
+    static func hasSignal(in samples: [Float]) -> Bool {
+        samples.allSatisfy(\.isFinite) && samples.contains { abs($0) > 0.000_000_1 }
+    }
+}
+
 /// Concrete WhisperKit-backed transcriber.
 ///
 /// Kept isolated in this single file: if the WhisperKit package cannot be
@@ -242,7 +248,7 @@ private actor WhisperInferenceWorker {
     }
 
     func transcribe(_ request: TranscriptionRequest) async throws -> SpeechPipeline.TranscriptionResult {
-        guard !request.samples.isEmpty else { throw TranscribingError.emptyAudio }
+        guard WhisperAudioInput.hasSignal(in: request.samples) else { throw TranscribingError.emptyAudio }
         // task is always transcription; `.auto` enables
         // language auto-detection instead of leaving it off by default.
         let plan = WhisperKitTranscriber.decodingPlan(

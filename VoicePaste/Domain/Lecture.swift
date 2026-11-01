@@ -13,6 +13,7 @@ nonisolated public struct Lecture: Sendable, Equatable, Identifiable {
     public var durationMilliseconds: Int
     public var language: String?
     public var wordCount: Int
+    public var transcriptionIssue: String?
 
     public init(
         id: UUID,
@@ -21,7 +22,8 @@ nonisolated public struct Lecture: Sendable, Equatable, Identifiable {
         title: String,
         durationMilliseconds: Int,
         language: String?,
-        wordCount: Int
+        wordCount: Int,
+        transcriptionIssue: String? = nil
     ) {
         self.id = id
         self.createdAt = createdAt
@@ -30,6 +32,7 @@ nonisolated public struct Lecture: Sendable, Equatable, Identifiable {
         self.durationMilliseconds = durationMilliseconds
         self.language = language
         self.wordCount = wordCount
+        self.transcriptionIssue = transcriptionIssue
     }
 
     /// Название по умолчанию — дата и время начала. Лекцию можно

@@ -37,27 +37,40 @@ private struct SettingsBody: View {
     }
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            generalSection
-                .tag(SettingsTabItem.general)
-                .tabItem { Label("settings.section.general", systemImage: "gearshape") }
-            dictationSection
-                .tag(SettingsTabItem.dictation)
-                .tabItem { Label("settings.section.dictation", systemImage: "mic") }
-            textSection
-                .tag(SettingsTabItem.text)
-                .tabItem { Label("settings.section.text", systemImage: "textformat") }
-            modelSection
-                .tag(SettingsTabItem.model)
-                .tabItem { Label("settings.section.model", systemImage: "cpu") }
-            historySection
-                .tag(SettingsTabItem.history)
-                .tabItem { Label("settings.section.history", systemImage: "clock") }
+        HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("main.settings").font(.system(size: 16, weight: .semibold))
+                    .padding(.horizontal, 12).padding(.bottom, 20)
+                settingsTab(.general, title: "settings.section.general", icon: "slider.horizontal.3")
+                settingsTab(.dictation, title: "settings.section.dictation", icon: "waveform")
+                settingsTab(.text, title: "settings.section.text", icon: "text.alignleft")
+                settingsTab(.model, title: "settings.section.model", icon: "cpu")
+                settingsTab(.history, title: "settings.section.history", icon: "clock")
+                Spacer()
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("VoicePaste \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")")
+                    Text("Сборка \(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—")")
+                    if let source = Bundle.main.object(forInfoDictionaryKey: "VoicePasteBuildFingerprint") as? String {
+                        Text(source).textSelection(.enabled)
+                    }
+                }
+                .font(.system(size: 10)).foregroundStyle(.secondary).padding(12)
+            }
+            .padding(12).padding(.top, 12).frame(width: 180)
+            .background(WorkspacePalette.sidebar)
+            Rectangle().fill(WorkspacePalette.line).frame(width: 1)
+            Group {
+                switch selectedTab {
+                case .general: generalSection
+                case .dictation: dictationSection
+                case .text: textSection
+                case .model: modelSection
+                case .history: historySection
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        // Five labelled native tabs need a little more horizontal room in
-        // Russian. Keeping the window wide enough avoids the opaque overflow
-        // chevron that previously hid permissions and the dictionary.
-        .frame(width: 720, height: 460)
+        .frame(minWidth: 720, idealWidth: 720, minHeight: 460, idealHeight: 520)
         .task {
             await loadVocabulary()
             applyRequestedTab()
@@ -75,12 +88,17 @@ private struct SettingsBody: View {
         .onChange(of: settings.hotkey) { _, _ in appState.settingsDidChange() }
     }
 
+    private func settingsTab(_ tab: SettingsTabItem, title: LocalizedStringKey, icon: String) -> some View {
+        Button { selectedTab = tab } label: {
+            Label(title, systemImage: icon).frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(WorkspaceRowStyle(selected: selectedTab == tab))
+        .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
+    }
+
     private func applyRequestedTab() {
         guard let requested = appState.requestedSettingsTab else { return }
         switch requested {
-        // Permissions live on the visible "Основное" page. It keeps the
-        // native settings toolbar at six items, without macOS's overflow
-        // chevron hiding an important page.
         case .permissions: selectedTab = .general
         }
         appState.requestedSettingsTab = nil

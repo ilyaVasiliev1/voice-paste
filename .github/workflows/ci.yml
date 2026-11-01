@@ -19,12 +19,20 @@ concurrency:
 
 jobs:
   verify:
-    runs-on: macos-latest
+    runs-on: macos-26
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - name: Fetch pinned build dependencies
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project VoicePaste.xcodeproj -scheme VoicePaste \
+            -clonedSourcePackagesDirPath "$HOME/Library/Caches/VoicePaste/SourcePackages" \
+            -onlyUsePackageVersionsFromResolvedFile
+      - name: Installer identity checks
+        run: python3 scripts/test-build-info.py
       - name: Headless XCTest
         run: zsh scripts/test-safely.sh
       - name: Release app

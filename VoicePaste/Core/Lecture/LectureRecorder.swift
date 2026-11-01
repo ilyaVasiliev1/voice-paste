@@ -42,6 +42,12 @@ public final class LectureRecorder: ObservableObject {
     /// У нарезки на окна его не бывает: там текст либо есть, либо нет.
     @Published public private(set) var volatileText = ""
 
+    @Published public private(set) var completionIssue: String?
+    public var isStreaming: Bool { liveEngine != nil }
+    private var volatileRange: (Double, Double)?
+    private var sessionID = UUID()
+    private var audioPump: Task<Void, Never>?
+    private var streamCursor = 0
     private var planner: DictationWindowPlanner
     private var segments: [TranscribedSegment] = []
     private var languageCounts: [String: Int] = [:]
@@ -99,18 +105,30 @@ public final class LectureRecorder: ObservableObject {
         language: TranscriptionLanguage,
         totalSamples: [Float]
     ) async -> [LectureParagraph] {
-        pump?.cancel()
+        await finish(transcriber: transcriber, language: language, totalSampleCount: totalSamples.count,
+                     readSamples: { Array(totalSamples[$0]) })
+    }
+
+    public func finish(
+        transcriber: any Transcribing,
+        language: TranscriptionLanguage,
+        totalSampleCount: Int,
+        readSamples: @MainActor (Range<Int>) -> [Float]
+    ) async -> [LectureParagraph] {
+        let active = pump
+        active?.cancel()
+        await active?.value
         pump = nil
         isCatchingUp = true
         defer { isCatchingUp = false }
-
-        if let tail = planner.tail(totalSamples: totalSamples.count) {
-            await transcribe(
-                Array(totalSamples[tail]),
-                startingAt: tail.lowerBound,
-                transcriber: transcriber,
-                language: language
-            )
+        while let window = planner.closedWindow(availableSamples: totalSampleCount) {
+            await transcribe(readSamples(window), startingAt: window.lowerBound,
+                             transcriber: transcriber, language: language)
+            planner.commit(window)
+        }
+        if let tail = planner.tail(totalSamples: totalSampleCount) {
+            await transcribe(readSamples(tail), startingAt: tail.lowerBound,
+                             transcriber: transcriber, language: language)
             planner.commit(tail)
         }
         return paragraphs
@@ -118,6 +136,11 @@ public final class LectureRecorder: ObservableObject {
 
     /// Отменённая лекция не оставляет следов.
     public func cancel() {
+        sessionID = UUID()
+        audioPump?.cancel()
+        audioPump = nil
+        completionIssue = nil
+        volatileRange = nil
         liveEngine?.cancel()
         liveEngine = nil
         pump?.cancel()
@@ -142,16 +165,57 @@ public final class LectureRecorder: ObservableObject {
     ) async throws {
         cancel()
         self.pauseSeconds = pauseSeconds
+        let session = sessionID
         try await engine.prepare(language: language)
+        guard session == sessionID, !Task.isCancelled else { engine.cancel(); throw CancellationError() }
         liveEngine = engine
         pump = Task { [weak self] in
             for await update in engine.updates {
-                guard let self else { return }
+                guard let self, session == self.sessionID, !Task.isCancelled else { return }
                 self.absorb(update)
             }
         }
         silenceSamples = 0
         hasUnsettledSpeech = false
+    }
+
+    public func streamCapturedAudio(
+        availableSamples: @escaping @MainActor () -> Int,
+        readSamples: @escaping @MainActor (Range<Int>) -> [Float]
+    ) {
+        streamCursor = 0
+        audioPump = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+                self.forwardAvailableAudio(availableSamples: availableSamples(), readSamples: readSamples)
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+        }
+    }
+
+    private func forwardAvailableAudio(availableSamples: Int, readSamples: @MainActor (Range<Int>) -> [Float]) {
+        let end = min(availableSamples, streamCursor + Self.sampleRate)
+        guard end > streamCursor else { return }
+        let samples = readSamples(streamCursor..<end)
+        guard samples.count == end - streamCursor else { markIncomplete("Lecture audio could not be read"); return }
+        appendStreamingAudio(samples)
+        streamCursor = end
+    }
+
+    public func drainStreamingAudio(totalSamples: Int, readSamples: @MainActor (Range<Int>) -> [Float]) async {
+        audioPump?.cancel()
+        await audioPump?.value
+        audioPump = nil
+        while streamCursor < totalSamples {
+            let previous = streamCursor
+            forwardAvailableAudio(availableSamples: totalSamples, readSamples: readSamples)
+            if streamCursor == previous { break }
+            await Task.yield()
+        }
+    }
+
+    public func markIncomplete(_ reason: String) {
+        if completionIssue == nil { completionIssue = reason }
     }
 
     /// Порог тишины и её длительность, после которой текст закрепляется.
@@ -171,6 +235,7 @@ public final class LectureRecorder: ObservableObject {
     /// когда говорящий замолчал.
     public func appendStreamingAudio(_ samples: [Float]) {
         liveEngine?.append(samples: samples)
+        if let issue = liveEngine?.failureDescription { markIncomplete(issue) }
         guard !samples.isEmpty else { return }
 
         let rms = (samples.reduce(0) { $0 + $1 * $1 } / Float(samples.count)).squareRoot()
@@ -193,17 +258,25 @@ public final class LectureRecorder: ObservableObject {
         isCatchingUp = true
         defer { isCatchingUp = false }
         await liveEngine?.finish()
+        if let issue = liveEngine?.failureDescription { markIncomplete(issue) }
         liveEngine = nil
         // Дождаться, пока приём разберёт последние обновления, а не обрывать
         // его: устоявшийся хвост приходит ровно в момент завершения.
         await pump?.value
         pump = nil
+        if !volatileText.isEmpty {
+            markIncomplete("Speech did not finalize the last words")
+            let range = volatileRange ?? (segments.last?.endSeconds ?? 0, segments.last?.endSeconds ?? 0)
+            segments.append(TranscribedSegment(text: volatileText, startSeconds: range.0, endSeconds: range.1))
+            paragraphs = LectureParagraphBuilder.build(from: segments, pauseSeconds: pauseSeconds)
+        }
         volatileText = ""
         return paragraphs
     }
 
     private func absorb(_ update: LiveTranscriptUpdate) {
         guard let settled = update.settledSegment else {
+            volatileRange = (update.startSeconds, update.endSeconds)
             volatileText = update.text.trimmingCharacters(in: .whitespacesAndNewlines)
             return
         }
@@ -225,6 +298,7 @@ public final class LectureRecorder: ObservableObject {
             // Неполное чтение окно не фиксирует: пропущенное окно — дыра в
             // записи. Вернёмся к нему на следующем опросе.
             guard samples.count == window.count else { return }
+            let session = sessionID
             isCatchingUp = true
             await transcribe(
                 samples,
@@ -236,11 +310,12 @@ public final class LectureRecorder: ObservableObject {
             // полуслове, и пока оно шло, остановка или отмена могли
             // переустановить нарезку. Фиксация окна от прежней нарезки
             // нарушает условие `commit` и роняет процесс.
+            guard session == sessionID else { return }
+            planner.commit(window)
             if Task.isCancelled {
                 isCatchingUp = false
                 return
             }
-            planner.commit(window)
             isCatchingUp = false
         }
     }
@@ -258,6 +333,10 @@ public final class LectureRecorder: ObservableObject {
         transcriber: any Transcribing,
         language: TranscriptionLanguage
     ) async {
+        guard !samples.isEmpty else { markIncomplete("Lecture audio window is unavailable"); return }
+        guard samples.allSatisfy(\.isFinite) else { markIncomplete("Lecture audio contains invalid samples"); return }
+        guard samples.contains(where: { $0.isFinite && abs($0) > 0.000_000_1 }) else { return }
+        let session = sessionID
         let offset = Double(startSample) / Double(Self.sampleRate)
         do {
             // Подсказка языка здесь намеренно не передаётся, в отличие от
@@ -268,6 +347,7 @@ public final class LectureRecorder: ObservableObject {
             let result = try await transcriber.transcribe(
                 TranscriptionRequest(samples: samples, language: language)
             )
+            guard session == sessionID else { return }
             // Язык лекции в целом — тот, что встретился в большинстве окон.
             // Он идёт в карточку записи, а не в декодирование: на смешанной
             // лекции первое окно о языке всей лекции ничего не говорит.
@@ -291,6 +371,8 @@ public final class LectureRecorder: ObservableObject {
             segments.append(contentsOf: fresh)
             paragraphs = LectureParagraphBuilder.build(from: segments, pauseSeconds: pauseSeconds)
         } catch {
+            guard session == sessionID else { return }
+            markIncomplete("A lecture audio window could not be transcribed")
             await DiagnosticLog.shared.log(
                 "lecture.windowFailed",
                 detail: String(describing: error)

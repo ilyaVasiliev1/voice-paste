@@ -78,6 +78,10 @@ public final class AppState: ObservableObject {
     /// не текущую запись.
     @Published public internal(set) var openedLecture: LectureDetail?
     let lectureStore: (any LectureStoring)?
+    var lectureSession: LectureRecordingSession?
+    var lastLectureCheckpointAt: Date?
+    var lecturePreparationTask: Task<Void, Never>?
+    var isFinishingLecture = false
     var lectureStartedAt: Date?
     /// Идущая запись дописывает эту сохранённую лекцию, а не создаёт новую.
     @Published public internal(set) var continuingLectureID: UUID?
@@ -223,7 +227,10 @@ public final class AppState: ObservableObject {
             self?.dictation.audioLevelChanged(level)
         }
         audioCapture.onInterruption = { [weak self] event in
-            self?.dictation.handleCaptureInterruption(event)
+            guard let self else { return }
+            if !self.handleLectureCaptureInterruption(event) {
+                self.dictation.handleCaptureInterruption(event)
+            }
         }
 
         if let realHUD { connectHUDActions(of: realHUD) }
@@ -559,7 +566,14 @@ public final class AppState: ObservableObject {
 
     /// App quit: releases the model unconditionally.
     public func prepareForQuit() {
-        _ = audioCapture.stop()
+        lecturePreparationTask?.cancel()
+        lectureTimerTask?.cancel()
+        if isLectureRecording {
+            audioCapture.pause()
+            audioCapture.resetCapturedSamples()
+        } else {
+            _ = audioCapture.stop()
+        }
         hotkeyManager?.stop()
         modelManager.unloadNow()
     }

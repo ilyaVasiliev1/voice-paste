@@ -92,7 +92,14 @@ struct DictationTractTests {
         return Rig(
             state: state, audio: audio, delivery: delivery, hud: hud,
             engine: engine, store: store, settings: settings, events: events, evaluation: evaluation,
-            cleanup: { try? FileManager.default.removeItem(at: directory) }
+            cleanup: {
+                do {
+                    try pool.close()
+                    try FileManager.default.removeItem(at: directory)
+                } catch {
+                    Issue.record("Не удалось закрыть тестовую базу перед удалением: \(error)")
+                }
+            }
         )
     }
 

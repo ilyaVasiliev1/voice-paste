@@ -1,96 +1,67 @@
 #!/bin/zsh
 set -euo pipefail
-
-# Обновляет установленную копию VoicePaste на машине владельца целиком, одной
-# командой, в порядке из spec/logic.md#L-019:
-#
-#   1. убрать резервные копии прежней реализации обновления, если остались
-#   2. погасить работающую копию и дождаться, что процесса нет (INV-013)
-#   3. собрать — либо принять готовую сборку доводом
-#   4. поставить новую, заменив прежнюю
-#   5. запустить её
-#
-# Между шагом 2 и шагом 5 работающей копии нет ни секунды: приложение слушает
-# глобальную горячую клавишу и пишет в чужие окна, и две живые копии — это два
-# слушателя одной клавиши и два писателя в одно хранилище.
-#
-# T-0007: на устройстве живёт ровно одна установленная копия — резервные копии
-# рядом с ней не заводятся. Прежняя реализация (T-0001…T-0004) сохраняла их
-# под именем с отпечатком и временем, а система обходит /Applications и
-# показывает каждую как отдельное приложение, о котором человек не знает и не
-# заводил. Страховка — git, а не файл на диске: отдельной беты у продукта нет,
-# испытуемая копия и рабочая — одна и та же, поэтому неудачная сборка
-# оставляет владельца без диктовки, а путь назад — scripts/rollback-local.sh
-# <отпечаток>, сборка нужного коммита заново, точнее, чем стареющая копия.
-#
-#   scripts/install-local.sh [путь/к/VoicePaste.app]
-#
-# Без аргумента собирается свежая Debug-сборка вне ~/Documents: пересобранное
-# приложение внутри Documents macOS считает новым и снова спрашивает доступ.
-# С аргументом сборка не запускается — берётся указанный путь как есть.
-
-PROJECT_ROOT="${0:A:h:h}"
 source "${0:A:h}/lib/update-common.sh"
 
+PROJECT_ROOT="${0:A:h:h}"
 TARGET_APP="/Applications/VoicePaste.app"
-DERIVED_DATA="${VOICEPASTE_INSTALL_DERIVED_DATA:-$HOME/Library/Caches/VoicePaste/Build/install}"
 SOURCE_APP="${1:-}"
+DERIVED_DATA="${VOICEPASTE_INSTALL_DERIVED_DATA:-$HOME/Library/Caches/VoicePaste/Build/install}"
 
-print "1/6 Убираю резервные копии прежней реализации обновления…"
-cleanup_legacy_backups "${TARGET_APP:h}"
-
-print "2/6 Гашу работающую копию…"
-quit_and_wait
-
-if [[ -n "$SOURCE_APP" ]]; then
-    if [[ ! -d "$SOURCE_APP" ]]; then
-        print -u2 "Нет сборки по пути: $SOURCE_APP"
-        print -u2 "FIX: проверь путь доводом — либо запусти без аргумента, чтобы собрать самому."
-        exit 2
-    fi
-    print "3/6 Использую готовую сборку: $SOURCE_APP"
-else
-    print "3/6 Собираю в $DERIVED_DATA…"
+# A failed signing preflight must leave the installed app and its permissions intact.
+if ! stable_signing_ready; then
+    print -u2 "Локальная подпись не готова. Установленная копия и разрешения не изменены."
+    exit 2
+fi
+if [[ -z "$SOURCE_APP" ]]; then
     SOURCE_APP=$(build_debug "$PROJECT_ROOT" "$DERIVED_DATA")
-    if [[ ! -d "$SOURCE_APP" ]]; then
-        print -u2 "Сборка прошла, но не оставила $SOURCE_APP."
-        print -u2 "FIX: проверь схему сборки и конфигурацию Debug в VoicePaste.xcodeproj."
-        exit 2
+    python3 "$PROJECT_ROOT/scripts/build-info.py" stamp "$SOURCE_APP" "$PROJECT_ROOT" >/dev/null
+fi
+if [[ ! -d "$SOURCE_APP" ]]; then
+    print -u2 "Сборка не найдена: $SOURCE_APP"
+    exit 2
+fi
+FINGERPRINT=$(read_fingerprint "$SOURCE_APP")
+if [[ -z "$FINGERPRINT" ]] || ! /usr/libexec/PlistBuddy -c 'Print :VoicePasteSourceDigest' "$SOURCE_APP/Contents/Info.plist" >/dev/null 2>&1; then
+    print -u2 "У сборки нет точного отпечатка исходников. Пересоберите её перед установкой."
+    exit 2
+fi
+
+STAGE=$(mktemp -d "${TMPDIR:-/tmp}/VoicePaste-install.XXXXXX")
+INSTALLED=0
+cleanup() {
+    if (( ! INSTALLED )) && [[ -d "$STAGE/previous.app" ]]; then
+        rm -rf "$TARGET_APP"
+        mv "$STAGE/previous.app" "$TARGET_APP"
     fi
+    rm -rf "$STAGE"
+}
+trap cleanup EXIT
+
+ditto "$SOURCE_APP" "$STAGE/VoicePaste.app"
+if ! security unlock-keychain -p "$(cat "$BUILD_KEYCHAIN_SECRET")" "$BUILD_KEYCHAIN" >/dev/null 2>&1; then
+    print -u2 "Не удалось открыть служебную подпись. Установленная копия и разрешения не изменены."
+    exit 3
+fi
+if ! codesign --force --deep --sign "$BUILD_IDENTITY" --keychain "$BUILD_KEYCHAIN" "$STAGE/VoicePaste.app" >/dev/null 2>&1; then
+    print -u2 "Подписание не удалось. Установленная копия и разрешения не изменены."
+    exit 3
+fi
+codesign --verify --deep --strict "$STAGE/VoicePaste.app"
+if ! is_stably_signed "$STAGE/VoicePaste.app"; then
+    print -u2 "Подпись не подтверждена; установленная копия не изменена."
+    exit 3
+fi
+if pgrep -ix "$PROCESS_NAME" >/dev/null 2>&1; then
+    print -u2 "Перед обновлением закройте VoicePaste. Установленная копия не изменена."
+    exit 4
 fi
 
-FINGERPRINT=$(compute_fingerprint "$PROJECT_ROOT")
-print "    отпечаток: $FINGERPRINT"
-
-# Разрешение универсального доступа система привязывает к требованию подписи.
-# У ad-hoc-сборки оно — хеш двоичного файла: каждая установка даёт новый хеш, и
-# прежняя запись к новой копии не относится. Поэтому при ad-hoc список чистится.
-# Подпись из своей связки (scripts/setup-build-keychain.sh) даёт одно требование
-# всем сборкам: выданное разрешение живёт, чистить нечего.
-KEEP_ACCESS=0
-if stable_signing_ready && [[ -d "$TARGET_APP" ]] && is_stably_signed "$TARGET_APP"; then
-    KEEP_ACCESS=1
-fi
-if (( KEEP_ACCESS )); then
-    print "4/6 Подпись та же, что у установленной копии — разрешения сохраняются."
-else
-    print "4/6 Убираю мёртвые записи универсального доступа…"
-    tccutil reset Accessibility com.ilyavasiliev.voicepaste >/dev/null 2>&1 || true
-fi
-
-print "5/6 Ставлю новую копию…"
-# install_app убирает прежнюю копию перед установкой, не перезаписывает
-# копированием поверх: копирование поверх существующего бандла оставляет
-# файлы, которых в новой сборке уже нет.
-install_app "$SOURCE_APP" "$TARGET_APP" "$FINGERPRINT"
-
-print "6/6 Запускаю…"
+[[ ! -d "$TARGET_APP" ]] || mv "$TARGET_APP" "$STAGE/previous.app"
+mv "$STAGE/VoicePaste.app" "$TARGET_APP"
+codesign --verify --deep --strict "$TARGET_APP"
+python3 "$PROJECT_ROOT/scripts/build-info.py" receipt "$TARGET_APP"     "$HOME/Library/Application Support/VoicePaste/installations.json" >/dev/null
+INSTALLED=1
+print "Установлено: $TARGET_APP — $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$TARGET_APP/Contents/Info.plist") ($( /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$TARGET_APP/Contents/Info.plist")), $FINGERPRINT"
+print "Модель, история и настройки сохранены. Разрешения автоматически не сбрасывались."
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$TARGET_APP" >/dev/null 2>&1
 open "$TARGET_APP"
-
-print "Поставлено: $TARGET_APP ($FINGERPRINT)"
-if (( KEEP_ACCESS )); then
-    print "Разрешения прежней копии действуют: подпись не менялась."
-else
-    print "Выдайте универсальный доступ в системных настройках — один раз; дальше сборки подписаны одинаково."
-fi
-print "Проверка:   scripts/verify-local.sh $FINGERPRINT"

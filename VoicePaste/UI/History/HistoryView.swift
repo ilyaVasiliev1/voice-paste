@@ -20,8 +20,22 @@ struct HistoryListColumn: View {
     }
 
     var body: some View {
-        list
-            .searchable(text: $model.searchText, prompt: Text("history.search.prompt"))
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass").foregroundStyle(.tertiary)
+                TextField("history.search.prompt", text: $model.searchText)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+                if !model.searchText.isEmpty {
+                    Button { model.searchText = "" } label: { Image(systemName: "xmark.circle.fill") }
+                        .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("Очистить поиск")
+                }
+            }
+            .padding(10)
+            .background(WorkspacePalette.sidebar, in: RoundedRectangle(cornerRadius: 6))
+            .padding(12)
+            list.frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
             .alert("history.deleteFailed.title", isPresented: $model.didFailToDelete) {
                 Button("common.ok", role: .cancel) {}
             } message: {
@@ -59,33 +73,34 @@ struct HistoryListColumn: View {
                 description: model.searchText.isEmpty ? Text("history.empty.description") : nil
             )
         } else {
-            List(selection: $model.selection) {
-                if !activeImports.isEmpty && model.searchText.isEmpty {
-                    Section("В процессе") {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 4) {
+                    if !activeImports.isEmpty && model.searchText.isEmpty {
+                        Text("В процессе").font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
+                            .padding(.horizontal, 12).padding(.top, 8)
                         ForEach(activeImports) { job in
-                            ProcessingImportRow(job: job) {
-                                appState.openImportQueue()
+                            ProcessingImportRow(job: job) { appState.openImportQueue() }
+                                .padding(12)
+                        }
+                    }
+                    ForEach(model.items) { item in
+                        Button { model.selection = item.id } label: {
+                            HistoryRow(item: item).frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .buttonStyle(WorkspaceRowStyle(selected: model.selection == item.id))
+                        .accessibilityAddTraits(model.selection == item.id ? [.isSelected] : [])
+                        .onAppear { model.loadNextPageIfNeeded(current: item) }
+                        .contextMenu {
+                            Button(role: .destructive) { deleteID = item.id } label: {
+                                Label("Удалить", systemImage: "trash")
                             }
                         }
                     }
                 }
-                if !model.items.isEmpty {
-                    Section {
-                        ForEach(model.items) { item in
-                            HistoryRow(item: item)
-                                .tag(item.id)
-                                .onAppear { model.loadNextPageIfNeeded(current: item) }
-                                .contextMenu {
-                                    Button(role: .destructive) {
-                                        deleteID = item.id
-                                    } label: {
-                                        Label("Удалить", systemImage: "trash")
-                                    }
-                                }
-                        }
-                    }
-                }
+                .padding(.horizontal, 8)
+                .padding(.bottom, 12)
             }
+
         }
     }
 
@@ -103,29 +118,24 @@ struct HistoryDetailColumn: View {
     @State private var showingDeleteConfirmation = false
 
     var body: some View {
-        content
-            .toolbar {
-                ToolbarItemGroup {
-                    StartDictationButton()
-
-                    Button {
-                        guard let detail = model.detail else { return }
-                        TextInserter.copyToClipboard(detail.text)
-                    } label: {
-                        Label("history.toolbar.copy", systemImage: "doc.on.doc")
-                    }
-                    .help("Копировать")
-                    .disabled(model.detail == nil)
-
-                    Button(role: .destructive) {
-                        showingDeleteConfirmation = true
-                    } label: {
-                        Label("history.toolbar.delete", systemImage: "trash")
-                    }
-                    .help("Удалить запись")
-                    .disabled(model.detail == nil)
+        VStack(spacing: 0) {
+            WorkspaceHeader(title: "Расшифровка") {
+                StartDictationButton()
+                Button {
+                    guard let detail = model.detail else { return }
+                    TextInserter.copyToClipboard(detail.text)
+                } label: { Image(systemName: "doc.on.doc") }
+                .help("Копировать").accessibilityLabel("Копировать")
+                .disabled(model.detail == nil)
+                Button(role: .destructive) { showingDeleteConfirmation = true } label: {
+                    Image(systemName: "trash")
                 }
+                .help("Удалить запись").accessibilityLabel("Удалить запись")
+                .disabled(model.detail == nil)
             }
+            .buttonStyle(WorkspaceActionStyle())
+            content.frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
             .confirmationDialog(
                 "history.toolbar.deleteConfirmTitle",
                 isPresented: $showingDeleteConfirmation
@@ -166,6 +176,7 @@ private struct StartDictationButton: View {
         } label: {
             Label("history.toolbar.startDictation", systemImage: "waveform")
         }
+        .buttonStyle(WorkspaceActionStyle(primary: true))
         .help("history.toolbar.startDictation")
         // recording stays a disabled, non-erroring
         // control while not ready, not a tap that surfaces an error.
@@ -185,8 +196,10 @@ private struct HistoryLoadingPlaceholder: View {
     )
 
     var body: some View {
-        List {
-            ForEach(0..<7, id: \.self) { _ in HistoryRow(item: Self.sample) }
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 12) {
+                ForEach(0..<7, id: \.self) { _ in HistoryRow(item: Self.sample) }
+            }.padding(20)
         }
         .redacted(reason: .placeholder)
         .allowsHitTesting(false)
@@ -203,8 +216,20 @@ private struct HistoryRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+            HStack(spacing: DesignTokens.Spacing.xs) {
+                Image(systemName: item.source == .dictation ? "mic" : "doc")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(item.sourceFileName ?? NSLocalizedString("history.source.dictation", comment: ""))
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
             Text(item.preview.isEmpty ? " " : item.preview)
-                .lineLimit(2)
+                .font(.system(size: 13))
+                .lineSpacing(2)
+                .lineLimit(3)
             HStack(spacing: DesignTokens.Spacing.sm) {
                 Text(DisplayFormat.recordDate(Date(timeIntervalSince1970: Double(item.createdAt) / 1_000)))
                 Text("·")
@@ -213,7 +238,7 @@ private struct HistoryRow: View {
             .font(.caption)
             .foregroundStyle(.secondary)
         }
-        .padding(.vertical, DesignTokens.Spacing.xs)
+        .padding(.vertical, DesignTokens.Spacing.sm)
     }
 }
 

@@ -391,3 +391,12 @@ HUD SHALL быть вторым входом в ту же очередь: под
 
 <!-- uncertainty: Импорт через HUD (перетаскивание, выбор файла, отмена закрытием) проверен чтением AppState и HUDContentView; автотеста на этот путь в VoicePasteTests нет. -->
 <!-- uncertainty: Ветка видео в AudioDecoder (AVAssetReader) не покрыта тестом — в фикстурах есть только OGG. -->
+
+### Requirement: Цифровая тишина не отправляется в распознавание
+<!-- id: WhisperAudioInput.hasSignal -->
+<!-- entities: WhisperAudioInput -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/Core/Transcription/WhisperKitTranscriber.swift -->
+<!-- test_macos: VoicePasteTests/WhisperDecodingPlanTests.swift:test_silentAndInvalidSamplesAreRejectedButQuietSpeechPasses -->
+
+Перед Whisper цифровая тишина и нечисловые сэмплы SHALL отклоняться без запуска модели. Тихая запись с сигналом сохраняется: отсечка шума не должна удалять далёкую речь преподавателя.

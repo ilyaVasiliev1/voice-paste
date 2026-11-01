@@ -79,12 +79,12 @@
 "onboarding.purpose.title" = "Добро пожаловать в VoicePaste";
 "onboarding.purpose.body" = "VoicePaste превращает вашу речь в текст локально, без интернета и учётной записи. Настройка займёт всего пару шагов.";
 "onboarding.microphone.title" = "Доступ к микрофону";
-"onboarding.microphone.body" = "VoicePaste использует микрофон только во время активной диктовки — чтобы распознать вашу речь.";
+"onboarding.microphone.body" = "Микрофон нужен для диктовки и записи лекций. Запись начинается только по вашему действию.";
 "onboarding.microphone.grant" = "Разрешить доступ к микрофону";
 "onboarding.microphone.status.systemSettings" = "Доступ отключён в настройках macOS. Откройте раздел «Микрофон» и включите VoicePaste.";
 "onboarding.microphone.notPresented" = "Системный запрос не появился. Нажмите «Разрешить доступ к микрофону» ещё раз.";
 "onboarding.accessibility.title" = "Универсальный доступ";
-"onboarding.accessibility.body" = "Это разрешение нужно для глобальной горячей клавиши и для вставки текста в поле, где вы диктуете, без переключения окон.";
+"onboarding.accessibility.body" = "Универсальный доступ нужен для автоматической вставки расшифровки в другие приложения. Разрешение настраивается в разделе «Конфиденциальность и безопасность» macOS.";
 "onboarding.accessibility.grant" = "Разрешить универсальный доступ";
 "onboarding.accessibility.requested" = "Подтвердите доступ в системном окне. Если macOS открыла настройки, включите VoicePaste там.";
 "onboarding.model.title" = "Локальная модель распознавания";
@@ -129,7 +129,7 @@
 "settings.text.autoInsert" = "Автоматически вставлять текст";
 
 "settings.model.name" = "Модель";
-"settings.model.displayName" = "Whisper large-v3, сжатая";
+"settings.model.displayName" = "Whisper large-v3 turbo, сжатая";
 "settings.lecture.section" = "Лекции";
 "settings.model.size" = "Размер";
 "settings.model.status" = "Готовность";
@@ -245,3 +245,9 @@
 "import.error.unknownState" = "Задачу записала другая версия приложения. Уберите её и добавьте файл заново.";
 "import.error.persistenceFailed" = "Не удалось сохранить состояние. Проверьте доступ к локальным данным и повторите.";
 "storage.unavailable" = "Локальные данные недоступны. История и очередь не будут сохранены до перезапуска VoicePaste.";
+
+"history.detail.editor" = "Текст расшифровки";
+
+"main.settings" = "Настройки";
+"lecture.incomplete.title" = "Расшифровка неполная";
+"lecture.incomplete.short" = "Есть пропуски";

@@ -102,6 +102,8 @@ final class ScreenSnapshots: XCTestCase {
         window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         window.isReleasedWhenClosed = false
         window.title = "VoicePaste"
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
         window.contentViewController = NSHostingController(rootView: view)
         window.setContentSize(size)
         window.center()
@@ -220,6 +222,24 @@ final class ScreenSnapshots: XCTestCase {
         }
     }
 
+    func test_mainWindow_widths() async throws {
+        try skipUnlessRequested()
+        for (name, width) in [("minimum", MainWindowLayout.windowMinWidth), ("wide", CGFloat(1440))] {
+            for section: MainContentSection in [.history, .lecture, .importQueue, .dashboard] {
+                let app = try await makeAppState()
+                if section == .history {
+                    app.requestedHistorySelection = try await app.historyStore.fetchPage(after: nil).items.first?.id
+                } else if section == .lecture, let id = app.savedLectures.first?.id {
+                    await app.openSavedLecture(id: id)
+                }
+                try await snapshot(
+                    mainWindow(app, section: section), size: CGSize(width: width, height: 680), dark: false,
+                    name: "width-\(name)-\(section)"
+                )
+            }
+        }
+    }
+
     func test_selectedRecords() async throws {
         try skipUnlessRequested()
         for dark in [true, false] {
@@ -290,7 +310,7 @@ final class ScreenSnapshots: XCTestCase {
                 let app = try await makeAppState()
                 try await snapshot(
                     OnboardingView(initialStep: step).environmentObject(app),
-                    size: CGSize(width: 480, height: 360), dark: dark, name: "onboarding-\(name)-\(theme)"
+                    size: CGSize(width: 720, height: 480), dark: dark, name: "onboarding-\(name)-\(theme)"
                 )
             }
         }

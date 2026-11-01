@@ -45,6 +45,8 @@ function cleanup_test_host() {
       [[ -n "$pid" ]] && kill -TERM "$pid" 2>/dev/null || true
     done
   fi
+  /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
+    -u "$DERIVED_DATA/Build/Products/Debug/VoicePaste.app" >/dev/null 2>&1 || true
 }
 
 assert_clean_test_environment

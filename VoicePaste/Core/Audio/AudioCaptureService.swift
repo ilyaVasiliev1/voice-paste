@@ -25,12 +25,21 @@ nonisolated public enum AudioCaptureInterruption: Equatable, Sendable {
 nonisolated final class AudioSampleAccumulator: @unchecked Sendable {
     private let lock = NSLock()
     private var samples: [Float] = []
+    private var spool: LectureAudioSpool?
     private var sumOfSquares: Double = 0
     private var sampleCount = 0
-    private(set) var lastLevel: Float = 0
+    private var level: Float = 0
+    var lastLevel: Float {
+        lock.lock(); defer { lock.unlock() }
+        return level
+    }
     /// Куда отдавать каждый пришедший кусок 16 кГц моно. Ставится на время
     /// записи лекции потоковым движком.
-    nonisolated(unsafe) var onChunk: (@Sendable ([Float]) -> Void)?
+    private var chunkHandler: (@Sendable ([Float]) -> Void)?
+    var onChunk: (@Sendable ([Float]) -> Void)? {
+        get { lock.lock(); defer { lock.unlock() }; return chunkHandler }
+        set { lock.lock(); defer { lock.unlock() }; chunkHandler = newValue }
+    }
 
     func append(_ chunk: [Float]) {
         guard !chunk.isEmpty else { return }
@@ -41,10 +50,10 @@ nonisolated final class AudioSampleAccumulator: @unchecked Sendable {
             chunkSumOfSquares += Double(value * value)
         }
         lock.lock()
-        samples.append(contentsOf: chunk)
+        if let spool { spool.append(chunk) } else { samples.append(contentsOf: chunk) }
         sumOfSquares += chunkSumOfSquares
         sampleCount += chunk.count
-        lastLevel = peak
+        level = peak
         lock.unlock()
     }
 
@@ -56,16 +65,52 @@ nonisolated final class AudioSampleAccumulator: @unchecked Sendable {
         return sampleCount
     }
 
-    /// Копия отрезка **без** опустошения буфера: запись продолжается, а конец
-    /// её ещё понадобится целиком — и фильтру хвоста, и проверке громкости.
-    /// Диапазон обрезается по накопленному, чтобы гонка с аудиопотоком давала
-    /// меньше данных, а не выход за границы.
+    /// Чтение не потребляет данные: перекрывающиеся окна обращаются к одному звуку.
+    /// Диапазон ограничен записанным, чтобы гонка с аудиопотоком не выходила за границы.
     func snapshot(_ range: Range<Int>) -> [Float] {
         lock.lock()
-        defer { lock.unlock() }
+        if let spool {
+            lock.unlock()
+            return spool.snapshot(range)
+        }
         let clamped = range.clamped(to: 0..<samples.count)
-        guard !clamped.isEmpty else { return [] }
-        return Array(samples[clamped])
+        let result = clamped.isEmpty ? [] : Array(samples[clamped])
+        lock.unlock()
+        return result
+    }
+
+    var residentSampleCount: Int {
+        lock.lock(); defer { lock.unlock() }
+        return samples.count
+    }
+
+    var storageFailure: String? {
+        lock.lock(); defer { lock.unlock() }
+        return spool?.failure
+    }
+
+    func useDiskStorage() throws {
+        let next = try LectureAudioSpool()
+        lock.lock()
+        let previous = spool
+        samples.removeAll()
+        spool = next
+        sampleCount = 0
+        sumOfSquares = 0
+        lock.unlock()
+        withExtendedLifetime(previous) {}
+    }
+
+    func clear() {
+        lock.lock()
+        let previous = spool
+        samples.removeAll()
+        spool = nil
+        sampleCount = 0
+        sumOfSquares = 0
+        level = 0
+        lock.unlock()
+        withExtendedLifetime(previous) {}
     }
 
     func drain() -> [Float] {
@@ -74,14 +119,92 @@ nonisolated final class AudioSampleAccumulator: @unchecked Sendable {
 
     func drainWithRMS() -> (samples: [Float], rms: Float) {
         lock.lock()
-        defer {
-            samples.removeAll()
-            sumOfSquares = 0
-            sampleCount = 0
-            lock.unlock()
+        let source = spool
+        let buffered = samples
+        let count = sampleCount
+        let rms = count == 0 ? 0 : Float((sumOfSquares / Double(count)).squareRoot())
+        samples.removeAll()
+        spool = nil
+        sumOfSquares = 0
+        sampleCount = 0
+        lock.unlock()
+        return (source?.snapshot(0..<count) ?? buffered, rms)
+    }
+
+}
+
+// A bounded queue avoids retaining hours of PCM; overflow is reported rather than dropping old audio.
+nonisolated final class LectureAudioSpool: @unchecked Sendable {
+    private let queue = DispatchQueue(label: "VoicePaste.lecture-audio-spool")
+    private let stateLock = NSLock()
+    private let url: URL
+    private let handle: FileHandle
+    private var pendingBytes = 0
+    private var issue: String?
+    private var writtenSamples = 0
+    private let limit: Int
+
+    init(maxPendingBytes: Int = 8 * 1_024 * 1_024) throws {
+        limit = maxPendingBytes
+        url = FileManager.default.temporaryDirectory.appendingPathComponent("VoicePaste-lecture-\(UUID().uuidString).pcm")
+        guard FileManager.default.createFile(atPath: url.path, contents: nil,
+            attributes: [.posixPermissions: 0o600]) else {
+            throw AudioCaptureError.engineFailed("Cannot create lecture audio buffer")
         }
-        let rms = sampleCount == 0 ? 0 : Float((sumOfSquares / Double(sampleCount)).squareRoot())
-        return (samples, rms)
+        handle = try FileHandle(forUpdating: url)
+    }
+
+    deinit {
+        try? handle.close()
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    var failure: String? {
+        stateLock.lock(); defer { stateLock.unlock() }
+        return issue
+    }
+
+    func append(_ samples: [Float]) {
+        let bytes = samples.count * MemoryLayout<Float>.stride
+        stateLock.lock()
+        guard issue == nil, pendingBytes + bytes <= limit else {
+            if issue == nil { issue = "Lecture audio buffer overloaded; transcription may be incomplete" }
+            stateLock.unlock()
+            return
+        }
+        pendingBytes += bytes
+        stateLock.unlock()
+        queue.async { [self] in
+            defer {
+                stateLock.lock(); pendingBytes -= bytes; stateLock.unlock()
+            }
+            do {
+                try handle.seekToEnd()
+                try samples.withUnsafeBytes { try handle.write(contentsOf: Data($0)) }
+                writtenSamples += samples.count
+            } catch {
+                stateLock.lock(); issue = "Lecture audio could not be stored"; stateLock.unlock()
+            }
+        }
+    }
+
+    func snapshot(_ range: Range<Int>) -> [Float] {
+        queue.sync {
+            let clipped = range.clamped(to: 0..<writtenSamples)
+            guard !clipped.isEmpty else { return [] }
+            do {
+                try handle.seek(toOffset: UInt64(clipped.lowerBound * MemoryLayout<Float>.stride))
+                let data = try handle.read(upToCount: clipped.count * MemoryLayout<Float>.stride) ?? Data()
+                return data.withUnsafeBytes { raw in
+                    (0..<(raw.count / MemoryLayout<Float>.stride)).map {
+                        raw.loadUnaligned(fromByteOffset: $0 * MemoryLayout<Float>.stride, as: Float.self)
+                    }
+                }
+            } catch {
+                stateLock.lock(); issue = "Lecture audio could not be read"; stateLock.unlock()
+                return []
+            }
+        }
     }
 }
 
@@ -156,10 +279,7 @@ nonisolated final class AudioTapProcessor: @unchecked Sendable {
         let frameCount = Int(outBuffer.frameLength)
         let chunk = Array(UnsafeBufferPointer(start: channelData[0], count: frameCount))
         accumulator.append(chunk)
-        // Потоковому распознавателю звук нужен по ходу, а не накопленным
-        // буфером: он и существует затем, чтобы не ждать конца записи.
-        // Накопитель при этом продолжает копить — конец записи нужен целиком
-        // и фильтру хвоста, и проверке громкости, и запасному пути Whisper.
+        // Диктовка может подписываться на куски; лекция читает ограниченные диапазоны из файла.
         accumulator.onChunk?(chunk)
     }
 }
@@ -223,6 +343,22 @@ public final class AudioCaptureService {
         accumulator.snapshot(range)
     }
 
+    public var captureStorageFailure: String? { accumulator.storageFailure }
+
+    public func startLecture() throws {
+        guard !isCapturing else { return }
+        try accumulator.useDiskStorage()
+        restartToken += 1
+        try beginCapture(clearingExistingSamples: false)
+    }
+
+    public func stopPreservingSamples() -> Int {
+        pause()
+        return accumulator.count
+    }
+
+    public func resetCapturedSamples() { accumulator.clear() }
+
     public func start() throws {
         restartToken += 1
         try beginCapture(clearingExistingSamples: true)
@@ -239,7 +375,7 @@ public final class AudioCaptureService {
     private func beginCapture(clearingExistingSamples: Bool) throws {
         guard !isCapturing else { return }
         if clearingExistingSamples {
-            _ = accumulator.drain()
+            accumulator.clear()
             lastCaptureRMS = 0
         }
 

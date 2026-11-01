@@ -248,3 +248,63 @@
 ---
 
 <!-- uncertainty: Экран учебного режима и перевод выделенного проверены только чтением кода — слой SwiftUI в проекте не тестируется. -->
+
+---
+
+### Requirement: Длинная лекция не накапливает весь звук в памяти
+<!-- id: LectureCapture.bounded -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/Core/Audio/AudioCaptureService.swift, VoicePaste/App/AppState+Lecture.swift -->
+<!-- test_macos: VoicePasteTests/AudioCaptureServiceTests.swift -->
+
+Звук лекции SHALL храниться во временном локальном файле и читаться ограниченными
+окнами. Остановка SHALL досчитывать хвост без копирования всей записи в массив.
+Отказ записи или перегрузка очереди SHALL быть явным отказом, а не тихой потерей звука.
+
+---
+
+### Requirement: Неполная расшифровка сохраняет полученный текст и причину
+<!-- id: LectureRecorder.incomplete -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/Core/Lecture/LectureRecorder.swift, VoicePaste/Core/Lecture/SystemLiveTranscriber.swift, VoicePaste/Data/LectureStore.swift, VoicePaste/App/AppState+Lecture.swift -->
+<!-- test_macos: VoicePasteTests/LiveTranscriptionTests.swift, VoicePasteTests/LectureStoreTests.swift -->
+
+Ошибка окна, потока или завершения SHALL сохранять принятые абзацы и последний
+уточняемый текст с явной отметкой неполноты, сохраняемой между запусками.
+Остановка SHALL дождаться текущего окна перед досчётом хвоста без повторного распознавания окна.
+
+---
+
+### Requirement: Начало записи не устанавливает системные языковые данные
+<!-- id: SystemLiveTranscriber.assets -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/Core/Lecture/SystemLiveTranscriber.swift, VoicePaste/App/AppState+Lecture.swift -->
+
+Перед системной расшифровкой SHALL проверяться поддержка языка и установленные
+языковые данные. Отсутствующие данные SHALL приводить к явному сообщению и
+локальному Whisper, если он установлен, без скрытого скачивания при записи.
+
+---
+
+### Requirement: Доказанная тишина не передаётся в модель лекции
+<!-- id: LectureRecorder.silence -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/Core/Lecture/LectureRecorder.swift -->
+<!-- test_macos: VoicePasteTests/LectureRecorderTests.swift -->
+
+Окно без звукового сигнала SHALL пропускаться до вызова Whisper; тихая ненулевая
+речь SHALL сохраняться. Фильтр не SHALL удалять фразы только за совпадение со
+словами «спасибо» или «продолжение следует».
+
+---
+
+### Requirement: Принятый текст лекции переживает аварийное завершение
+<!-- id: LectureRecorder.checkpoint -->
+<!-- platforms: macos -->
+<!-- enforced_macos: VoicePaste/App/AppState+Lecture.swift, VoicePaste/Core/Lecture/LectureContinuation.swift -->
+<!-- test_macos: VoicePasteTests/LectureContinuationTests.swift, VoicePasteTests/LectureStoreTests.swift -->
+
+Первый принятый абзац SHALL сохраняться в ближайший тик; дальнейшие изменения —
+не чаще раза в 15 секунд. Контрольная запись SHALL иметь тот же id, что итоговая,
+и отметку незавершённости. Итоговая запись заменяет её после завершения.
+После аварии доступен последний сохранённый текст; восстановление аудио не обещается.

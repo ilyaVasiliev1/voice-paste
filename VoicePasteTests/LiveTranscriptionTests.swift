@@ -102,6 +102,18 @@ final class LiveTranscriptionTests: XCTestCase {
         }
     }
 
+    func test_finishFailure_preservesVolatileTextAndMarksIncomplete() async throws {
+        let engine = FakeLiveEngine()
+        let recorder = LectureRecorder()
+        try await recorder.beginStreaming(engine: engine, language: .en, pauseSeconds: 2)
+        engine.emit(LiveTranscriptUpdate(text: "The final thought", isFinal: false, startSeconds: 4, endSeconds: 6))
+        try await waitUntil { recorder.volatileText == "The final thought" }
+        engine.failureDescription = "finalization failed"
+        let paragraphs = await recorder.finishStreaming()
+        XCTAssertEqual(paragraphs.last?.text, "The final thought")
+        XCTAssertNotNil(recorder.completionIssue)
+    }
+
     // MARK: - Вспомогательное
 
     private func waitUntil(
@@ -126,6 +138,7 @@ private final class FakeLiveEngine: LiveTranscribing {
     private(set) var receivedSampleCount = 0
     private(set) var didFinish = false
     private(set) var settleCount = 0
+    var failureDescription: String?
 
     var updates: AsyncStream<LiveTranscriptUpdate> { stream }
 

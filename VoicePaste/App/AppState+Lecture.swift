@@ -5,6 +5,15 @@ import Foundation
 
 extension AppState {
 
+    func handleLectureCaptureInterruption(_ event: AudioCaptureInterruption) -> Bool {
+        guard isLectureRecording else { return false }
+        if case .failed = event {
+            lectureRecorder.markIncomplete("Microphone capture was interrupted")
+            Task { await self.finishLectureRecording() }
+        }
+        return true
+    }
+
     /// Начинает или останавливает запись лекции.
     ///
     /// Вынесено расширением: учебный режим — отдельная работа со своей
@@ -29,7 +38,7 @@ extension AppState {
     }
 
     private func beginLectureRecording() {
-        guard !isLectureRecording else { return }
+        guard !isLectureRecording, !isFinishingLecture else { return }
         // Обратный запрет — в `beginRecording()`. Здесь отказ объясняется:
         // молча неработающая кнопка хуже честного отказа.
         guard dictationPhase == .idle else {
@@ -38,7 +47,7 @@ extension AppState {
         }
         lectureRecorder.cancel()
         do {
-            try audioCapture.start()
+            try audioCapture.startLecture()
         } catch {
             presentHUD(.error(
                 message: NSLocalizedString("dictation.microphoneError", comment: ""),
@@ -49,6 +58,9 @@ extension AppState {
         }
         isLectureRecording = true
         lectureStartedAt = Date()
+        lectureSession = LectureRecordingSession(startedAt: lectureStartedAt ?? Date(),
+            base: continuingLectureID == openedLecture?.lecture.id ? openedLecture : nil)
+        lastLectureCheckpointAt = nil
         lectureElapsedSeconds = 0
         startLectureTicker()
 
@@ -83,7 +95,7 @@ extension AppState {
     @available(macOS 26.0, *)
     private func startSystemLectureTranscription(language: TranscriptionLanguage) {
         let recorder = SystemLiveTranscriber()
-        Task { [weak self] in
+        lecturePreparationTask = Task { [weak self] in
             guard let self else { return }
             do {
                 try await lectureRecorder.beginStreaming(
@@ -98,54 +110,68 @@ extension AppState {
                     "lecture.systemEngineUnavailable",
                     detail: String(describing: error)
                 )
-                startWhisperLectureTranscription(language: language)
+                if !Task.isCancelled { await prepareWhisperLectureTranscription(language: language) }
                 return
             }
             guard isLectureRecording else { return }
-            // Звук подаётся по ходу. Замыкание зовётся с аудиопотока, поэтому
-            // переход на главный актор здесь, а не у получателя.
-            audioCapture.onAudioChunk = { [weak self] chunk in
-                Task { @MainActor in self?.lectureRecorder.appendStreamingAudio(chunk) }
-            }
-        }
-    }
-
-    private func startWhisperLectureTranscription(language: TranscriptionLanguage) {
-        Task { [weak self] in
-            guard let self else { return }
-            guard let engine = try? await modelManager.ensureLoaded() else {
-                await DiagnosticLog.shared.log("lecture.liveTranscriptionUnavailable")
-                return
-            }
-            guard isLectureRecording else { return }
-            lectureRecorder.begin(
-                transcriber: engine,
-                language: language,
-                pauseSeconds: settings.lectureParagraphPauseSeconds,
+            lectureRecorder.streamCapturedAudio(
                 availableSamples: { [audioCapture] in audioCapture.capturedSampleCount },
-                readSamples: { [audioCapture] range in audioCapture.capturedSamples(in: range) }
+                readSamples: { [audioCapture] in audioCapture.capturedSamples(in: $0) }
             )
         }
     }
 
-    private func finishLectureRecording() async {
+    private func startWhisperLectureTranscription(language: TranscriptionLanguage) {
+        lecturePreparationTask = Task { [weak self] in
+            await self?.prepareWhisperLectureTranscription(language: language)
+        }
+    }
+
+    private func prepareWhisperLectureTranscription(language: TranscriptionLanguage) async {
+        guard let engine = try? await modelManager.ensureLoaded() else {
+            lectureRecorder.markIncomplete("The local speech model could not be loaded")
+            await DiagnosticLog.shared.log("lecture.liveTranscriptionUnavailable")
+            return
+        }
         guard isLectureRecording else { return }
+        lectureRecorder.begin(
+            transcriber: engine,
+            language: language,
+            pauseSeconds: settings.lectureParagraphPauseSeconds,
+            availableSamples: { [audioCapture] in audioCapture.capturedSampleCount },
+            readSamples: { [audioCapture] in audioCapture.capturedSamples(in: $0) }
+        )
+    }
+
+    private func finishLectureRecording() async {
+        guard isLectureRecording, !isFinishingLecture else { return }
+        isFinishingLecture = true
+        defer { isFinishingLecture = false }
+        let ticker = lectureTimerTask
+        ticker?.cancel()
+        await ticker?.value
+        lectureTimerTask = nil
+        let sampleCount = audioCapture.stopPreservingSamples()
+        await lecturePreparationTask?.value
+        lecturePreparationTask = nil
         isLectureRecording = false
-        lectureTimerTask?.cancel()
-        let samples = audioCapture.stop()
+        defer { audioCapture.resetCapturedSamples() }
+        if let issue = audioCapture.captureStorageFailure { lectureRecorder.markIncomplete(issue) }
         let startedAt = lectureStartedAt ?? Date()
         lectureStartedAt = nil
 
         audioCapture.onAudioChunk = nil
         let paragraphs: [LectureParagraph]
-        if activeLectureEngine == .system, #available(macOS 26.0, *) {
-            // Потоковому движку досчитывать нечего: он шёл вровень с речью.
+        if lectureRecorder.isStreaming {
+            await lectureRecorder.drainStreamingAudio(totalSamples: sampleCount,
+                readSamples: { [audioCapture] in audioCapture.capturedSamples(in: $0) })
             paragraphs = await lectureRecorder.finishStreaming()
         } else if let engine = try? await modelManager.ensureLoaded() {
             paragraphs = await lectureRecorder.finish(
                 transcriber: engine,
                 language: settings.lectureLanguage,
-                totalSamples: samples
+                totalSampleCount: sampleCount,
+                readSamples: { [audioCapture] in audioCapture.capturedSamples(in: $0) }
             )
         } else {
             // Модель не поднялась — хвост досчитать нечем. Но всё, что уже
@@ -153,87 +179,54 @@ extension AppState {
             // сохранено: иначе час прослушанного исчезнет при следующем
             // старте, когда `cancel()` очистит абзацы. Отказ виден, а не
             // только в журнале.
+            lectureRecorder.markIncomplete("The final audio could not be transcribed")
             paragraphs = lectureRecorder.paragraphs
             presentHUD(.error(message: NSLocalizedString("lecture.tailNotTranscribed", comment: "")))
             await DiagnosticLog.shared.log("lecture.finish.noModel")
         }
-        await persistLecture(paragraphs: paragraphs, startedAt: startedAt, samples: samples.count)
+        await persistLecture(paragraphs: paragraphs, startedAt: startedAt, samples: sampleCount)
     }
 
     private func persistLecture(paragraphs: [LectureParagraph], startedAt: Date, samples: Int) async {
-        let continuingID = continuingLectureID
         continuingLectureID = nil
-        guard let lectureStore, !paragraphs.isEmpty else { return }
-        if let continuingID, let opened = openedLecture, opened.lecture.id == continuingID {
-            await persistContinuation(of: opened, paragraphs: paragraphs, samples: samples, in: lectureStore)
-            return
-        }
-        let now = Int64(Date().timeIntervalSince1970 * 1_000)
-        let id = UUID()
-        let detail = LectureDetail(
-            lecture: Lecture(
-                id: id,
-                createdAt: Int64(startedAt.timeIntervalSince1970 * 1_000),
-                updatedAt: now,
-                title: Lecture.defaultTitle(startedAt: startedAt, formatter: Self.lectureTitleFormatter),
-                durationMilliseconds: samples * 1_000 / 16_000,
-                language: lectureRecorder.detectedLanguage,
-                wordCount: WordCounting.count(in: paragraphs.map(\.text).joined(separator: " "))
-            ),
-            paragraphs: paragraphs.enumerated().map { index, paragraph in
-                StoredLectureParagraph(
-                    id: UUID(),
-                    lectureID: id,
-                    orderIndex: index,
-                    startMilliseconds: Int(paragraph.startSeconds * 1_000),
-                    endMilliseconds: Int(paragraph.endSeconds * 1_000),
-                    text: paragraph.text
-                )
-            }
-        )
+        guard let lectureStore, let session = lectureSession,
+            !paragraphs.isEmpty || lectureRecorder.completionIssue != nil else { return }
+        let detail = session.detail(paragraphs: paragraphs, sampleCount: samples,
+            language: lectureRecorder.detectedLanguage, issue: lectureRecorder.completionIssue,
+            now: Date(), title: Lecture.defaultTitle(startedAt: startedAt, formatter: Self.lectureTitleFormatter))
         do {
             try await lectureStore.save(detail)
             await refreshSavedLectures()
-            // Записанная лекция сразу открыта и выбрана в списке: её
-            // расшифровка остаётся на экране, но уже как сохранённая, со своей
-            // строкой — а не как ничья копия под строкой новой лекции.
             openedLecture = detail
+            lectureSession = nil
             lectureRecorder.cancel()
         } catch {
-            // Лекция уже на экране и никуда не делась — отказ хранилища не
-            // отменяет прослушанного. Но молчать о нём нельзя: это ровно та
-            // потеря, которую иначе замечают через неделю.
-            await DiagnosticLog.shared.log(
-                "lecture.saveFailed",
-                detail: String(describing: error)
-            )
+            lectureRecorder.markIncomplete("Lecture could not be saved")
+            presentHUD(.error(message: "Lecture could not be saved. The text remains on screen."))
+            await DiagnosticLog.shared.log("lecture.saveFailed", detail: ErrorSummary.describe(error))
         }
     }
 
-    private func persistContinuation(
-        of opened: LectureDetail,
-        paragraphs: [LectureParagraph],
-        samples: Int,
-        in lectureStore: any LectureStoring
-    ) async {
-        let continued = LectureContinuation.appending(
-            paragraphs,
-            recordedMilliseconds: samples * 1_000 / 16_000,
-            to: opened,
-            now: Int64(Date().timeIntervalSince1970 * 1_000)
-        )
+    private func checkpointLecture(now: Date) async {
+        guard isLectureRecording, !isFinishingLecture, let session = lectureSession, let lectureStore,
+            session.checkpointParagraphs != lectureRecorder.paragraphs,
+            LectureRecordingSession.checkpointDue(hasText: !lectureRecorder.paragraphs.isEmpty,
+                lastCheckpoint: lastLectureCheckpointAt, now: now) else { return }
+        let acceptedParagraphs = lectureRecorder.paragraphs
+        let detail = session.detail(paragraphs: acceptedParagraphs,
+            sampleCount: audioCapture.capturedSampleCount, language: lectureRecorder.detectedLanguage,
+            issue: "Recording was not completed; this is the last saved text.", now: now,
+            title: Lecture.defaultTitle(startedAt: session.startedAt, formatter: Self.lectureTitleFormatter))
         do {
-            try await lectureStore.save(continued)
-            await refreshSavedLectures()
-            openedLecture = continued
-            lectureRecorder.cancel()
+            try await lectureStore.save(detail)
+            guard lectureSession?.id == session.id else { return }
+            lastLectureCheckpointAt = now
+            lectureSession?.checkpointParagraphs = acceptedParagraphs
         } catch {
-            // Дописанное остаётся на экране в записывающем — отказ виден в
-            // журнале, как и при сохранении новой лекции.
-            await DiagnosticLog.shared.log(
-                "lecture.continueSaveFailed",
-                detail: String(describing: error)
-            )
+            // Text remains in the recorder; a storage failure must not look like a safe checkpoint.
+            lectureRecorder.markIncomplete("Lecture progress could not be saved")
+            await DiagnosticLog.shared.log("lecture.checkpointFailed", detail: ErrorSummary.describe(error))
+            lastLectureCheckpointAt = now
         }
     }
 
@@ -295,7 +288,7 @@ extension AppState {
     }
 
     public func deleteLecture(id: UUID) async {
-        guard let lectureStore else { return }
+        guard lectureSession?.id != id, let lectureStore else { return }
         do {
             try await lectureStore.delete(id: id)
             if openedLecture?.lecture.id == id { openedLecture = nil }
@@ -315,6 +308,12 @@ extension AppState {
                 if let startedAt = self.lectureStartedAt {
                     self.lectureElapsedSeconds = Date().timeIntervalSince(startedAt)
                 }
+                if let issue = self.audioCapture.captureStorageFailure {
+                    self.lectureRecorder.markIncomplete(issue)
+                    Task { await self.finishLectureRecording() }
+                    return
+                }
+                await self.checkpointLecture(now: Date())
                 try? await Task.sleep(for: .milliseconds(500))
             }
         }
