@@ -182,14 +182,12 @@ struct VoicePasteApp: App {
             height: MainWindowLayout.defaultWindowHeight
         )
         .windowResizability(.contentMinSize)
-        .windowStyle(.hiddenTitleBar)
 
         Window("onboarding.window.title", id: "onboarding") {
             OnboardingView()
                 .environmentObject(appState)
         }
         .windowResizability(.contentSize)
-        .windowStyle(.hiddenTitleBar)
     }
 
     /// The model deliberately lives outside the app bundle. One explicit

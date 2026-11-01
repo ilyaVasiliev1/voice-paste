@@ -63,8 +63,6 @@ struct DashboardView: View {
     private var stats: UsageStats { model.stats }
 
     var body: some View {
-        VStack(spacing: 0) {
-            WorkspaceHeader(title: "Статистика") { EmptyView() }
         ScrollView {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
                 header
@@ -74,9 +72,6 @@ struct DashboardView: View {
                 chart
             }
             .padding(DesignTokens.detailPanePadding)
-            .frame(maxWidth: DesignTokens.formMeasure, alignment: .leading)
-            .frame(maxWidth: .infinity, alignment: .center)
-        }
         }
         // Смена периода перезапускает слежение, а с ним и загрузку.
         .task(id: period) {
@@ -271,29 +266,18 @@ struct StatisticsPeriodList: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 6) {
-                ForEach(StatisticsPeriod.allCases) { item in
-                    Button { period = item } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(item.title).font(.system(size: 13, weight: .medium))
-                                if let words = summaries.words[item] {
-                                    Text("Слов: \(words.formatted())")
-                                        .font(.system(size: 12)).foregroundStyle(.secondary)
-                                }
-                            }
-                            Spacer()
-                            if period == item { Image(systemName: "checkmark").font(.caption) }
-                        }
-                        .padding(12).contentShape(Rectangle())
-                        .background(Color.primary.opacity(period == item ? 0.07 : 0),
-                            in: RoundedRectangle(cornerRadius: 8))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(period == item ? .isSelected : [])
+        List(StatisticsPeriod.allCases, selection: selection) { item in
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                Text(item.title)
+                if let words = summaries.words[item] {
+                    Text("Слов: \(words.formatted())")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
                 }
-            }.padding(12)
+            }
+            .padding(.vertical, DesignTokens.Spacing.xs)
+            .tag(item)
         }
         .task { await summaries.track() }
     }

@@ -102,8 +102,6 @@ final class ScreenSnapshots: XCTestCase {
         window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         window.isReleasedWhenClosed = false
         window.title = "VoicePaste"
-        window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
         window.contentViewController = NSHostingController(rootView: view)
         window.setContentSize(size)
         window.center()
@@ -310,7 +308,7 @@ final class ScreenSnapshots: XCTestCase {
                 let app = try await makeAppState()
                 try await snapshot(
                     OnboardingView(initialStep: step).environmentObject(app),
-                    size: CGSize(width: 720, height: 480), dark: dark, name: "onboarding-\(name)-\(theme)"
+                    size: CGSize(width: 520, height: 400), dark: dark, name: "onboarding-\(name)-\(theme)"
                 )
             }
         }

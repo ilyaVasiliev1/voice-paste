@@ -11,12 +11,6 @@ struct ImportQueueView: View {
     @State private var isDropTargeted = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            WorkspaceHeader(title: "Импорт") {
-                Button(action: openPanel) { Label("Выбрать файл", systemImage: "plus") }
-                    .buttonStyle(WorkspaceActionStyle(primary: true))
-                    .disabled(appState.readiness.state != .ready)
-            }
         ScrollView {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xl) {
                 header
@@ -24,21 +18,26 @@ struct ImportQueueView: View {
             }
             .padding(DesignTokens.detailPanePadding)
             .frame(maxWidth: DesignTokens.formMeasure, alignment: .leading)
-            .frame(maxWidth: .infinity, alignment: .center)
-        }
         }
         .onDrop(of: [.fileURL], isTargeted: $isDropTargeted, perform: acceptDrop)
-
+        .toolbar {
+            ToolbarItem {
+                Button(action: openPanel) {
+                    Label("history.toolbar.transcribeFile", systemImage: "arrow.down.doc")
+                        .labelStyle(.titleAndIcon)
+                }
+                // import stays disabled while not ready.
+                .disabled(appState.readiness.state != .ready)
+            }
+        }
     }
 
     private var header: some View {
-        HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Расшифровка файла").font(.system(size: 22, weight: .semibold))
-                Text("Аудио и видео обрабатываются локально и по очереди.")
-                    .font(.system(size: 13)).foregroundStyle(.secondary)
-            }
-
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+            Text("Расшифровка файла")
+                .font(.title2.weight(.semibold))
+            Text("Аудио и видео обрабатываются локально и по очереди.")
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -117,9 +116,7 @@ struct ImportQueueList: View {
                 description: Text("import.queue.empty.description")
             )
         } else {
-            ScrollView {
-                LazyVStack(spacing: 8) {
-                    ForEach(appState.importManager.jobs) { job in
+            List(appState.importManager.jobs) { job in
                 QueueRow(
                     job: job,
                     canRetry: appState.importManager.canRetry(id: job.id),
@@ -134,10 +131,6 @@ struct ImportQueueList: View {
                         }
                     }
                 )
-                .padding(12)
-                .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8))
-                    }
-                }.padding(12)
             }
         }
     }

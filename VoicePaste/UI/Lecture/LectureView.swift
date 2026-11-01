@@ -16,33 +16,37 @@ struct LectureListColumn: View {
     }
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 4) {
-                Button { selection.wrappedValue = .current } label: { currentRow }
-                    .buttonStyle(WorkspaceRowStyle(selected: selection.wrappedValue == .current))
-                if !appState.savedLectures.isEmpty {
-                    Text("lecture.saved")
-                        .font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
-                        .padding(.horizontal, 12).padding(.top, 20).padding(.bottom, 8)
+        List(selection: selection) {
+            Section {
+                currentRow.tag(Item.current)
+            }
+            if !appState.savedLectures.isEmpty {
+                Section("lecture.saved") {
                     ForEach(appState.savedLectures) { lecture in
-                        Button { selection.wrappedValue = .saved(lecture.id) } label: {
-                            SavedLectureRow(lecture: lecture,
-                                isBeingContinued: appState.isLectureRecording && appState.continuingLectureID == lecture.id)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .buttonStyle(WorkspaceRowStyle(selected: selection.wrappedValue == .saved(lecture.id)))
-                        .accessibilityAddTraits(selection.wrappedValue == .saved(lecture.id) ? [.isSelected] : [])
-                        .disabled(appState.isLectureRecording && appState.continuingLectureID != lecture.id)
-                        .contextMenu {
-                            Button { renaming = lecture } label: { Label("lecture.rename", systemImage: "pencil") }
-                            Button(role: .destructive) {
-                                Task { await appState.deleteLecture(id: lecture.id) }
-                            } label: { Label("lecture.delete", systemImage: "trash") }
-                        }
+                        SavedLectureRow(
+                            lecture: lecture,
+                            isBeingContinued: appState.isLectureRecording && appState.continuingLectureID == lecture.id
+                        )
+                            .tag(Item.saved(lecture.id))
+                            // Открыть сохранённую посреди записи нельзя —
+                            // `openSavedLecture` откажет. Выключено, а не
+                            // молча не срабатывает.
+                            .disabled(appState.isLectureRecording && appState.continuingLectureID != lecture.id)
+                            .contextMenu {
+                                Button {
+                                    renaming = lecture
+                                } label: {
+                                    Label("lecture.rename", systemImage: "pencil")
+                                }
+                                Button(role: .destructive) {
+                                    Task { await appState.deleteLecture(id: lecture.id) }
+                                } label: {
+                                    Label("lecture.delete", systemImage: "trash")
+                                }
+                            }
                     }
                 }
             }
-            .padding(8)
         }
         .task { await appState.refreshSavedLectures() }
         .lectureRenameAlert(target: $renaming)
@@ -105,8 +109,7 @@ private struct SavedLectureRow: View {
                 .foregroundStyle(.secondary)
             if lecture.transcriptionIssue != nil {
                 Label("lecture.incomplete.short", systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
+                    .font(.caption).foregroundStyle(.orange)
             }
         }
         .padding(.vertical, DesignTokens.Spacing.xs)
@@ -128,7 +131,6 @@ struct LectureView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            WorkspaceHeader(title: "") { toolbar }
             header
             Divider()
             if let issue = transcriptionIssue {
@@ -148,6 +150,7 @@ struct LectureView: View {
             }
             content
         }
+        .toolbar { toolbar }
         .lectureRenameAlert(target: $renaming)
     }
 
@@ -220,23 +223,21 @@ struct LectureView: View {
 
     /// Действия раздела. Язык и движок — меню с подписью словами: прежде это
     /// были два списка без подписей, и выбор движка назывался «По языку».
-    @ViewBuilder
-    private var toolbar: some View {
-        HStack(spacing: 6) {
+    @ToolbarContentBuilder
+    private var toolbar: some ToolbarContent {
+        ToolbarItemGroup {
             if let opened = appState.openedLecture {
                 Button {
                     TextInserter.copyToClipboard(opened.plainText)
                 } label: {
                     Label("lecture.copyAll", systemImage: "doc.on.doc")
                 }
-                .labelStyle(.iconOnly)
                 .help("lecture.copyAll")
                 Button {
                     renaming = opened.lecture
                 } label: {
                     Label("lecture.rename", systemImage: "pencil")
                 }
-                .labelStyle(.iconOnly)
                 .help("lecture.rename")
                 .disabled(appState.isLectureRecording)
             } else if !appState.isLectureRecording, !recorder.paragraphs.isEmpty {
@@ -245,7 +246,6 @@ struct LectureView: View {
                 } label: {
                     Label("lecture.copyAll", systemImage: "doc.on.doc")
                 }
-                .labelStyle(.iconOnly)
                 .help("lecture.copyAll")
             }
 
@@ -263,9 +263,6 @@ struct LectureView: View {
             } label: {
                 Label(LectureMenuText.name(of: settings.lectureLanguage), systemImage: "globe")
             }
-            .labelStyle(.iconOnly)
-            .menuStyle(.borderlessButton)
-            .font(.system(size: 12))
             .fixedSize()
             .disabled(appState.isLectureRecording)
             .help("lecture.language")
@@ -283,9 +280,6 @@ struct LectureView: View {
                 } label: {
                     Label(LectureMenuText.name(of: settings.lectureEngine), systemImage: "cpu")
                 }
-                .labelStyle(.iconOnly)
-                .menuStyle(.borderlessButton)
-                .font(.system(size: 12))
                 .fixedSize()
                 .disabled(appState.isLectureRecording)
                 .help("lecture.engine")
@@ -308,12 +302,11 @@ struct LectureView: View {
                     .labelStyle(.titleAndIcon)
             }
             // Главное действие раздела — единственное акцентное; «Остановить» красное.
-            .buttonStyle(WorkspaceActionStyle(primary: true))
+            .buttonStyle(.borderedProminent)
             .tint(appState.isLectureRecording ? .red : .accentColor)
             .keyboardShortcut("l", modifiers: [.command, .shift])
             .accessibilityIdentifier("lecture-toggle")
         }
-        .buttonStyle(WorkspaceActionStyle())
     }
 
     private var startStopTitle: LocalizedStringKey {
@@ -403,7 +396,7 @@ struct LectureView: View {
                     }
                 }
                 .frame(maxWidth: DesignTokens.readingMeasure, alignment: .leading)
-                .frame(maxWidth: .infinity, alignment: .center)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(DesignTokens.detailPanePadding)
                 .textSelection(.enabled)
             }
@@ -499,15 +492,18 @@ private struct LectureParagraphRow: View {
     let paragraph: LectureParagraph
 
     var body: some View {
-        HStack(alignment: .top, spacing: DesignTokens.Spacing.md) {
+        HStack(alignment: .firstTextBaseline, spacing: DesignTokens.Spacing.lg) {
             Text(Self.timestamp(paragraph.startSeconds))
                 .font(.system(.caption, design: .monospaced))
                 .foregroundStyle(.secondary)
                 .frame(width: 48, alignment: .leading)
                 .accessibilityLabel(Text("lecture.paragraph.startsAt"))
+                .accessibilityValue(Self.timestamp(paragraph.startSeconds))
 
             Text(paragraph.text)
-                .font(.body)
+                .font(.system(size: 16))
+                .lineSpacing(6)
+                .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contextMenu {
                     Button {

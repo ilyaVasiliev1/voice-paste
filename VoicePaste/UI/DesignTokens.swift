@@ -129,6 +129,9 @@ nonisolated enum DesignTokens {
 }
 
 extension View {
+    /// Поверхность карточки. На macOS 26 — стекло, как у панели инструментов
+    /// и боковой колонки: иначе карточки остаются единственными плоскими
+    /// плашками в окне из стекла. До macOS 26 — прежняя плоская заливка.
     func cardSurface() -> some View {
         modifier(CardSurface())
     }
@@ -137,9 +140,11 @@ extension View {
 private struct CardSurface: ViewModifier {
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: DesignTokens.cardCornerRadius, style: .continuous)
-        content
-            .background(Color(nsColor: .controlBackgroundColor), in: shape)
-            .overlay { shape.strokeBorder(Color.primary.opacity(0.07), lineWidth: 1) }
+        if #available(macOS 26.0, *) {
+            content.glassEffect(.regular, in: shape)
+        } else {
+            content.background(.quaternary, in: shape)
+        }
     }
 }
 
@@ -209,79 +214,5 @@ nonisolated enum DisplayFormat {
     static func languageName(_ code: String?, locale: Locale = .current) -> String? {
         guard let code, let name = locale.localizedString(forLanguageCode: code), let first = name.first else { return nil }
         return first.uppercased() + name.dropFirst()
-    }
-}
-
-nonisolated enum WorkspacePalette {
-    static let sidebar = adaptive(light: 0.965, dark: 0.115)
-    static let list = adaptive(light: 0.992, dark: 0.135)
-    static let document = adaptive(light: 1, dark: 0.15)
-    static let selection = adaptive(light: 0.915, dark: 0.23)
-    static let hover = adaptive(light: 0.94, dark: 0.19)
-    static let line = Color.primary.opacity(0.085)
-
-    private static func adaptive(light: CGFloat, dark: CGFloat) -> Color {
-        Color(nsColor: NSColor(name: nil) { appearance in
-            let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            return NSColor(white: isDark ? dark : light, alpha: 1)
-        })
-    }
-}
-
-struct WorkspaceRowStyle: ButtonStyle {
-    var selected = false
-
-    func makeBody(configuration: Configuration) -> some View {
-        WorkspaceRowBody(configuration: configuration, selected: selected)
-    }
-
-    private struct WorkspaceRowBody: View {
-        let configuration: ButtonStyle.Configuration
-        let selected: Bool
-        @State private var hovered = false
-
-        var body: some View {
-            configuration.label
-                .font(.system(size: 13, weight: selected ? .medium : .regular))
-                .foregroundStyle(.primary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(selected || configuration.isPressed ? WorkspacePalette.selection : hovered ? WorkspacePalette.hover : .clear,
-                            in: RoundedRectangle(cornerRadius: 6))
-                .contentShape(Rectangle())
-                .onHover { hovered = $0 }
-        }
-    }
-}
-
-struct WorkspaceActionStyle: ButtonStyle {
-    @Environment(\.isEnabled) private var isEnabled
-    var primary = false
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 12, weight: .medium))
-            .foregroundStyle(primary ? Color.white : Color.primary)
-            .padding(.horizontal, 10)
-            .frame(height: 30)
-            .background(primary ? Color.accentColor.opacity(configuration.isPressed ? 0.7 : 1) : WorkspacePalette.hover,
-                        in: RoundedRectangle(cornerRadius: 6))
-            .opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.4)
-    }
-}
-
-struct WorkspaceHeader<Actions: View>: View {
-    let title: String
-    @ViewBuilder var actions: Actions
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Text(title).font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary).lineLimit(1)
-            Spacer(minLength: 8)
-            actions
-        }
-        .padding(.horizontal, 20)
-        .frame(height: 56)
-        .overlay(alignment: .bottom) { WorkspacePalette.line.frame(height: 1) }
     }
 }
