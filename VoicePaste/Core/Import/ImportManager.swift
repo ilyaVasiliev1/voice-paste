@@ -312,9 +312,9 @@ public final class ImportManager: ObservableObject {
                     }
                 }
             }
-            lastCompletion = Completion(jobID: id, transcript: transcript)
             try await removeJob(id, removePersistentRecord: true)
             await Self.removeCache(for: id)
+            lastCompletion = Completion(jobID: id, transcript: transcript)
         } catch is CancellationError {
             try? await removeJob(id, removePersistentRecord: true)
             await Self.removeCache(for: id)
