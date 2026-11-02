@@ -4,7 +4,7 @@
 
 [![Проверки](https://github.com/ilyaVasiliev1/voice-paste/actions/workflows/ci.yml/badge.svg)](https://github.com/ilyaVasiliev1/voice-paste/actions/workflows/ci.yml)
 
-[Скачать для Mac](https://github.com/ilyaVasiliev1/voice-paste/releases/latest) · [Что нового](CHANGELOG.md) · [Сообщить об ошибке](https://github.com/ilyaVasiliev1/voice-paste/issues)
+[Скачать для Mac](https://github.com/ilyaVasiliev1/voice-paste/releases/latest) · [Что нового](https://github.com/ilyaVasiliev1/voice-paste/releases) · [Сообщить об ошибке](https://github.com/ilyaVasiliev1/voice-paste/issues)
 
 ![История и редактирование расшифровки](docs/screenshots/history.png)
 
@@ -73,9 +73,9 @@ cd voice-paste
 open VoicePaste.xcodeproj
 ```
 
-Выберите схему **VoicePaste** и запустите приложение. Первая сборка скачивает зависимости. [Проверки, выпуск и локальное обновление без смены подписи](docs/DEVELOPMENT.md).
+Выберите схему **VoicePaste** и запустите приложение. Первая сборка скачивает зависимости. [Проверки, сборка и локальное обновление](AGENTS.md).
 
-Исследования движков и воспроизводимые замеры находятся в [research](research/2026-11-01-model-benchmark.md). Qwen исследован отдельно и не встроен в выпускаемое приложение.
+Выпускаемая модель — сжатая Whisper large-v3 turbo. Экспериментальные модели в приложение не включены.
 
 ## Лицензия и благодарности
 

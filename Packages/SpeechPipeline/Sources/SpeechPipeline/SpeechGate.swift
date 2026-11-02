@@ -15,8 +15,7 @@ nonisolated public struct SpeechActivity: Equatable, Sendable {
 nonisolated public enum SpeechGate {
     private static let frameSeconds = 0.02
     private static let absoluteFloor: Float = 0.004
-    // WHY: множитель и потолок фона подобраны по записи речи 132 с и синтетическому
-    // шуму (docs/status.md, «Детектор речи»); без потолка сплошная речь уносит порог выше себя.
+    // Без потолка сплошная речь поднимает оценку фона выше собственного уровня.
     private static let noiseMultiplier: Float = 2.0
     private static let noiseCeiling: Float = 0.01
     private static let noisePercentile = 20

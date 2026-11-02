@@ -1,10 +1,5 @@
 # Spec: text-pipeline
 
-> Извлечено из кода (spec-miner). Дата извлечения: 2026-09-20.
-> Источник: Packages/SpeechPipeline/Sources/SpeechPipeline/TextNormalizer.swift,
-> VoicePaste/Core/Transcription (Transcribing, WhisperKitTranscriber,
-> TrailingHallucinationFilter), Packages/SpeechPipeline/Sources/SpeechPipeline/VocabularyEntry.swift.
-> Last verified: 2026-09-20 (commit 8f51051)
 
 ---
 
@@ -312,7 +307,6 @@
 Для любого режима языка план декодирования SHALL иметь `isTranslate == false`:
 продукт расшифровывает речь, но не переводит её.
 
-> Last verified: 2026-09-20 (commit 8f51051)
 
 ---
 
@@ -328,7 +322,6 @@
 начинаться не раньше чем через 0,2 с после последней речи; при обрезке
 сохраняется запас 0,25 с.
 
-> Last verified: 2026-09-20 (commit 8f51051)
 
 ---
 
@@ -342,7 +335,6 @@
 фрагмента вниз до двух токенов. Сравнение ведётся по токенам, приведённым
 к нижнему регистру и очищенным от небуквенно-цифровых символов.
 
-> Last verified: 2026-09-20 (commit 8f51051)
 
 ---
 
@@ -356,7 +348,6 @@
 замены, затем безопасные исправления. Иначе системная проверка правописания
 успевала бы испортить слово, которое словарь обязан был подставить.
 
-> Last verified: 2026-09-20 (commit 8f51051)
 
 ---
 
@@ -369,7 +360,6 @@
 задаче с приоритетом `utility`: расшифровка многочасового видео не должна
 задерживать прокрутку, анимацию HUD и обработку системных событий.
 
-> Last verified: 2026-09-20 (commit 8f51051)
 
 ---
 

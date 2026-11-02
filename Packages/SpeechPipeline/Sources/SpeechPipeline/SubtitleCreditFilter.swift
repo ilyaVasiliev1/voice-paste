@@ -19,7 +19,6 @@ nonisolated public enum SubtitleCreditFilter {
         #"amara\.org"#,
     ].map { pattern in
         // Шаблоны постоянны; неверный — ошибка программиста, а не данных.
-        // swiftlint:disable:next force_try
         try! NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
     }
 
