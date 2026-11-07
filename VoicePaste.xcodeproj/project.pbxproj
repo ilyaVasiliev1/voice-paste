@@ -1149,7 +1149,7 @@
 			repositoryURL = "https://github.com/groue/GRDB.swift";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 7.0.0;
+				minimumVersion = 7.12.0;
 			};
 		};
 		D00000000000000000000011 /* XCRemoteSwiftPackageReference "WhisperKit" */ = {
